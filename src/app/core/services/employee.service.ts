@@ -10,7 +10,7 @@ export interface Employee {
   phone: string;
   branchId: number;
   roleId: number;
-  role?: string;
+  role?: { id: number; name: string; description?: string };
   roles?: { id: number; name: string; description?: string }[];
   branch?: string;
   status?: string;

@@ -114,7 +114,7 @@ import { LoadingService } from '../../../../core/services/loading.service';
                     </div>
                   </td>
                   <td>
-                    <span class="role-tag">{{ emp.roles && emp.roles.length > 0 ? emp.roles[0].name : (emp.role || 'N/A') }}</span>
+                    <span class="role-tag">{{ emp.role?.name || (emp.roles && emp.roles.length > 0 ? emp.roles[0].name : 'N/A') }}</span>
                   </td>
                   <td>{{ getBranchName(emp.branchId) }}</td>
                   <td>
@@ -188,7 +188,7 @@ import { LoadingService } from '../../../../core/services/loading.service';
                   <div class="avatar">{{ emp.name.charAt(0) }}</div>
                   <div class="details">
                     <span class="name">{{ emp.name }}</span>
-                    <span class="role-tag">{{ emp.roles && emp.roles.length > 0 ? emp.roles[0].name : (emp.role || 'N/A') }}</span>
+                    <span class="role-tag">{{ emp.role?.name || (emp.roles && emp.roles.length > 0 ? emp.roles[0].name : 'N/A') }}</span>
                   </div>
                 </div>
                 <div class="status-dot-wrap" [ngClass]="(emp.status || '').toLowerCase()">
@@ -478,13 +478,13 @@ export class EmployeeListComponent implements OnInit {
   }
 
   isAdmin(emp: Employee): boolean {
-    return !!(emp.roles && emp.roles.length > 0 && emp.roles.some(r => r.name === 'ADMIN'));
+    return !!(emp.role?.name === 'ADMIN' || (emp.roles && emp.roles.length > 0 && emp.roles.some(r => r.name === 'ADMIN')));
   }
 
   getBranchName(branchId: number): string {
-    if (!branchId) return 'Unknown Branch';
+    if (!branchId) return 'N/A';
     const branch = this.branches.find(b => b.id === branchId || (b.id && b.id.toString() === branchId.toString()));
-    return branch ? branch.name : 'Unknown Branch';
+    return branch ? branch.name : 'N/A';
   }
 
   onSearchChange(query: string) {
@@ -589,8 +589,8 @@ export class EmployeeListComponent implements OnInit {
 
   openEditModal(emp: Employee) {
     this.isEditMode = true;
-    // Map the employee roles to roleId if possible
-    const roleId = emp.roles && emp.roles.length > 0 ? emp.roles[0].id : (emp.roleId || '');
+    // Map the employee role to roleId if possible
+    const roleId = emp.role?.id || (emp.roles && emp.roles.length > 0 ? emp.roles[0].id : (emp.roleId || ''));
     
     this.newEmployee = { 
       id: emp.id,

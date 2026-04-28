@@ -718,7 +718,10 @@ export class ReferralListComponent implements OnInit {
 
   openEditModal(ref: Referral) {
     this.isEditMode = true;
-    this.newReferral = { ...ref };
+    this.newReferral = { 
+      ...ref,
+      branchId: ref.branchId || ref.branch?.id || undefined
+    };
     this.showAddModal = true;
     this.openDropdownId = null;
   }

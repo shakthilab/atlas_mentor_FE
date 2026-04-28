@@ -781,18 +781,8 @@ export class HierarchyManagerComponent implements OnInit {
   }
 
   get filteredHierarchy() {
-    const managerLeaderIds = new Set(this.managerHierarchy.map(t => t.leader.id));
-    const managerMemberIds = new Set();
-    this.managerHierarchy.forEach(t => {
-      const members = t.employees || t.members || [];
-      members.forEach((m: any) => managerMemberIds.add(m.id));
-    });
-    
-    const independentCounsellors = this.counsellorHierarchy.filter(t => 
-      !managerMemberIds.has(t.leader.id) && !managerLeaderIds.has(t.leader.id)
-    );
-    
-    let allTopLevel = [...this.managerHierarchy, ...independentCounsellors];
+    // Only show actual managers as top-level nodes
+    let allTopLevel = [...this.managerHierarchy];
     
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
@@ -880,6 +870,8 @@ export class HierarchyManagerComponent implements OnInit {
 
   private getRoleName(member: any): string {
     if (!member) return '';
+    // Check for the 'role' field from API response first
+    if (member.role) return member.role.toString().toUpperCase();
     if (member.primaryRole) return member.primaryRole.toString().toUpperCase();
     if (member.roles && member.roles.length > 0) {
       const firstRole = member.roles[0];

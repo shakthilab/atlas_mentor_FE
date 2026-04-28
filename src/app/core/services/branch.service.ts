@@ -21,7 +21,9 @@ export class BranchService {
   }
 
   getAllBranches(): Observable<Branch[]> {
-    return this.http.get<any>(this.apiUrl, { headers: this.getHeaders() }).pipe(
+    // Add query parameter to ensure all branches are returned, including inactive ones
+    const url = `${this.apiUrl}?includeInactive=true`;
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
       map(response => {
         // Handle case where response might be wrapped in a data property
         if (response.data && Array.isArray(response.data)) {

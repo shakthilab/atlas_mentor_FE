@@ -33,6 +33,7 @@ export class HierarchyService {
         id: emp.id,
         name: emp.name,
         activeStudents: emp.activeStudents || emp.studentsAssigned || 0,
+        role: emp.role, // Preserve the role field from API response
         roles: (emp.roles && emp.roles.length > 0) ? emp.roles : (forcedRole ? [forcedRole] : [])
       }))
     }));

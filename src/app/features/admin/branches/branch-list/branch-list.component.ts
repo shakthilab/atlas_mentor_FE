@@ -65,6 +65,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
                 <th style="width: 40px;"><input type="checkbox"></th>
                 <th>Branch Name</th>
                 <th>Location</th>
+                <th>Status</th>
                 <th>Team & Students</th>
                 <th>Revenue</th>
                 <th>Manager</th>
@@ -81,14 +82,17 @@ import { NotificationService } from '../../../../core/services/notification.serv
                     </div>
                     <div class="info">
                       <span class="name">{{ branch.name }}</span>
-                      <span class="status-indicator" [class.active]="branch.status !== 'INACTIVE'">
-                        {{ branch.status === 'INACTIVE' ? 'Inactive' : 'Operational' }}
-                      </span>
                     </div>
                   </div>
                 </td>
                 <td (click)="openEditModal(branch)">
-                  <span class="location-text" [title]="branch.location">{{ branch.location }}</span>
+                  <span class="location-text" [title]="branch.location" style="white-space: normal; word-wrap: break-word; max-width: 200px; display: inline-block;">{{ branch.location }}</span>
+                </td>
+                <td (click)="openEditModal(branch)">
+                  <div class="status-indicator" [class.active]="branch.status !== 'INACTIVE'">
+                    <span class="status-dot"></span>
+                    {{ branch.status === 'INACTIVE' ? 'Non Operational' : 'Operational' }}
+                  </div>
                 </td>
                 <td (click)="openEditModal(branch)">
                   <div class="metrics">
@@ -107,16 +111,19 @@ import { NotificationService } from '../../../../core/services/notification.serv
                     <button class="btn-icon" (click)="openEditModal(branch)" title="Edit"><span class="material-icons">edit</span></button>
                     <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + branch.id)" title="More Options"><span class="material-icons">more_vert</span></button>
                     
-                    <!-- Action Dropdown -->
                     <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + branch.id" (click)="$event.stopPropagation()">
-                      <button class="dropdown-item warning" (click)="onToggleStatus(branch); openDropdownId = null;" *ngIf="branch.status !== 'INACTIVE'">
-                        <span class="material-icons">block</span> Deactivate
+                      <button class="dropdown-item warning" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'">
+                        <span class="material-icons" style="font-size: 18px;">block</span>
+                        Deactivate
                       </button>
-                      <button class="dropdown-item success" (click)="onToggleStatus(branch); openDropdownId = null;" *ngIf="branch.status === 'INACTIVE'">
-                        <span class="material-icons">check_circle</span> Reactivate
+                      <button class="dropdown-item success" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'">
+                        <span class="material-icons" style="font-size: 18px;">check_circle</span>
+                        Reactivate
                       </button>
-                      <button class="dropdown-item danger" (click)="onDeleteBranch(branch.id); openDropdownId = null;">
-                        <span class="material-icons">delete_outline</span> Delete
+                      <div class="dropdown-divider"></div>
+                      <button class="dropdown-item danger" (click)="onDeleteBranch(branch.id); openDropdownId = null">
+                        <span class="material-icons" style="font-size: 18px;">delete</span>
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -153,8 +160,9 @@ import { NotificationService } from '../../../../core/services/notification.serv
               <div class="branch-icon-wrap">
                 <span class="material-icons">business</span>
               </div>
-              <div class="status-badge" [class.active]="branch.status !== 'INACTIVE'">
-                {{ branch.status === 'INACTIVE' ? 'Inactive' : 'Operational' }}
+              <div class="status-indicator" [class.active]="branch.status !== 'INACTIVE'">
+                <span class="status-dot"></span>
+                {{ branch.status === 'INACTIVE' ? 'Non Operational' : 'Operational' }}
               </div>
             </div>
             
@@ -190,7 +198,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
             </div>
             
             <div class="card-footer">
-              <div class="action-btns" style="position: relative; width: 100%; display: flex; justify-content: flex-end; gap: 0.5rem;">
+              <div class="action-btns" style="position: relative;">
                 <button class="footer-action" (click)="openEditModal(branch)" title="Edit Details">
                   <span class="material-icons">edit</span>
                 </button>
@@ -198,16 +206,19 @@ import { NotificationService } from '../../../../core/services/notification.serv
                   <span class="material-icons">more_vert</span>
                 </button>
                 
-                <!-- Action Dropdown -->
                 <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'card-' + branch.id" (click)="$event.stopPropagation()">
-                  <button class="dropdown-item warning" (click)="onToggleStatus(branch); openDropdownId = null;" *ngIf="branch.status !== 'INACTIVE'">
-                    <span class="material-icons">block</span> Deactivate
+                  <button class="dropdown-item warning" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'">
+                    <span class="material-icons" style="font-size: 18px;">block</span>
+                    Deactivate
                   </button>
-                  <button class="dropdown-item success" (click)="onToggleStatus(branch); openDropdownId = null;" *ngIf="branch.status === 'INACTIVE'">
-                    <span class="material-icons">check_circle</span> Reactivate
+                  <button class="dropdown-item success" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'">
+                    <span class="material-icons" style="font-size: 18px;">check_circle</span>
+                    Reactivate
                   </button>
-                  <button class="dropdown-item danger" (click)="onDeleteBranch(branch.id); openDropdownId = null;">
-                    <span class="material-icons">delete_outline</span> Delete
+                  <div class="dropdown-divider"></div>
+                  <button class="dropdown-item danger" (click)="onDeleteBranch(branch.id); openDropdownId = null">
+                    <span class="material-icons" style="font-size: 18px;">delete</span>
+                    Delete
                   </button>
                 </div>
               </div>
@@ -417,8 +428,32 @@ import { NotificationService } from '../../../../core/services/notification.serv
     
     .card-header { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid var(--color-gray-100); }
     .branch-icon-wrap { width: 40px; height: 40px; background: var(--color-primary-light); color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-primary-border); }
-    .status-badge { font-size: 0.75rem; font-weight: 500; padding: 0.125rem 0.5rem; border-radius: 6px; background: var(--color-gray-100); color: var(--color-gray-700); border: 1px solid var(--color-gray-200); }
-    .status-badge.active { background: #ecfdf3; color: #027a48; border-color: #abefc6; }
+    .status-indicator { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.375rem; 
+      font-size: 0.75rem; 
+      font-weight: 500; 
+      padding: 0.25rem 0.75rem; 
+      border-radius: 12px; 
+      background: var(--color-gray-100); 
+      color: var(--color-gray-700); 
+      border: 1px solid var(--color-gray-200); 
+    }
+    .status-indicator.active { 
+      background: #ecfdf3; 
+      color: #027a48; 
+      border-color: #abefc6; 
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-gray-400);
+    }
+    .status-indicator.active .status-dot {
+      background: #10b981;
+    }
     
     .card-body { padding: 1.25rem; flex: 1; cursor: pointer; }
     .branch-card-title { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-900); margin: 0 0 0.5rem; }
@@ -441,7 +476,12 @@ import { NotificationService } from '../../../../core/services/notification.serv
     .card-footer { padding: 1rem 1.25rem; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: flex-end; gap: 0.5rem; }
     .footer-action { width: 32px; height: 32px; border-radius: var(--radius-md); border: 1px solid var(--color-gray-300); background: white; color: var(--color-gray-500); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--transition-fast); box-shadow: var(--shadow-xs); }
     .footer-action:hover { color: var(--color-primary); border-color: var(--color-primary); }
-    .footer-action.delete:hover { color: var(--color-error); border-color: var(--color-error); }
+    .footer-action.warning { color: #d97706; border-color: #fbbf24; }
+    .footer-action.warning:hover { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
+    .footer-action.success { color: #059669; border-color: #34d399; }
+    .footer-action.success:hover { background: #d1fae5; color: #047857; border-color: #10b981; }
+    .footer-action.danger { color: #dc2626; border-color: #f87171; }
+    .footer-action.danger:hover { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
     
     .error-text { color: var(--color-error); font-size: 0.75rem; margin-top: 0.375rem; font-weight: 500; }
     
@@ -466,8 +506,32 @@ import { NotificationService } from '../../../../core/services/notification.serv
     
     .card-header { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid var(--color-gray-100); }
     .branch-icon-wrap { width: 40px; height: 40px; background: var(--color-primary-light); color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-primary-border); }
-    .status-badge { font-size: 0.75rem; font-weight: 500; padding: 0.125rem 0.5rem; border-radius: 6px; background: var(--color-gray-100); color: var(--color-gray-700); border: 1px solid var(--color-gray-200); }
-    .status-badge.active { background: #ecfdf3; color: #027a48; border-color: #abefc6; }
+    .status-indicator { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.375rem; 
+      font-size: 0.75rem; 
+      font-weight: 500; 
+      padding: 0.25rem 0.75rem; 
+      border-radius: 12px; 
+      background: var(--color-gray-100); 
+      color: var(--color-gray-700); 
+      border: 1px solid var(--color-gray-200); 
+    }
+    .status-indicator.active { 
+      background: #ecfdf3; 
+      color: #027a48; 
+      border-color: #abefc6; 
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-gray-400);
+    }
+    .status-indicator.active .status-dot {
+      background: #10b981;
+    }
     
     .card-body { padding: 1.25rem; flex: 1; cursor: pointer; }
     .branch-card-title { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-900); margin: 0 0 0.5rem; }
@@ -490,7 +554,12 @@ import { NotificationService } from '../../../../core/services/notification.serv
     .card-footer { padding: 1rem 1.25rem; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: flex-end; gap: 0.5rem; }
     .footer-action { width: 32px; height: 32px; border-radius: var(--radius-md); border: 1px solid var(--color-gray-300); background: white; color: var(--color-gray-500); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--transition-fast); box-shadow: var(--shadow-xs); }
     .footer-action:hover { color: var(--color-primary); border-color: var(--color-primary); }
-    .footer-action.delete:hover { color: var(--color-error); border-color: var(--color-error); }
+    .footer-action.warning { color: #d97706; border-color: #fbbf24; }
+    .footer-action.warning:hover { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
+    .footer-action.success { color: #059669; border-color: #34d399; }
+    .footer-action.success:hover { background: #d1fae5; color: #047857; border-color: #10b981; }
+    .footer-action.danger { color: #dc2626; border-color: #f87171; }
+    .footer-action.danger:hover { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
 
     .load-more-container {
       display: flex;
@@ -512,6 +581,194 @@ import { NotificationService } from '../../../../core/services/notification.serv
     .load-more-btn:hover {
       transform: translateY(-1px);
       box-shadow: var(--shadow-md);
+    }
+
+    /* Action Buttons Styles */
+    .action-btns {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      background: transparent;
+      color: var(--color-gray-500);
+    }
+    
+    .btn-icon .material-icons {
+      font-size: 18px;
+    }
+    
+    .btn-icon:hover {
+      background: var(--color-gray-100);
+      color: var(--color-gray-700);
+    }
+
+    /* Status Indicator Styles */
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      background: var(--color-gray-100);
+      color: var(--color-gray-700);
+      border: 1px solid var(--color-gray-200);
+    }
+    
+    .status-indicator.active {
+      background: #ecfdf3;
+      color: #027a48;
+      border-color: #abefc6;
+    }
+    
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-gray-400);
+    }
+    
+    .status-indicator.active .status-dot {
+      background: #10b981;
+    }
+    
+    .btn-action {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-gray-300);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      background: white;
+      box-shadow: var(--shadow-xs);
+    }
+    
+    .btn-action .material-icons {
+      font-size: 18px;
+    }
+    
+    .btn-action.warning {
+      color: #d97706;
+      border-color: #fbbf24;
+    }
+    
+    .btn-action.warning:hover {
+      background: #fef3c7;
+      color: #b45309;
+      border-color: #f59e0b;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-action.success {
+      color: #059669;
+      border-color: #34d399;
+    }
+    
+    .btn-action.success:hover {
+      background: #d1fae5;
+      color: #047857;
+      border-color: #10b981;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-action.danger {
+      color: #dc2626;
+      border-color: #f87171;
+    }
+    
+    .btn-action.danger:hover {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #ef4444;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Action Dropdown Styles */
+    .action-dropdown {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: white;
+      border: 1px solid var(--color-gray-200);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      z-index: 1000;
+      min-width: 180px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    
+    .dropdown-item {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-gray-700);
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    
+    .dropdown-item:hover {
+      background: var(--color-gray-50);
+    }
+    
+    .dropdown-item.warning {
+      color: #d97706;
+    }
+    
+    .dropdown-item.warning:hover {
+      background: #fef3c7;
+      color: #b45309;
+    }
+    
+    .dropdown-item.success {
+      color: #059669;
+    }
+    
+    .dropdown-item.success:hover {
+      background: #d1fae5;
+      color: #047857;
+    }
+    
+    .dropdown-item.danger {
+      color: #dc2626;
+    }
+    
+    .dropdown-item.danger:hover {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    
+    .dropdown-divider {
+      height: 1px;
+      background: var(--color-gray-200);
+      margin: 4px 0;
     }
   `]
 

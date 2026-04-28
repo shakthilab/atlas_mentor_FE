@@ -98,7 +98,7 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
                 <td>
                   <div class="location-td">
                     <span class="material-icons">location_on</span>
-                    {{ company.branch?.name || company.address }}
+                    {{ company.companyDetails?.address || company.address || company.branch?.name || 'No address available' }}
                   </div>
                 </td>
                 <td><a [href]="company.companyDetails?.website || company.website" target="_blank" class="website-link">{{ company.companyDetails?.website || company.website }}</a></td>
@@ -168,7 +168,7 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
                 <div class="details">
                   <span class="name">{{ company.name }}</span>
                   <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 4px;">
-                    <span class="type-badge">{{ company.industry }}</span>
+                    <span class="type-badge">{{ company.companyDetails?.industry || company.industry }}</span>
                     <span class="status-dot-wrap" [ngClass]="(company.status || 'ACTIVE').toLowerCase()">
                       <span class="status-dot"></span>
                       {{ company.status || 'ACTIVE' }}
@@ -203,8 +203,8 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
             <div class="card-body">
               <div class="metrics-grid">
                 <div class="metric-box">
-                  <span class="label">Contact</span>
-                  <span class="value">{{ company.contactPerson }}</span>
+                  <span class="label">Contact Person</span>
+                  <span class="value">{{ company.contactPerson || 'Not specified' }}</span>
                 </div>
                 <div class="metric-box">
                   <span class="label">Phone</span>
@@ -212,14 +212,14 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
                 </div>
                 <div class="metric-box full">
                   <span class="label">Address</span>
-                  <span class="value" style="font-size: 0.85rem; font-weight: 500;">{{ company.address }}</span>
+                  <span class="value" style="font-size: 0.85rem; font-weight: 500;">{{ company.companyDetails?.address || company.address || company.branch?.name || 'No address available' }}</span>
                 </div>
               </div>
               <div class="contact-item">
                 <span class="material-icons">email</span>
                 <span>{{ company.email }}</span>
               </div>
-              <div class="contact-item" style="margin-top: 0.5rem;">
+              <div class="contact-item" style="margin-top: 0.5rem;" *ngIf="company.website">
                 <span class="material-icons">language</span>
                 <a [href]="company.website" target="_blank" class="website-link" style="color: var(--color-primary);">{{ company.website }}</a>
               </div>

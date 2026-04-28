@@ -315,7 +315,7 @@ import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from 
   `,
   styles: [`
     /* Core Layout */
-    .module-container { padding-bottom: 2rem; transition: filter 0.3s ease; }
+    .module-container { background: var(--color-background-app); padding-bottom: 2rem; transition: filter 0.3s ease; }
     .module-container.panel-open { filter: blur(2px); }
     
     .module-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
