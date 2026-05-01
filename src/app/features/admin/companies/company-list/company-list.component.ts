@@ -276,10 +276,17 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
             <div class="form-grid">
               <div class="form-group">
-                <label for="compContact">Contact Person *</label>
-                <input type="text" id="compContact" name="contactPerson" class="form-control" [(ngModel)]="newCompany.contactPerson" placeholder="John Doe" required>
+                <label for="compFirstName">Contact First Name *</label>
+                <input type="text" id="compFirstName" name="firstName" class="form-control" [(ngModel)]="newCompany.firstName" placeholder="John" required>
               </div>
 
+              <div class="form-group">
+                <label for="compLastName">Contact Last Name *</label>
+                <input type="text" id="compLastName" name="lastName" class="form-control" [(ngModel)]="newCompany.lastName" placeholder="Doe" required>
+              </div>
+            </div>
+
+            <div class="form-grid">
               <div class="form-group">
                 <label for="compWebsite">Website *</label>
                 <input type="text" id="compWebsite" name="website" class="form-control" [(ngModel)]="newCompany.website" placeholder="https://example.com" required>
@@ -427,9 +434,15 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
   `,
   styles: [`
     .module-container { padding-bottom: 2rem; }
-    .module-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; }
+    .module-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; gap: 1rem; }
     .page-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
     .page-subtitle { color: var(--color-gray-600); margin: 0.25rem 0 0; font-size: 1rem; }
+    
+    @media (max-width: 768px) {
+      .module-header { flex-direction: column; align-items: stretch; }
+      .header-actions { justify-content: space-between; width: 100%; }
+      .page-title { font-size: 1.5rem; }
+    }
 
     .empty-state-container { padding: 4rem 2rem; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); text-align: center; display: flex; justify-content: center; align-items: center; margin-bottom: 2rem; }
     .empty-state-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
@@ -502,7 +515,21 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
     .verify-badge.verified { color: #027a48; }
     .verify-badge .material-icons { font-size: 18px; }
 
+    @media (max-width: 768px) {
+      .info-grid-modern { grid-template-columns: 1fr; gap: 1rem; }
+      .company-brand { flex-direction: column; gap: 1rem; text-align: center; width: 100%; }
+      .title-wrap { display: flex; flex-direction: column; align-items: center; }
+      .badges-row { justify-content: center; }
+      .premium-bg { padding: 1.5rem !important; }
+      .detail-body { padding: 1.5rem !important; }
+    }
+
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; gap: 0; }
+      .modal-content { border-radius: 20px 20px 0 0; }
+    }
 
     .action-btns { display: flex; gap: 0.25rem; justify-content: flex-end; }
     .btn-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--color-gray-500); cursor: pointer; border-radius: var(--radius-md); transition: all var(--transition-fast); }
@@ -773,6 +800,8 @@ export class CompanyListComponent implements OnInit {
       name: '',
       email: '',
       phone: '',
+      firstName: '',
+      lastName: '',
       contactPerson: '',
       address: '',
       industry: '',
@@ -786,11 +815,18 @@ export class CompanyListComponent implements OnInit {
   openEditModal(comp: Company) {
     this.isEditMode = true;
     
+    const contactPerson = comp.companyDetails?.contactPerson || comp.contactPerson || '';
+    const nameParts = contactPerson.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
     // Map nested data to flat model for form binding
     this.newCompany = { 
       ...comp,
       industry: comp.companyDetails?.industry || comp.industry,
-      contactPerson: comp.companyDetails?.contactPerson || comp.contactPerson,
+      firstName: firstName,
+      lastName: lastName,
+      contactPerson: contactPerson,
       address: comp.companyDetails?.address || comp.address,
       website: comp.companyDetails?.website || comp.website,
       branchId: comp.branch?.id || comp.branchId,
@@ -817,7 +853,7 @@ export class CompanyListComponent implements OnInit {
   }
 
   onSubmitCompany() {
-    if (!this.newCompany.name || !this.newCompany.email || !this.newCompany.phone || !this.newCompany.contactPerson || !this.newCompany.address || !this.newCompany.industry || !this.newCompany.website || !this.newCompany.branchId) return;
+    if (!this.newCompany.name || !this.newCompany.email || !this.newCompany.phone || !this.newCompany.firstName || !this.newCompany.lastName || !this.newCompany.address || !this.newCompany.industry || !this.newCompany.website || !this.newCompany.branchId) return;
 
     // Ensure assignedTo is set (as per API requirement in the curl example)
     if (!this.newCompany.assignedTo) {
@@ -825,9 +861,15 @@ export class CompanyListComponent implements OnInit {
     }
 
     this.submitting = true;
+    
+    const payload = {
+      ...this.newCompany,
+      firstName: this.newCompany.firstName,
+      lastName: this.newCompany.lastName
+    };
 
     if (this.isEditMode && this.newCompany.id) {
-      this.companyService.updateCompany(this.newCompany.id, this.newCompany).subscribe({
+      this.companyService.updateCompany(this.newCompany.id, payload).subscribe({
         next: () => {
           this.notificationService.success('Company updated successfully!');
           this.submitting = false;
@@ -841,7 +883,7 @@ export class CompanyListComponent implements OnInit {
         }
       });
     } else {
-      this.companyService.createCompany(this.newCompany).subscribe({
+      this.companyService.createCompany(payload).subscribe({
         next: () => {
           this.notificationService.success('Company created successfully!');
           this.submitting = false;

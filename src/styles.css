@@ -166,6 +166,12 @@ a:hover {
   width: 100%;
 }
 
+@media (max-width: 640px) {
+  .btn {
+    width: 100%;
+  }
+}
+
 /* Inputs and Forms */
 .form-group {
   margin-bottom: 1.25rem;
@@ -600,6 +606,27 @@ textarea.form-control {
   overflow: hidden;
   animation: modalIn var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  
+  .modal-content {
+    max-width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    max-height: 95vh;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
 }
 
 .modal-header {

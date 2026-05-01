@@ -1,7 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TaskService, Task, TaskFilter, CreateTaskRequest, ApiError } from '../../../../core/services/task.service';
+import { EmployeeService, Employee } from '../../../../core/services/employee.service';
+import { RoleService, Role } from '../../../../core/services/role.service';
 
 @Component({
   selector: 'app-task-list',
@@ -117,12 +120,12 @@ import { FormsModule } from '@angular/forms';
 
                   <div class="meta-item comments">
                     <span class="material-icons-outlined">chat_bubble_outline</span>
-                    <span>{{ task.comments }}</span>
+                    <span>{{ task.comments || 0 }}</span>
                   </div>
 
                   <div class="meta-item assignee">
-                    <div class="avatar-circle" [attr.data-initials]="task.assignee" [ngClass]="'avatar-' + task.assignee.toLowerCase()">
-                      {{ task.assignee }}
+                    <div class="avatar-circle" [attr.data-initials]="task.assignee || 'NA'" [ngClass]="'avatar-' + (task.assignee?.toLowerCase() || 'default')">
+                      {{ task.assignee || 'NA' }}
                     </div>
                   </div>
                 </div>
@@ -174,12 +177,12 @@ import { FormsModule } from '@angular/forms';
 
                   <div class="meta-item comments">
                     <span class="material-icons-outlined">chat_bubble_outline</span>
-                    <span>{{ task.comments }}</span>
+                    <span>{{ task.comments || 0 }}</span>
                   </div>
 
                   <div class="meta-item assignee">
-                    <div class="avatar-circle" [attr.data-initials]="task.assignee" [ngClass]="'avatar-' + task.assignee.toLowerCase()">
-                      {{ task.assignee }}
+                    <div class="avatar-circle" [attr.data-initials]="task.assignee || 'NA'" [ngClass]="'avatar-' + (task.assignee?.toLowerCase() || 'default')">
+                      {{ task.assignee || 'NA' }}
                     </div>
                   </div>
                 </div>
@@ -231,12 +234,12 @@ import { FormsModule } from '@angular/forms';
 
                   <div class="meta-item comments">
                     <span class="material-icons-outlined">chat_bubble_outline</span>
-                    <span>{{ task.comments }}</span>
+                    <span>{{ task.comments || 0 }}</span>
                   </div>
 
                   <div class="meta-item assignee">
-                    <div class="avatar-circle" [attr.data-initials]="task.assignee" [ngClass]="'avatar-' + task.assignee.toLowerCase()">
-                      {{ task.assignee }}
+                    <div class="avatar-circle" [attr.data-initials]="task.assignee || 'NA'" [ngClass]="'avatar-' + (task.assignee?.toLowerCase() || 'default')">
+                      {{ task.assignee || 'NA' }}
                     </div>
                   </div>
                 </div>
@@ -250,48 +253,68 @@ import { FormsModule } from '@angular/forms';
       <div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
         <div class="modal-content create-modal" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h2 class="modal-title">Create New Task</h2>
+            <h2 class="modal-title">Create task</h2>
             <button class="btn-icon" (click)="closeCreateModal()">
               <span class="material-icons">close</span>
             </button>
           </div>
           <div class="modal-body">
+            <p class="modal-subtitle">Required fields are marked with an asterisk <span class="text-danger">*</span></p>
+            
             <div class="form-group">
-              <label>Task Title</label>
-              <input type="text" class="form-control" placeholder="e.g. Verify Academic Documents" [(ngModel)]="newTask.title">
+              <label>Summary <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" placeholder="e.g. Verify academic documents" [(ngModel)]="newTask.title">
             </div>
             <div class="form-group">
               <label>Description</label>
-              <textarea class="form-control" rows="2" placeholder="Add task details..." [(ngModel)]="newTask.description"></textarea>
+              <textarea class="form-control" rows="3" placeholder="Add more details..." [(ngModel)]="newTask.description"></textarea>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
-                <label>Student Name</label>
-                <input type="text" class="form-control" placeholder="Search student..." [(ngModel)]="newTask.student">
-              </div>
-              <div class="form-group flex-1">
-                <label>Assignee (Initials)</label>
-                <input type="text" class="form-control" placeholder="e.g. SK" [(ngModel)]="newTask.assignee">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group flex-1">
-                <label>Priority</label>
-                <select class="form-control" [(ngModel)]="newTask.priority">
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
+                <label>Role</label>
+                <select class="form-control" [(ngModel)]="selectedRoleId" (change)="loadEmployees()">
+                  <option value="">All Roles</option>
+                  <option *ngFor="let role of roles" [value]="role.id">{{ role.name }}</option>
                 </select>
               </div>
               <div class="form-group flex-1">
-                <label>Due Date</label>
-                <input type="text" class="form-control" placeholder="Apr 15, 2026" [(ngModel)]="newTask.dueDate">
+                <label>Assigned To <span class="text-danger">*</span></label>
+                <select class="form-control" [(ngModel)]="newTask.assigneeId" required #assignee="ngModel" [class.is-invalid]="assignee.invalid && assignee.touched">
+                  <option value="" disabled selected>Select employee...</option>
+                  <option *ngFor="let emp of employees" [value]="emp.id">
+                    {{ emp.name }}
+                  </option>
+                </select>
+                <div class="invalid-feedback" *ngIf="assignee.invalid && assignee.touched">Assignee is required</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Priority <span class="text-danger">*</span></label>
+                <div class="priority-options">
+                  <div class="priority-option" [class.selected]="newTask.priority === 'HIGH'" (click)="newTask.priority = 'HIGH'">
+                    <span class="priority-dot high-dot"></span> High
+                  </div>
+                  <div class="priority-option" [class.selected]="newTask.priority === 'MEDIUM'" (click)="newTask.priority = 'MEDIUM'">
+                    <span class="priority-dot medium-dot"></span> Medium
+                  </div>
+                  <div class="priority-option" [class.selected]="newTask.priority === 'LOW'" (click)="newTask.priority = 'LOW'">
+                    <span class="priority-dot low-dot"></span> Low
+                  </div>
+                </div>
+              </div>
+              <div class="form-group flex-1">
+                <label>Due date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" [(ngModel)]="newTask.dueDate" required #dueDate="ngModel" [class.is-invalid]="dueDate.invalid && dueDate.touched" [min]="minDate">
+                <div class="invalid-feedback" *ngIf="dueDate.invalid && dueDate.touched">
+                  <span *ngIf="dueDate.errors?.['required']">Due date is required</span>
+                </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn-secondary" (click)="closeCreateModal()">Cancel</button>
-            <button class="btn-primary" (click)="createTask()">Create Task</button>
+            <button class="btn-ghost" (click)="closeCreateModal()">Cancel</button>
+            <button class="btn-primary" (click)="createTask()">Create</button>
           </div>
         </div>
       </div>
@@ -302,7 +325,7 @@ import { FormsModule } from '@angular/forms';
           <div class="panel-header">
             <div class="panel-task-id">
               <span class="material-icons-outlined">radio_button_unchecked</span>
-              Task · {{ selectedTask?.id }}
+              {{ selectedTask?.title }}
             </div>
             <button class="btn-icon-sm" (click)="closeDetails()">
               <span class="material-icons">close</span>
@@ -316,15 +339,28 @@ import { FormsModule } from '@angular/forms';
               <div class="grid-item">
                 <label><span class="material-icons-outlined">person_outline</span> Assignee</label>
                 <div class="assignee-val">
-                  <div class="assignee-avatar-sm" [ngClass]="'avatar-' + selectedTask?.assignee?.toLowerCase()">
-                    {{ selectedTask?.assignee }}
+                  <div class="assignee-avatar-sm" [ngClass]="'avatar-' + selectedTask?.assigneeName?.toLowerCase()">
+                    {{ selectedTask?.assigneeName }}
                   </div>
-                  {{ selectedTask?.assignee }}
+                  {{ selectedTask?.assigneeName }}
+                </div>
+              </div>
+              <div class="grid-item">
+                <label><span class="material-icons-outlined">person_add_alt</span> Assigned By</label>
+                <div class="assignee-val">
+                  <div class="assignee-avatar-sm" [ngClass]="'avatar-' + selectedTask?.assignerName?.toLowerCase()">
+                    {{ selectedTask?.assignerName }}
+                  </div>
+                  {{ selectedTask?.assignerName }}
                 </div>
               </div>
               <div class="grid-item">
                 <label><span class="material-icons-outlined">calendar_today</span> Due date</label>
                 <div class="date-val">{{ selectedTask?.dueDate }}</div>
+              </div>
+              <div class="grid-item">
+                <label><span class="material-icons-outlined">event_note</span> Created At</label>
+                <div class="date-val">{{ selectedTask?.createdAt | date:'yyyy-MM-dd' }}</div>
               </div>
 
               <div class="grid-item">
@@ -451,11 +487,19 @@ import { FormsModule } from '@angular/forms';
   `,
   styles: [`
     :host { display: block; background-color: #fcfcfd; min-height: 100vh; }
-    .module-container { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-    
-    .module-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+    .module-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; gap: 1.5rem; }
     .page-title { font-size: 1.875rem; font-weight: 700; color: #101828; margin: 0; letter-spacing: -0.02em; }
     .page-subtitle { color: #667085; margin: 0.5rem 0 0; font-size: 1rem; }
+    
+    @media (max-width: 768px) {
+      .module-container { padding: 1rem; }
+      .module-header { flex-direction: column; align-items: stretch; gap: 1rem; margin-bottom: 1.5rem; }
+      .page-title { font-size: 1.5rem; }
+      .header-actions { flex-direction: column-reverse; align-items: stretch; gap: 0.75rem; }
+      .view-toggle { width: 100%; }
+      .toggle-btn { flex: 1; justify-content: center; }
+      .btn-primary { width: 100%; justify-content: center; }
+    }
     
     .header-actions { display: flex; align-items: center; gap: 1rem; }
     .view-toggle { display: flex; background: #f2f4f7; padding: 4px; border-radius: 10px; border: 1px solid #eaecf0; }
@@ -467,13 +511,20 @@ import { FormsModule } from '@angular/forms';
     .btn-primary:hover { background: #1570ef; border-color: #1570ef; }
 
     /* Filters Card */
-    .filters-card { background: white; padding: 16px 24px; border-radius: 12px; border: 1px solid #eaecf0; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+    .filters-card { background: white; padding: 16px 24px; border-radius: 12px; border: 1px solid #eaecf0; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); gap: 1.5rem; }
     .search-bar { display: flex; align-items: center; gap: 12px; flex: 1; max-width: 480px; }
     .search-bar .material-icons { color: #667085; font-size: 20px; }
     .search-bar input { border: none; outline: none; width: 100%; font-size: 0.9375rem; color: #101828; }
     .search-bar input::placeholder { color: #667085; }
 
     .filter-actions { display: flex; gap: 12px; align-items: center; }
+    
+    @media (max-width: 1024px) {
+      .filters-card { flex-direction: column; align-items: stretch; padding: 16px; gap: 1rem; }
+      .search-bar { max-width: none; border: 1px solid #eaecf0; padding: 10px; border-radius: 8px; }
+      .filter-actions { justify-content: space-between; overflow-x: auto; padding-bottom: 4px; }
+      .filter-select { min-width: 120px; flex: 1; }
+    }
     .filter-dropdown { position: relative; display: flex; align-items: center; }
     .filter-select { appearance: none; background: white; border: 1px solid #d0d5dd; padding: 10px 36px 10px 14px; border-radius: 8px; color: #344054; font-size: 0.875rem; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s; min-width: 140px; }
     .filter-select:hover { border-color: #98a2b3; }
@@ -515,6 +566,20 @@ import { FormsModule } from '@angular/forms';
     .meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: #667085; font-weight: 500; white-space: nowrap; }
     .meta-item .material-icons-outlined { font-size: 18px; color: #98a2b3; }
 
+    @media (max-width: 1024px) {
+      .card-content-wrap { padding: 16px; flex-wrap: wrap; }
+      .task-main-info { order: 1; flex: 1; min-width: 200px; }
+      .check-box { order: 0; }
+      .task-metadata { order: 2; width: 100%; margin-top: 12px; gap: 12px; justify-content: space-between; }
+      .meta-item.date, .meta-item.comments { display: none; }
+    }
+    
+    @media (max-width: 480px) {
+      .task-metadata { flex-wrap: wrap; }
+      .meta-item.assignee { order: -1; margin-right: auto; }
+      .meta-item.status, .meta-item.priority { flex: none; }
+    }
+
     /* Priority Badges */
     .priority-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 0.8125rem; border: 1px solid #eaecf0; background: white; }
     .priority-dot { width: 6px; height: 6px; border-radius: 50%; }
@@ -543,29 +608,58 @@ import { FormsModule } from '@angular/forms';
 
     /* Create Task Modal */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(16, 24, 40, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); }
-    .modal-content { background: white; border-radius: 20px; width: 640px; max-width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03); border: 1px solid #eaecf0; }
-    .modal-header { padding: 24px; border-bottom: 1px solid #eaecf0; display: flex; justify-content: space-between; align-items: center; }
-    .modal-title { font-size: 1.25rem; font-weight: 700; color: #101828; margin: 0; }
-    .btn-icon { background: transparent; border: none; color: #667085; cursor: pointer; padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .modal-content { background: white; border-radius: 12px; width: 560px; max-width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03); border: 1px solid #eaecf0; }
+    .modal-header { padding: 20px 24px 16px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-size: 1.125rem; font-weight: 600; color: #101828; margin: 0; }
+    .btn-icon { background: transparent; border: none; color: #667085; cursor: pointer; padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; margin-right: -8px; }
     .btn-icon:hover { background: #f2f4f7; }
     
-    .modal-body { padding: 24px; }
+    .modal-body { padding: 0 24px 24px; }
+    .modal-subtitle { font-size: 0.8125rem; color: #667085; margin: 0 0 20px 0; }
+    .text-danger { color: #f04438; }
+    
     .form-group { margin-bottom: 20px; }
     .form-group label { display: block; font-size: 0.875rem; font-weight: 600; color: #344054; margin-bottom: 6px; }
-    .form-control { width: 100%; padding: 10px 14px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 0.9375rem; outline: none; transition: all 0.2s; box-sizing: border-box; }
+    .form-control { width: 100%; padding: 10px 14px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 0.9375rem; outline: none; transition: all 0.2s; box-sizing: border-box; background: white; color: #101828; }
+    .form-control::placeholder { color: #98a2b3; }
     .form-control:focus { border-color: #2e90fa; box-shadow: 0 0 0 4px rgba(46, 144, 250, 0.1); }
     .form-row { display: flex; gap: 16px; }
     .flex-1 { flex: 1; }
 
-    .modal-footer { padding: 24px; border-top: 1px solid #eaecf0; display: flex; justify-content: flex-end; gap: 12px; }
+    .priority-options { display: flex; gap: 8px; }
+    .priority-option { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 4px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; color: #344054; background: #fcfcfd; transition: all 0.2s; }
+    .priority-option:hover { background: #f9fafb; border-color: #98a2b3; }
+    .priority-option.selected { border-color: #2e90fa; background: white; box-shadow: 0 0 0 1px #2e90fa; color: #101828; }
+    .high-dot { background: #f04438; }
+    .medium-dot { background: #f79009; }
+    .low-dot { background: #12b76a; }
+
+    @media (max-width: 640px) {
+      .modal-content.create-modal { width: 100%; border-radius: 20px 20px 0 0; }
+      .form-row { flex-direction: column; gap: 0; }
+      .modal-footer { flex-direction: column-reverse; padding: 16px; }
+      .modal-footer button { width: 100%; }
+    }
+
+    .modal-footer { padding: 16px 24px 24px; display: flex; justify-content: flex-end; gap: 12px; }
     .btn-secondary { background: white; border: 1px solid #d0d5dd; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; color: #344054; cursor: pointer; transition: all 0.2s; }
     .btn-secondary:hover { background: #f9fafb; }
+    .btn-ghost { background: transparent; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; color: #344054; cursor: pointer; transition: all 0.2s; }
+    .btn-ghost:hover { background: #f2f4f7; color: #101828; }
 
     /* Side Panel — identical to board */
     .side-panel-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); z-index: 1000; display: flex; justify-content: flex-end; backdrop-filter: blur(2px); animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .side-panel { width: 500px; max-width: 100%; height: 100vh; background: white; box-shadow: -4px 0 24px rgba(0,0,0,0.1); display: flex; flex-direction: column; transform: translateX(100%); animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    
+    @media (max-width: 640px) {
+      .side-panel { width: 100%; }
+      .panel-grid { grid-template-columns: 1fr; gap: 16px; }
+      .panel-header { padding: 12px 16px; }
+      .panel-body { padding: 16px; }
+      .panel-title { font-size: 1.25rem; margin-bottom: 16px; }
+    }
     .panel-header { padding: 16px 24px; border-bottom: 1px solid #eaecf0; display: flex; justify-content: space-between; align-items: center; }
     .panel-task-id { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; font-weight: 500; color: #667085; }
     .panel-task-id .material-icons-outlined { font-size: 16px; }
@@ -639,44 +733,43 @@ import { FormsModule } from '@angular/forms';
     .mt-4 { margin-top: 1.5rem; }
   `]
 })
-export class TaskListComponent {
+export class TaskListComponent implements OnInit {
   searchQuery = '';
   filterStatus = '';
   filterPriority = '';
   
-  selectedTask: any = null;
+  roles: Role[] = [];
+  selectedRoleId: string = '';
+  employees: Employee[] = [];
+  minDate = new Date().toISOString().split('T')[0];
+  
+  tasks: Task[] = [];
+  inProgressTasks: Task[] = [];
+  todoTasks: Task[] = [];
+  doneTasks: Task[] = [];
+  selectedTask: Task | null = null;
   showDetails = false;
   showCreateModal = false;
   panelDropdown: string | null = null;
   activeTab: string = 'comments';
   activeActionMenu: number | null = null;
   openDropdown: { taskId: number, field: string } | null = null;
+  loading = false;
+  error: string | null = null;
+  validationErrors: any[] = [];
 
   newTask: any = {
     title: '',
     description: '',
-    student: '',
-    priority: 'Medium',
-    assignee: '',
+    priority: 'MEDIUM',
+    assigneeId: '',
     dueDate: '',
-    status: 'To Do'
+    status: 'TO_DO'
   };
 
-  inProgressTasks = [
-    { id: 1, title: 'Visa Application Processing', description: 'Review and submit visa documentation for the UK student visa application. Coordinate with the embassy for the appointment slot.', student: 'Mukul Sharma', assignedDate: '10 Apr 2026', dueDate: 'Apr 15, 2026', priority: 'High', assignee: 'SK', status: 'In Progress', comments: 3, isOverdue: false },
-    { id: 2, title: 'IELTS Score Verification', description: 'Verify candidate IELTS scores with the official IELTS portal and attach the verification certificate.', student: 'Priya Rai', assignedDate: '08 Apr 2026', dueDate: 'Apr 12, 2026', priority: 'Medium', assignee: 'RM', status: 'In Progress', comments: 1, isOverdue: false },
-    { id: 3, title: 'University Offer Letter Review', description: 'Cross-check offer letter details for accuracy: name, course, intake, fees, and conditions.', student: 'Amit Kumar', assignedDate: '14 Apr 2026', dueDate: 'Apr 20, 2026', priority: 'Low', assignee: 'SK', status: 'In Progress', comments: 0, isOverdue: false }
-  ];
-
-  todoTasks = [
-    { id: 4, title: 'Passport Scan Collection', description: 'Collect high-resolution passport scans from the student and verify legibility.', student: 'Priya Rai', assignedDate: '20 Apr 2026', dueDate: 'Apr 25, 2026', priority: 'Medium', assignee: 'RM', status: 'To Do', comments: 0, isOverdue: false, selected: true },
-    { id: 5, title: 'Academic Document Verification', description: 'Verify academic transcripts and degree certificates with issuing institutions.', student: 'Amit Kumar', assignedDate: '21 Apr 2026', dueDate: 'Apr 26, 2026', priority: 'High', assignee: 'SK', status: 'To Do', comments: 2, isOverdue: false }
-  ];
-
-  doneTasks = [
-    { id: 6, title: 'Financial Aid Application', description: 'Prepare and submit financial aid forms with supporting bank statements.', student: 'Sonal Singh', assignedDate: '05 Apr 2026', dueDate: 'Apr 9, 2026', priority: 'High', assignee: 'AV', status: 'Done', comments: 0, isOverdue: false },
-    { id: 7, title: 'Onboarding Welcome Pack', description: 'Send the welcome pack with orientation details to the newly enrolled student.', student: 'Rahul Verma', assignedDate: '01 Apr 2026', dueDate: 'Apr 7, 2026', priority: 'Low', assignee: 'MJ', status: 'Done', comments: 0, isOverdue: false }
-  ];
+  private taskService = inject(TaskService);
+  private employeeService = inject(EmployeeService);
+  private roleService = inject(RoleService);
 
   constructor() {
     // Close dropdowns when clicking outside
@@ -684,6 +777,64 @@ export class TaskListComponent {
       this.openDropdown = null;
       this.activeActionMenu = null;
     });
+  }
+
+  ngOnInit() {
+    this.loadTasks();
+    this.loadEmployees();
+    this.loadRoles();
+  }
+
+  loadRoles() {
+    this.roleService.getAllRoles().subscribe({
+      next: (roles) => {
+        this.roles = roles;
+      },
+      error: (err) => console.error('Error loading roles:', err)
+    });
+  }
+
+  loadEmployees() {
+    this.employeeService.getAdminEmployees(this.selectedRoleId).subscribe({
+      next: (employees) => {
+        this.employees = employees;
+      },
+      error: (err) => console.error('Error loading employees:', err)
+    });
+  }
+
+  loadTasks(filter?: TaskFilter) {
+    this.loading = true;
+    this.error = null;
+    this.validationErrors = [];
+    this.taskService.getTasks(filter).subscribe({
+      next: (tasks) => {
+        this.tasks = tasks;
+        this.groupTasksByStatus();
+        this.loading = false;
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to load tasks';
+        this.validationErrors = err.errors || [];
+        this.loading = false;
+        console.error('Error loading tasks:', err);
+      }
+    });
+  }
+
+  groupTasksByStatus() {
+    this.inProgressTasks = this.tasks.filter(task => task.status === 'IN_PROGRESS');
+    this.todoTasks = this.tasks.filter(task => task.status === 'TO_DO');
+    this.doneTasks = this.tasks.filter(task => task.status === 'DONE');
+  }
+
+  applyFilters() {
+    const filter: TaskFilter = {
+      status: this.filterStatus as Task['status'] || undefined,
+      priority: this.filterPriority as Task['priority'] || undefined,
+      keyword: this.searchQuery || undefined
+    };
+    this.loadTasks(filter);
   }
 
   openCreateModal() {
@@ -699,41 +850,54 @@ export class TaskListComponent {
     this.newTask = {
       title: '',
       description: '',
-      student: '',
-      priority: 'Medium',
-      assignee: '',
+      priority: 'MEDIUM',
+      assigneeId: '',
       dueDate: '',
-      status: 'To Do'
+      status: 'TO_DO'
     };
   }
 
   createTask() {
-    if (!this.newTask.title) return;
+    if (!this.newTask.title || !this.newTask.assigneeId || !this.newTask.dueDate) {
+      // Mark fields as touched for validation display
+      this.validationErrors = [{ field: 'form', message: 'Please fill all required fields' }];
+      return;
+    }
     
-    const task = {
-      ...this.newTask,
-      id: Math.max(...this.inProgressTasks.map(t => t.id), ...this.todoTasks.map(t => t.id), ...this.doneTasks.map(t => t.id)) + 1,
-      assignedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      comments: 0,
-      isOverdue: false
+    const taskData: CreateTaskRequest = {
+      title: this.newTask.title,
+      description: this.newTask.description,
+      priority: this.newTask.priority as Task['priority'],
+      assignedToId: parseInt(this.newTask.assigneeId),
+      dueDate: this.newTask.dueDate
     };
 
-    if (task.status === 'In Progress') {
-      this.inProgressTasks.unshift(task);
-    } else if (task.status === 'Done') {
-      this.doneTasks.unshift(task);
-    } else {
-      this.todoTasks.unshift(task);
-    }
-
-    this.closeCreateModal();
+    this.taskService.createTask(taskData).subscribe({
+      next: (task) => {
+        this.tasks.unshift(task);
+        this.groupTasksByStatus();
+        this.closeCreateModal();
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to create task';
+        this.validationErrors = err.errors || [];
+        console.error('Error creating task:', err);
+      }
+    });
   }
 
-  deleteTask(task: any) {
+  deleteTask(task: Task) {
     if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
-      this.inProgressTasks = this.inProgressTasks.filter(t => t.id !== task.id);
-      this.todoTasks = this.todoTasks.filter(t => t.id !== task.id);
-      this.doneTasks = this.doneTasks.filter(t => t.id !== task.id);
+      this.taskService.softDeleteTask(task.id).subscribe({
+        next: () => {
+          this.tasks = this.tasks.filter(t => t.id !== task.id);
+          this.groupTasksByStatus();
+        },
+        error: (err: ApiError) => {
+          this.error = err.message || 'Failed to delete task';
+          console.error('Error deleting task:', err);
+        }
+      });
     }
   }
 
@@ -750,19 +914,39 @@ export class TaskListComponent {
     }
   }
 
-  updateTaskField(task: any, field: string, value: string) {
+  updateTaskField(task: Task, field: keyof Task, value: string) {
     const oldStatus = task.status;
-    task[field] = value;
+    (task as any)[field] = value;
     
-    // Move between lists if status changed
-    if (field === 'status' && oldStatus !== value) {
-      this.moveTask(task, oldStatus, value);
+    // API call for specific field updates
+    if (field === 'status') {
+      this.taskService.updateStatus(task.id, value as Task['status']).subscribe({
+        next: () => {
+          this.moveTask(task, oldStatus, value);
+        },
+        error: (err: ApiError) => {
+          this.error = err.message || 'Failed to update status';
+          this.validationErrors = err.errors || [];
+          console.error('Error updating status:', err);
+        }
+      });
+    } else if (field === 'priority') {
+      this.taskService.updatePriority(task.id, value as Task['priority']).subscribe({
+        next: () => {
+          // Priority updated
+        },
+        error: (err: ApiError) => {
+          this.error = err.message || 'Failed to update priority';
+          this.validationErrors = err.errors || [];
+          console.error('Error updating priority:', err);
+        }
+      });
     }
     
     this.openDropdown = null;
   }
 
-  moveTask(task: any, from: string, to: string) {
+  moveTask(task: Task, from: string, to: string) {
     // Remove from old list
     if (from === 'In Progress') {
       this.inProgressTasks = this.inProgressTasks.filter(t => t.id !== task.id);
@@ -782,11 +966,23 @@ export class TaskListComponent {
     }
   }
 
-  viewTaskDetails(task: any) {
-    this.selectedTask = task;
-    this.showDetails = true;
-    this.activeTab = 'comments';
-    this.panelDropdown = null;
+  viewTaskDetails(task: Task) {
+    this.loading = true;
+    this.taskService.getTaskDetails(task.id).subscribe({
+      next: (taskDetails) => {
+        this.selectedTask = taskDetails.task;
+        this.showDetails = true;
+        this.activeTab = 'comments';
+        this.panelDropdown = null;
+        this.loading = false;
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to load task details';
+        this.validationErrors = err.errors || [];
+        this.loading = false;
+        console.error('Error loading task details:', err);
+      }
+    });
   }
 
   closeDetails() {
@@ -800,14 +996,76 @@ export class TaskListComponent {
     this.panelDropdown = this.panelDropdown === type ? null : type;
   }
 
-  updateSelectedTask(field: string, value: string) {
+  updateSelectedTask(field: keyof Task, value: string) {
     if (this.selectedTask) {
       const oldStatus = this.selectedTask.status;
-      this.selectedTask[field] = value;
-      if (field === 'status' && oldStatus !== value) {
-        this.moveTask(this.selectedTask, oldStatus, value);
+      
+      if (field === 'status') {
+        this.taskService.updateStatus(this.selectedTask.id, value as Task['status']).subscribe({
+          next: () => {
+            (this.selectedTask as any)[field] = value;
+            this.loadTasks(); // Refresh task list
+          },
+          error: (err: ApiError) => {
+            this.error = err.message || 'Failed to update status';
+            this.validationErrors = err.errors || [];
+            console.error('Error updating status:', err);
+          }
+        });
+      } else if (field === 'priority') {
+        this.taskService.updatePriority(this.selectedTask.id, value as Task['priority']).subscribe({
+          next: () => {
+            (this.selectedTask as any)[field] = value;
+          },
+          error: (err: ApiError) => {
+            this.error = err.message || 'Failed to update priority';
+            this.validationErrors = err.errors || [];
+            console.error('Error updating priority:', err);
+          }
+        });
+      } else if (field === 'dueDate') {
+        this.taskService.updateDueDate(this.selectedTask.id, value).subscribe({
+          next: () => {
+            (this.selectedTask as any)[field] = value;
+          },
+          error: (err: ApiError) => {
+            this.error = err.message || 'Failed to update due date';
+            this.validationErrors = err.errors || [];
+            console.error('Error updating due date:', err);
+          }
+        });
+      } else {
+        (this.selectedTask as any)[field] = value;
       }
     }
     this.panelDropdown = null;
+  }
+
+  addComment(comment: string) {
+    if (!this.selectedTask || !comment.trim()) return;
+    
+    this.taskService.addComment(this.selectedTask.id, comment).subscribe({
+      next: () => {
+        this.viewTaskDetails(this.selectedTask!); // Reload task details to show new comment
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to add comment';
+        this.validationErrors = err.errors || [];
+        console.error('Error adding comment:', err);
+      }
+    });
+  }
+
+  loadActivity(taskId: number) {
+    this.taskService.getActivity(taskId).subscribe({
+      next: (activities) => {
+        // Handle activity data - you might want to store this in a component property
+        console.log('Activities:', activities);
+      },
+      error: (err) => {
+        this.error = 'Failed to load activity';
+        console.error('Error loading activity:', err);
+      }
+    });
   }
 }

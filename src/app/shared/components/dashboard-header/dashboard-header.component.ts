@@ -375,9 +375,37 @@ declare const lucide: any;
       z-index: 1000;
     }
 
+    @media (max-width: 1024px) {
+      .main-header {
+        padding: 0 1rem;
+      }
+      
+      .search-container {
+        max-width: 200px;
+      }
+      
+      .search-shortcut {
+        display: none;
+      }
+    }
+
     @media (max-width: 768px) {
       .search-container, .user-info, .chevron-icon {
         display: none !important;
+      }
+      
+      .header-actions {
+        gap: 0;
+      }
+      
+      .user-profile-section {
+        padding-right: 0.375rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .action-btn[title="Help"] {
+        display: none;
       }
     }
   `]

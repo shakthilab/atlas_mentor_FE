@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 
 export interface Referral {
   id?: number | string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   email: string;
   phone: string;

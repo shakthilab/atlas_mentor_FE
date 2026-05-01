@@ -58,6 +58,7 @@
   height: 100vh;
   overflow-y: auto;
   background: var(--dash-bg-app);
+  position: relative;
 }
 
 .content-area {
@@ -428,7 +429,7 @@
 
 @media (max-width: 768px) {
   .content-area {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 }
 
@@ -695,6 +696,8 @@
     position: fixed;
     left: 0;
     top: 0;
+    bottom: 0;
+    z-index: 1000;
     transform: translateX(-100%);
     box-shadow: 20px 0 50px rgba(0, 0, 0, 0.1);
   }
@@ -705,7 +708,22 @@
 
   .header-greeting,
   .header-subtext {
-    font-size: 2rem;
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-greeting,
+  .header-subtext {
+    font-size: 1.25rem;
+  }
+  
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  .show-mobile {
+    display: block !important;
   }
 }
 

@@ -269,9 +269,15 @@ import { LoadingService } from '../../../../core/services/loading.service';
             <p class="modal-subtitle">{{ isEditMode ? 'Update employee details and assignments.' : 'Enter details for the new employee.' }}</p>
             
             <form #employeeForm="ngForm" (ngSubmit)="onSubmitEmployee()">
-              <div class="form-group">
-                <label for="empName">Full Name</label>
-                <input type="text" id="empName" name="name" class="form-control" [(ngModel)]="newEmployee.name" placeholder="e.g., John Smith" required>
+              <div class="form-group" style="display: flex; gap: 1rem;">
+                <div style="flex: 1;">
+                  <label for="empFirstName">First Name <span class="text-error">*</span></label>
+                  <input type="text" id="empFirstName" name="firstName" class="form-control" [(ngModel)]="newEmployee.firstName" placeholder="e.g., John" required>
+                </div>
+                <div style="flex: 1;">
+                  <label for="empLastName">Last Name <span class="text-error">*</span></label>
+                  <input type="text" id="empLastName" name="lastName" class="form-control" [(ngModel)]="newEmployee.lastName" placeholder="e.g., Smith" required>
+                </div>
               </div>
 
               <div class="form-group">
@@ -583,7 +589,7 @@ export class EmployeeListComponent implements OnInit {
 
   openAddModal() {
     this.isEditMode = false;
-    this.newEmployee = { name: '', email: '', phone: '', branchId: '' as unknown as number, roleId: '' as unknown as number };
+    this.newEmployee = { firstName: '', lastName: '', name: '', email: '', phone: '', branchId: '' as unknown as number, roleId: '' as unknown as number };
     this.showAddModal = true;
   }
 
@@ -592,8 +598,14 @@ export class EmployeeListComponent implements OnInit {
     // Map the employee role to roleId if possible
     const roleId = emp.role?.id || (emp.roles && emp.roles.length > 0 ? emp.roles[0].id : (emp.roleId || ''));
     
+    const nameParts = (emp.name || '').trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
     this.newEmployee = { 
       id: emp.id,
+      firstName: firstName,
+      lastName: lastName,
       name: emp.name, 
       email: emp.email, 
       phone: emp.phone, 
@@ -611,12 +623,18 @@ export class EmployeeListComponent implements OnInit {
   }
 
   onSubmitEmployee() {
-    if (!this.newEmployee.name || !this.newEmployee.email || !this.newEmployee.branchId || !this.newEmployee.roleId) return;
+    if (!this.newEmployee.firstName || !this.newEmployee.lastName || !this.newEmployee.email || !this.newEmployee.branchId || !this.newEmployee.roleId) return;
 
     this.submitting = true;
 
+    const payload = {
+      ...this.newEmployee,
+      firstName: this.newEmployee.firstName,
+      lastName: this.newEmployee.lastName
+    };
+
     if (this.isEditMode && this.newEmployee.id) {
-      this.employeeService.updateEmployee(this.newEmployee.id, this.newEmployee).subscribe({
+      this.employeeService.updateEmployee(this.newEmployee.id, payload).subscribe({
         next: () => {
           this.notificationService.success('Employee updated successfully!');
           this.finalizeSubmit();
@@ -628,7 +646,7 @@ export class EmployeeListComponent implements OnInit {
         }
       });
     } else {
-      this.employeeService.createEmployee(this.newEmployee).subscribe({
+      this.employeeService.createEmployee(payload).subscribe({
         next: () => {
           this.notificationService.success('Employee added successfully!');
           this.finalizeSubmit();

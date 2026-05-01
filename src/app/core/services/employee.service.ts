@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 
 export interface Employee {
   id?: number | string;
+  firstName?: string;
+  lastName?: string;
   name: string;
   email: string;
   phone: string;
@@ -103,5 +105,18 @@ export class EmployeeService {
 
   deleteEmployee(id: string | number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
+  }
+
+  getAdminEmployees(roleId?: number | string): Observable<Employee[]> {
+    let params = new HttpParams();
+    if (roleId) {
+      params = params.set('roleId', roleId.toString());
+    }
+    return this.http.get<any>(`http://localhost:8080/api/admin/get-all-employee`, { 
+      headers: this.getHeaders(),
+      params 
+    }).pipe(
+      map(response => response.data || response)
+    );
   }
 }

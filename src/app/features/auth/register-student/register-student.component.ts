@@ -1,11 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { User } from '../../../core/models/user.model';
 import { passwordMatchValidator, calculatePasswordStrength } from '../../../core/utils/password-utils';
-import { CountryService, CountryMobileCode } from '../../../core/services/country.service';
+import { CountryService, CountryMobileCode, Country, University } from '../../../core/services/country.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
@@ -157,6 +157,8 @@ import { NotificationService } from '../../../core/services/notification.service
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    
+    .dropdown-item:hover { background-color: var(--color-gray-50); }
   `],
   template: `
     <div class="register-header">
@@ -193,24 +195,46 @@ import { NotificationService } from '../../../core/services/notification.service
       <!-- Step 1 -->
       <div *ngIf="currentStep === 1" formGroupName="personal">
         <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input type="text" class="form-control" formControlName="name" placeholder="Enter your full name">
+          <label class="form-label">First Name <span class="text-error">*</span></label>
+          <input type="text" class="form-control" formControlName="firstName" placeholder="Enter your first name">
         </div>
         <div class="form-group">
-          <label class="form-label">Email</label>
+          <label class="form-label">Last Name <span class="text-error">*</span></label>
+          <input type="text" class="form-control" formControlName="lastName" placeholder="Enter your last name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email <span class="text-error">*</span></label>
           <input type="email" class="form-control" formControlName="email" placeholder="olivia@untitledui.com">
         </div>
         <div class="form-group">
-          <label class="form-label">Phone</label>
+          <label class="form-label">Phone <span class="text-error">*</span></label>
           <div class="d-flex" style="gap: 12px;">
-            <select class="form-control" formControlName="dialCode" style="width: 100px; flex-shrink: 0;">
-              <option *ngFor="let c of countryCodes" [value]="c.mobileCode">{{ c.isoAlpha2 }}</option>
-            </select>
-            <input type="text" class="form-control" formControlName="phone" placeholder="Phone number">
+            <div class="custom-dropdown" style="position: relative; width: 120px; flex-shrink: 0;" tabindex="0" (click)="toggleCountryDropdown()">
+              <div class="form-control d-flex align-items-center justify-content-between" style="cursor: pointer; height: 100%; padding: 0.5rem 0.75rem;">
+                <div class="d-flex align-items-center" style="gap: 8px;">
+                  <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" alt="flag" style="width: 20px; height: 15px; object-fit: cover; border-radius: 2px;">
+                  <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
+                </div>
+                <span class="material-icons" style="font-size: 16px; color: var(--color-gray-500);">expand_more</span>
+              </div>
+              <div class="dropdown-menu shadow-premium" *ngIf="isCountryDropdownOpen" style="display: block; position: absolute; top: calc(100% + 4px); left: 0; width: 220px; z-index: 1000; max-height: 250px; overflow-y: auto; background: white; border: 1px solid var(--color-gray-200); border-radius: var(--radius-md); padding: 0.5rem 0;">
+                <div class="dropdown-item d-flex align-items-center" *ngFor="let c of countryCodes" (click)="selectCountry(c, $event)" style="gap: 10px; padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s;">
+                  <img *ngIf="c.flagUrl" [src]="c.flagUrl" alt="flag" style="width: 20px; height: 15px; object-fit: cover; border-radius: 2px;">
+                  <span style="font-size: 0.875rem; font-weight: 500; width: 40px;">{{ c.mobileCode }}</span>
+                  <span class="text-muted" style="font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.countryName }}</span>
+                </div>
+              </div>
+            </div>
+            <input type="text" class="form-control" formControlName="phone" placeholder="Phone number" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+          </div>
+          <div *ngIf="personalGroup.get('phone')?.touched && personalGroup.get('phone')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+            <span *ngIf="personalGroup.get('phone')?.hasError('required')">Phone number is required.</span>
+            <span *ngIf="personalGroup.get('phone')?.hasError('minlength') || personalGroup.get('phone')?.hasError('maxlength')">Phone number must be exactly {{ selectedCountry?.mobileNumberLength }} digits for {{ selectedCountry?.countryName }}.</span>
+            <span *ngIf="personalGroup.get('phone')?.hasError('pattern')">Only numeric digits allowed.</span>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Password</label>
+          <label class="form-label">Password <span class="text-error">*</span></label>
           <input type="password" class="form-control" formControlName="password" placeholder="Create a password">
           
           <div class="password-meter" *ngIf="passwordStrength.score > 0">
@@ -225,7 +249,7 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Confirm Password</label>
+          <label class="form-label">Confirm Password <span class="text-error">*</span></label>
           <input type="password" class="form-control" formControlName="confirmPassword" placeholder="Confirm password">
           <div *ngIf="personalGroup.get('confirmPassword')?.hasError('mismatch') && personalGroup.get('confirmPassword')?.touched" class="invalid-feedback" style="display: block;">
             Passwords do not match.
@@ -237,17 +261,17 @@ import { NotificationService } from '../../../core/services/notification.service
       <div *ngIf="currentStep === 2" formGroupName="preferences">
         <div class="form-group">
           <label class="form-label">Preferred Country</label>
-          <select class="form-control" formControlName="country">
+          <select class="form-control" formControlName="countryId" (change)="onCountryChange($event)">
             <option value="">Select a country</option>
-            <option value="UK">United Kingdom</option>
-            <option value="USA">United States</option>
-            <option value="Australia">Australia</option>
-            <option value="Canada">Canada</option>
+            <option *ngFor="let country of countries" [value]="country.id">{{ country.name }}</option>
           </select>
         </div>
         <div class="form-group">
           <label class="form-label">Preferred University</label>
-          <input type="text" class="form-control" formControlName="university" placeholder="e.g. Oxford University">
+          <select class="form-control" formControlName="universityId">
+            <option value="">Select a university</option>
+            <option *ngFor="let uni of universities" [value]="uni.id">{{ uni.name }}</option>
+          </select>
         </div>
         <div class="form-group">
           <label class="form-label">Course</label>
@@ -276,7 +300,7 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Academic Details</label>
+          <label class="form-label">Academic Details (Optional)</label>
           <textarea class="form-control" formControlName="details" rows="3" placeholder="High school grades, completed degrees..."></textarea>
         </div>
         <div class="form-group">
@@ -308,7 +332,7 @@ import { NotificationService } from '../../../core/services/notification.service
         </div>
         <h2>Registration successful</h2>
         <p>A verification email has been sent to your mail. Please verify it to activate your account.</p>
-        <button class="btn btn-primary btn-block" (click)="closeModalAndNavigate()">
+        <button type="button" class="btn btn-primary btn-block" (click)="showSuccessModal = false" routerLink="/auth/login">
           Back to login
         </button>
       </div>
@@ -325,11 +349,16 @@ export class RegisterStudentComponent implements OnInit {
   isLoading = false;
   showSuccessModal = false;
   countryCodes: CountryMobileCode[] = [];
+  isCountryDropdownOpen = false;
+  selectedCountry: CountryMobileCode | null = null;
+  countries: Country[] = [];
+  universities: University[] = [];
   private notificationService = inject(NotificationService);
 
   studentForm = this.fb.group({
     personal: this.fb.group({
-      name: ['', Validators.required],
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       dialCode: ['+91', Validators.required],
       phone: ['', Validators.required],
@@ -337,14 +366,14 @@ export class RegisterStudentComponent implements OnInit {
       confirmPassword: ['', Validators.required]
     }, { validators: passwordMatchValidator }),
     preferences: this.fb.group({
-      country: ['', Validators.required],
-      university: [''],
-      course: ['', Validators.required],
-      intake: ['', Validators.required]
+      countryId: [''],
+      universityId: [''],
+      course: [''],
+      intake: ['']
     }),
     academic: this.fb.group({
       referralCode: [''],
-      details: ['', Validators.required],
+      details: [''],
       notes: ['']
     })
   });
@@ -355,9 +384,69 @@ export class RegisterStudentComponent implements OnInit {
 
   ngOnInit() {
     this.countryService.getMobileCountryCodes().subscribe({
-      next: (data) => this.countryCodes = data,
+      next: (data) => {
+        this.countryCodes = data;
+        const defaultCode = this.studentForm.get('personal')?.get('dialCode')?.value;
+        if (defaultCode && this.countryCodes.length > 0) {
+          this.selectedCountry = this.countryCodes.find(c => c.mobileCode === defaultCode) || this.countryCodes[0];
+          this.updatePhoneValidation();
+        } else if (this.countryCodes.length > 0) {
+          this.selectCountry(this.countryCodes[0], new Event('init'));
+        }
+      },
       error: (err) => console.error('Failed to load country codes', err)
     });
+
+    this.countryService.getCountries().subscribe({
+      next: (data) => this.countries = data,
+      error: (err) => console.error('Failed to load countries', err)
+    });
+  }
+
+  onCountryChange(event: any) {
+    const countryId = event.target.value;
+    this.preferencesGroup.get('universityId')?.setValue('');
+    this.universities = [];
+    if (countryId) {
+      this.countryService.getUniversitiesByCountryId(countryId).subscribe({
+        next: (data) => this.universities = data,
+        error: (err) => console.error('Failed to load universities', err)
+      });
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.custom-dropdown')) {
+      this.isCountryDropdownOpen = false;
+    }
+  }
+
+  toggleCountryDropdown() {
+    this.isCountryDropdownOpen = !this.isCountryDropdownOpen;
+  }
+
+  selectCountry(country: CountryMobileCode, event: Event) {
+    if (event.type !== 'init') event.stopPropagation();
+    this.selectedCountry = country;
+    this.studentForm.get('personal')?.get('dialCode')?.setValue(country.mobileCode);
+    this.isCountryDropdownOpen = false;
+    this.updatePhoneValidation();
+  }
+
+  updatePhoneValidation() {
+    const phoneControl = this.studentForm.get('personal')?.get('phone');
+    if (!phoneControl || !this.selectedCountry || !this.selectedCountry.mobileNumberLength) return;
+    
+    const length = this.selectedCountry.mobileNumberLength;
+    phoneControl.setValidators([
+      Validators.required,
+      Validators.minLength(length),
+      Validators.maxLength(length),
+      Validators.pattern('^[0-9]*$')
+    ]);
+    phoneControl.updateValueAndValidity();
   }
 
   get passwordStrength() {
@@ -394,17 +483,20 @@ export class RegisterStudentComponent implements OnInit {
     const academic = this.academicGroup.value;
 
     const payload = {
-      fullName: personal.name,
+      firstName: personal.firstName,
+      lastName: personal.lastName,
       email: personal.email,
       phone: (personal.dialCode || '') + (personal.phone || ''),
+      mobileCountryCodeId: this.selectedCountry?.id || null,
       password: personal.password,
-      preferredCountry: preferences.country,
-      preferredUniversity: preferences.university,
+      countryId: Number(preferences.countryId),
+      universityId: preferences.universityId ? Number(preferences.universityId) : null,
       course: preferences.course,
       intake: preferences.intake,
       referralCode: academic.referralCode,
       basicAcademicDetails: academic.details,
-      optionalNotes: academic.notes
+      optionalNotes: academic.notes,
+      notes: academic.notes
     };
 
     this.authService.registerStudent(payload).subscribe({
@@ -417,10 +509,5 @@ export class RegisterStudentComponent implements OnInit {
         this.notificationService.error(err.message || 'Registration failed.');
       }
     });
-  }
-
-  closeModalAndNavigate() {
-    this.showSuccessModal = false;
-    this.router.navigate(['/auth/login']);
   }
 }

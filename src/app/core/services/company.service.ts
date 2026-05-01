@@ -8,6 +8,8 @@ export interface Company {
   name: string;
   email: string;
   phone: string;
+  firstName?: string;
+  lastName?: string;
   role?: string;
   isVerified?: boolean;
   status?: string;

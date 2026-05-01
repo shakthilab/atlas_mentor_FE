@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -13,6 +13,9 @@ import { NotificationService } from '../../../core/services/notification.service
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
+    <style>
+      .dropdown-item:hover { background-color: var(--color-gray-50); }
+    </style>
     <div class="text-center mb-4">
       <h3 class="mb-2">Employee Request</h3>
       <p class="text-muted text-sm" *ngIf="currentStep === 1">Step 1: Personal Details & Role</p>
@@ -52,8 +55,12 @@ import { NotificationService } from '../../../core/services/notification.service
         <!-- Step 1 -->
         <div *ngIf="currentStep === 1" formGroupName="personal">
           <div class="form-group">
-            <label class="form-label">Full Name <span class="text-error">*</span></label>
-            <input type="text" class="form-control" formControlName="name" placeholder="John Doe">
+            <label class="form-label">First Name <span class="text-error">*</span></label>
+            <input type="text" class="form-control" formControlName="firstName" placeholder="John">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name <span class="text-error">*</span></label>
+            <input type="text" class="form-control" formControlName="lastName" placeholder="Doe">
           </div>
           <div class="form-group">
             <label class="form-label">Email <span class="text-error">*</span></label>
@@ -61,11 +68,29 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
           <div class="form-group">
             <label class="form-label">Phone <span class="text-error">*</span></label>
-            <div class="d-flex" style="gap: 8px;">
-              <select class="form-control" formControlName="dialCode" style="width: 120px; flex-shrink: 0; padding-right: 1.5rem;">
-                <option *ngFor="let c of countryCodes" [value]="c.mobileCode">{{ c.isoAlpha2 }} ({{ c.mobileCode }})</option>
-              </select>
-              <input type="text" class="form-control" formControlName="phone" placeholder="Phone without country code">
+            <div class="d-flex" style="gap: 12px;">
+              <div class="custom-dropdown" style="position: relative; width: 120px; flex-shrink: 0;" tabindex="0" (click)="toggleCountryDropdown()">
+                <div class="form-control d-flex align-items-center justify-content-between" style="cursor: pointer; height: 100%; padding: 0.5rem 0.75rem;">
+                  <div class="d-flex align-items-center" style="gap: 8px;">
+                    <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" alt="flag" style="width: 20px; height: 15px; object-fit: cover; border-radius: 2px;">
+                    <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
+                  </div>
+                  <span class="material-icons" style="font-size: 16px; color: var(--color-gray-500);">expand_more</span>
+                </div>
+                <div class="dropdown-menu shadow-premium" *ngIf="isCountryDropdownOpen" style="display: block; position: absolute; top: calc(100% + 4px); left: 0; width: 220px; z-index: 1000; max-height: 250px; overflow-y: auto; background: white; border: 1px solid var(--color-gray-200); border-radius: var(--radius-md); padding: 0.5rem 0;">
+                  <div class="dropdown-item d-flex align-items-center" *ngFor="let c of countryCodes" (click)="selectCountry(c, $event)" style="gap: 10px; padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s;">
+                    <img *ngIf="c.flagUrl" [src]="c.flagUrl" alt="flag" style="width: 20px; height: 15px; object-fit: cover; border-radius: 2px;">
+                    <span style="font-size: 0.875rem; font-weight: 500; width: 40px;">{{ c.mobileCode }}</span>
+                    <span class="text-muted" style="font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.countryName }}</span>
+                  </div>
+                </div>
+              </div>
+              <input type="text" class="form-control" formControlName="phone" placeholder="Phone without country code" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+            </div>
+            <div *ngIf="personalGroup.get('phone')?.touched && personalGroup.get('phone')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+              <span *ngIf="personalGroup.get('phone')?.hasError('required')">Phone number is required.</span>
+              <span *ngIf="personalGroup.get('phone')?.hasError('minlength') || personalGroup.get('phone')?.hasError('maxlength')">Phone number must be exactly {{ selectedCountry?.mobileNumberLength }} digits for {{ selectedCountry?.countryName }}.</span>
+              <span *ngIf="personalGroup.get('phone')?.hasError('pattern')">Only numeric digits allowed.</span>
             </div>
           </div>
           <div class="form-group">
@@ -141,11 +166,14 @@ export class RegisterEmployeeComponent implements OnInit {
   isLoading = false;
   isSubmitted = false;
   countryCodes: CountryMobileCode[] = [];
+  isCountryDropdownOpen = false;
+  selectedCountry: CountryMobileCode | null = null;
   private notificationService = inject(NotificationService);
 
   employeeForm = this.fb.group({
     personal: this.fb.group({
-      name: ['', Validators.required],
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       dialCode: ['+91', Validators.required],
       phone: ['', Validators.required],
@@ -163,9 +191,52 @@ export class RegisterEmployeeComponent implements OnInit {
 
   ngOnInit() {
     this.countryService.getMobileCountryCodes().subscribe({
-      next: (data) => this.countryCodes = data,
+      next: (data) => {
+        this.countryCodes = data;
+        const defaultCode = this.employeeForm.get('personal')?.get('dialCode')?.value;
+        if (defaultCode && this.countryCodes.length > 0) {
+          this.selectedCountry = this.countryCodes.find(c => c.mobileCode === defaultCode) || this.countryCodes[0];
+          this.updatePhoneValidation();
+        } else if (this.countryCodes.length > 0) {
+          this.selectCountry(this.countryCodes[0], new Event('init'));
+        }
+      },
       error: (err) => console.error('Failed to load country codes', err)
     });
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.custom-dropdown')) {
+      this.isCountryDropdownOpen = false;
+    }
+  }
+
+  toggleCountryDropdown() {
+    this.isCountryDropdownOpen = !this.isCountryDropdownOpen;
+  }
+
+  selectCountry(country: CountryMobileCode, event: Event) {
+    if (event.type !== 'init') event.stopPropagation();
+    this.selectedCountry = country;
+    this.employeeForm.get('personal')?.get('dialCode')?.setValue(country.mobileCode);
+    this.isCountryDropdownOpen = false;
+    this.updatePhoneValidation();
+  }
+
+  updatePhoneValidation() {
+    const phoneControl = this.employeeForm.get('personal')?.get('phone');
+    if (!phoneControl || !this.selectedCountry || !this.selectedCountry.mobileNumberLength) return;
+    
+    const length = this.selectedCountry.mobileNumberLength;
+    phoneControl.setValidators([
+      Validators.required,
+      Validators.minLength(length),
+      Validators.maxLength(length),
+      Validators.pattern('^[0-9]*$')
+    ]);
+    phoneControl.updateValueAndValidity();
   }
 
   get passwordStrength() {
@@ -192,8 +263,10 @@ export class RegisterEmployeeComponent implements OnInit {
 
     this.isLoading = true;
 
+    const personalData = this.employeeForm.value.personal || {};
+
     const payload = {
-      ...this.employeeForm.value.personal,
+      ...personalData,
       ...this.employeeForm.value.professional
     } as Partial<User>;
 

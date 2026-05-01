@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { TaskService, Task, TaskFilter, CreateTaskRequest, ApiError } from '../../../../core/services/task.service';
 
 @Component({
   selector: 'app-task-kanban',
@@ -472,119 +473,57 @@ import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from 
     }
   `]
 })
-export class TaskKanbanComponent {
+export class TaskKanbanComponent implements OnInit {
   searchQuery = '';
   filterStatus = '';
   filterPriority = '';
 
-  todo = [
-    { 
-      id: 'T14', 
-      title: 'Passport Scan Collection', 
-      description: 'Collect high-resolution passport scans from the student and verify legibility.',
-      student: 'Priya Rai', 
-      priority: 'Medium', 
-      assignee: 'Rohan Patel', 
-      assigneeInitial: 'RM',
-      avatarColor: '#10b981',
-      dueDate: 'Apr 25, 2026', 
-      comments: 0,
-      status: 'To Do'
-    },
-    { 
-      id: 'T15', 
-      title: 'Academic Document Verification', 
-      description: 'Verify academic transcripts and degree certificates with issuing institutions.',
-      student: 'Amit Kumar', 
-      priority: 'High', 
-      assignee: 'Sara Khan', 
-      assigneeInitial: 'SK',
-      avatarColor: '#ef4444',
-      dueDate: 'Apr 26, 2026', 
-      comments: 2,
-      status: 'To Do'
-    }
-  ];
-
-  inProgress = [
-    { 
-      id: 'T1', 
-      title: 'Visa Application Processing', 
-      description: 'Review and submit visa documentation for the UK student visa application. Coordinate with the embassy for the appointment slot.',
-      student: 'Mukul Sharma', 
-      priority: 'High', 
-      assignee: 'Sara Khan', 
-      assigneeInitial: 'SK',
-      avatarColor: '#ef4444',
-      dueDate: 'Apr 15, 2026', 
-      comments: 3,
-      status: 'In Progress'
-    },
-    { 
-      id: 'T2', 
-      title: 'IELTS Score Verification', 
-      description: 'Verify candidate IELTS scores with the official IELTS portal and attach the verification certificate.',
-      student: 'Priya Rai', 
-      priority: 'Medium', 
-      assignee: 'Rohan Patel', 
-      assigneeInitial: 'RM',
-      avatarColor: '#10b981',
-      dueDate: 'Apr 12, 2026', 
-      comments: 1,
-      status: 'In Progress'
-    },
-    { 
-      id: 'T3', 
-      title: 'University Offer Letter Review', 
-      description: 'Cross-check offer letter details for accuracy: name, course, intake, fees, and conditions.',
-      student: 'Amit Kumar', 
-      priority: 'Low', 
-      assignee: 'Sara Khan', 
-      assigneeInitial: 'SK',
-      avatarColor: '#ef4444',
-      dueDate: 'Apr 20, 2026', 
-      comments: 0,
-      status: 'In Progress'
-    }
-  ];
-
-  done = [
-    { 
-      id: 'T4', 
-      title: 'Financial Aid Application', 
-      description: 'Prepare and submit financial aid forms with supporting bank statements.',
-      student: 'Mukul Sharma', 
-      priority: 'High', 
-      assignee: 'Arjun Verma', 
-      assigneeInitial: 'AV',
-      avatarColor: '#f59e0b',
-      dueDate: 'Apr 9, 2026', 
-      comments: 0,
-      status: 'Done'
-    },
-    { 
-      id: 'T5', 
-      title: 'Onboarding Welcome Pack', 
-      description: 'Send the welcome pack with orientation details to the newly enrolled student.',
-      student: 'Mukul Sharma', 
-      priority: 'Low', 
-      assignee: 'Mira Joshi', 
-      assigneeInitial: 'MJ',
-      avatarColor: '#a855f7',
-      dueDate: 'Apr 7, 2026', 
-      comments: 0,
-      status: 'Done'
-    }
-  ];
-
-  selectedTask: any = null;
+  tasks: Task[] = [];
+  todo: Task[] = [];
+  inProgress: Task[] = [];
+  done: Task[] = [];
+  selectedTask: Task | null = null;
   activeDropdown: string | null = null;
+  loading = false;
+  error: string | null = null;
+  validationErrors: any[] = [];
+
+  private taskService = inject(TaskService);
 
   constructor() {
     // Close dropdowns when clicking outside (rudimentary approach)
     document.addEventListener('click', () => {
       this.activeDropdown = null;
     });
+  }
+
+  ngOnInit() {
+    this.loadTasks();
+  }
+
+  loadTasks(filter?: TaskFilter) {
+    this.loading = true;
+    this.error = null;
+    this.validationErrors = [];
+    this.taskService.getTasks(filter).subscribe({
+      next: (tasks) => {
+        this.tasks = tasks;
+        this.groupTasksByStatus();
+        this.loading = false;
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to load tasks';
+        this.validationErrors = err.errors || [];
+        this.loading = false;
+        console.error('Error loading tasks:', err);
+      }
+    });
+  }
+
+  groupTasksByStatus() {
+    this.todo = this.tasks.filter(task => task.status === 'TO_DO');
+    this.inProgress = this.tasks.filter(task => task.status === 'IN_PROGRESS');
+    this.done = this.tasks.filter(task => task.status === 'DONE');
   }
 
   drop(event: CdkDragDrop<any[]>, newStatus: string) {
@@ -602,8 +541,20 @@ export class TaskKanbanComponent {
     }
   }
 
-  openTaskDetails(task: any) {
-    this.selectedTask = task;
+  openTaskDetails(task: Task) {
+    this.loading = true;
+    this.taskService.getTaskDetails(task.id).subscribe({
+      next: (taskDetails) => {
+        this.selectedTask = taskDetails.task;
+        this.loading = false;
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to load task details';
+        this.validationErrors = err.errors || [];
+        this.loading = false;
+        console.error('Error loading task details:', err);
+      }
+    });
   }
 
   closeTaskDetails() {
@@ -616,11 +567,52 @@ export class TaskKanbanComponent {
     this.activeDropdown = this.activeDropdown === type ? null : type;
   }
 
-  updateTask(field: string, value: string) {
+  updateTask(field: keyof Task, value: string) {
     if (this.selectedTask) {
-      this.selectedTask[field] = value;
-      // In a real app, you would also update the item in its respective array and potentially move it if status changed
+      if (field === 'status') {
+        this.taskService.updateStatus(this.selectedTask.id, value as Task['status']).subscribe({
+          next: () => {
+            (this.selectedTask as any)[field] = value;
+            this.loadTasks(); // Refresh task list
+          },
+          error: (err: ApiError) => {
+            this.error = err.message || 'Failed to update status';
+            this.validationErrors = err.errors || [];
+            console.error('Error updating status:', err);
+          }
+        });
+      } else if (field === 'priority') {
+        this.taskService.updatePriority(this.selectedTask.id, value as Task['priority']).subscribe({
+          next: () => {
+            (this.selectedTask as any)[field] = value;
+          },
+          error: (err: ApiError) => {
+            this.error = err.message || 'Failed to update priority';
+            this.validationErrors = err.errors || [];
+            console.error('Error updating priority:', err);
+          }
+        });
+      } else {
+        (this.selectedTask as any)[field] = value;
+      }
     }
     this.activeDropdown = null;
+  }
+
+  addComment(comment: string) {
+    if (!this.selectedTask || !comment.trim()) return;
+    
+    this.taskService.addComment(this.selectedTask.id, comment).subscribe({
+      next: () => {
+        if (this.selectedTask) {
+          this.openTaskDetails(this.selectedTask); // Reload task details to show new comment
+        }
+      },
+      error: (err: ApiError) => {
+        this.error = err.message || 'Failed to add comment';
+        this.validationErrors = err.errors || [];
+        console.error('Error adding comment:', err);
+      }
+    });
   }
 }

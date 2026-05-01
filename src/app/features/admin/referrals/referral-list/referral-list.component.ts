@@ -269,9 +269,15 @@ import { Branch } from '../../../../core/models/branch.model';
           <p class="modal-subtitle">{{ isEditMode ? 'Update details for the referral partner.' : 'Enter details for the new referral partner.' }}</p>
           
           <form #referralForm="ngForm" (ngSubmit)="onSubmitReferral()">
-            <div class="form-group">
-              <label for="refName">Full Name</label>
-              <input type="text" id="refName" name="name" class="form-control" [(ngModel)]="newReferral.name" placeholder="John Doe" required>
+            <div class="form-group" style="display: flex; gap: 1rem;">
+              <div style="flex: 1;">
+                <label for="refFirstName">First Name <span class="text-error">*</span></label>
+                <input type="text" id="refFirstName" name="firstName" class="form-control" [(ngModel)]="newReferral.firstName" placeholder="John" required>
+              </div>
+              <div style="flex: 1;">
+                <label for="refLastName">Last Name <span class="text-error">*</span></label>
+                <input type="text" id="refLastName" name="lastName" class="form-control" [(ngModel)]="newReferral.lastName" placeholder="Doe" required>
+              </div>
             </div>
 
             <div class="form-group">
@@ -707,6 +713,8 @@ export class ReferralListComponent implements OnInit {
   openAddModal() {
     this.isEditMode = false;
     this.newReferral = {
+      firstName: '',
+      lastName: '',
       name: '',
       email: '',
       phone: '',
@@ -718,8 +726,15 @@ export class ReferralListComponent implements OnInit {
 
   openEditModal(ref: Referral) {
     this.isEditMode = true;
+    
+    const nameParts = (ref.name || '').trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
     this.newReferral = { 
       ...ref,
+      firstName: firstName,
+      lastName: lastName,
       branchId: ref.branchId || ref.branch?.id || undefined
     };
     this.showAddModal = true;
@@ -732,12 +747,18 @@ export class ReferralListComponent implements OnInit {
   }
 
   onSubmitReferral() {
-    if (!this.newReferral.name || !this.newReferral.email || !this.newReferral.referralType || !this.newReferral.branchId) return;
+    if (!this.newReferral.firstName || !this.newReferral.lastName || !this.newReferral.email || !this.newReferral.referralType || !this.newReferral.branchId) return;
 
     this.submitting = true;
 
+    const payload = {
+      ...this.newReferral,
+      firstName: this.newReferral.firstName,
+      lastName: this.newReferral.lastName
+    };
+
     if (this.isEditMode && this.newReferral.id) {
-      this.referralService.updateReferral(this.newReferral.id, this.newReferral).subscribe({
+      this.referralService.updateReferral(this.newReferral.id, payload).subscribe({
         next: () => {
           this.notificationService.success('Referral updated successfully!');
           this.submitting = false;
@@ -751,7 +772,7 @@ export class ReferralListComponent implements OnInit {
         }
       });
     } else {
-      this.referralService.createReferral(this.newReferral).subscribe({
+      this.referralService.createReferral(payload).subscribe({
         next: () => {
           this.notificationService.success('Referral created successfully!');
           this.submitting = false;
