@@ -12,4 +12,8 @@ export interface Branch {
     name: string;
     email: string;
   };
+  userCounts?: {
+    totalStaffs: number;
+    totalStudents: number;
+  };
 }

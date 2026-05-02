@@ -17,7 +17,11 @@ export interface Employee {
   roles?: { id: number; name: string; description?: string }[];
   branch?: string;
   status?: string;
-  taskCount?: number;
+  taskCount?: {
+    pending: number;
+    inProgress: number;
+    completed: number;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -81,14 +85,14 @@ export class EmployeeService {
     );
   }
 
-  getAllEmployees(page: number = 0, size: number = 10, search?: string, role?: string, branch?: number | string): Observable<PaginatedResponse<Employee>> {
+  getAllEmployees(page: number = 0, size: number = 10, search?: string, roleId?: string | number, branchId?: number | string): Observable<PaginatedResponse<Employee>> {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
 
     if (search) params = params.set('search', search);
-    if (role) params = params.set('role', role);
-    if (branch) params = params.set('branch', branch.toString());
+    if (roleId) params = params.set('roleId', roleId.toString());
+    if (branchId) params = params.set('branchId', branchId.toString());
 
     return this.http.get<any>(this.apiUrl, { headers: this.getHeaders(), params }).pipe(
       map(response => {
@@ -114,10 +118,13 @@ export class EmployeeService {
     return this.http.delete(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
   }
 
-  getAdminEmployees(roleId?: number | string): Observable<Employee[]> {
+  getAdminEmployees(roleId?: number | string, branchId?: number | string): Observable<Employee[]> {
     let params = new HttpParams();
     if (roleId) {
       params = params.set('roleId', roleId.toString());
+    }
+    if (branchId) {
+      params = params.set('branchId', branchId.toString());
     }
     return this.http.get<any>(`http://localhost:8080/api/admin/get-all-employee`, {
       headers: this.getHeaders(),

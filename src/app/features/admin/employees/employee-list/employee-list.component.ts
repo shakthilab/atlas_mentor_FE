@@ -50,9 +50,13 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
           <input type="text" placeholder="Search by name or role..." [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange($event)">
         </div>
         <div class="filter-actions">
+          <select class="filter-select" [(ngModel)]="filterBranch" (change)="onFilterChange()">
+            <option value="">All Branches</option>
+            <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
+          </select>
           <select class="filter-select" [(ngModel)]="filterRole" (change)="onFilterChange()">
             <option value="">All Roles</option>
-            <option *ngFor="let role of roles" [value]="role.name">{{ role.displayName || role.name }}</option>
+            <option *ngFor="let role of roles" [value]="role.id">{{ role.displayName || role.name }}</option>
           </select>
           <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
             <span class="material-icons">tune</span>
@@ -63,13 +67,6 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       <!-- Advanced Filters Panel -->
       <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
         <div class="filters-grid">
-          <div class="filter-group">
-            <label>Branch</label>
-            <select [(ngModel)]="filterBranch" (change)="onFilterChange()">
-              <option value="">All Branches</option>
-              <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
-            </select>
-          </div>
           <div class="filter-group">
             <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
           </div>
@@ -135,10 +132,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     </span>
                   </td>
                   <td>
-                    <div class="task-count" style="display: flex; align-items: center; gap: 4px; font-size: 0.8125rem; color: var(--color-gray-600);">
-                      <span class="material-icons" style="font-size: 16px; color: var(--color-gray-400);">check_circle_outline</span>
-                      {{ emp.taskCount || 0 }} Active
-                    </div>
+                    <span style="font-weight: 600; color: var(--color-gray-700);">{{ (emp.taskCount?.pending || 0) + (emp.taskCount?.inProgress || 0) + (emp.taskCount?.completed || 0) }}</span>
                   </td>
                   <td style="text-align: right;">
                     <div class="action-btns" (click)="$event.stopPropagation()">
@@ -210,8 +204,10 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
               <div class="entity-info">
-                <span class="entity-subtext">Tasks</span>
-                <span class="entity-name" style="font-size: 0.8125rem;">{{ emp.taskCount || 0 }} Active</span>
+                <span class="entity-subtext">Total Tasks</span>
+                <span class="entity-name" style="font-size: 0.875rem; color: var(--color-gray-900); font-weight: 700;">
+                  {{ (emp.taskCount?.pending || 0) + (emp.taskCount?.inProgress || 0) + (emp.taskCount?.completed || 0) }}
+                </span>
               </div>
               <div class="entity-info">
                 <span class="entity-subtext">Branch</span>
@@ -285,17 +281,17 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 
               <div class="form-row" style="display: flex; gap: 1rem;">
                 <div class="form-group" style="flex: 1;">
-                  <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Role</label>
-                  <select class="form-control" formControlName="roleId">
-                    <option value="" disabled>Select Role</option>
-                    <option *ngFor="let role of roles" [value]="role.id">{{ role.displayName || role.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Branch</label>
                   <select class="form-control" formControlName="branchId">
                     <option value="" disabled>Select Branch</option>
                     <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
+                  </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Role</label>
+                  <select class="form-control" formControlName="roleId">
+                    <option value="" disabled>Select Role</option>
+                    <option *ngFor="let role of roles" [value]="role.id">{{ role.displayName || role.name }}</option>
                   </select>
                 </div>
               </div>
@@ -346,9 +342,22 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Branch</span>
                 <span class="entity-name" style="margin-top: 4px;">{{ getBranchName(selectedEmployee?.branchId || 0) }}</span>
               </div>
-              <div class="entity-info">
-                <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Active Tasks</span>
-                <span class="entity-name" style="margin-top: 4px;">{{ selectedEmployee?.taskCount || 0 }}</span>
+              <div class="entity-info" style="grid-column: span 2;">
+                <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700; display: block; margin-bottom: 12px;">Task Statistics</span>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                  <div style="background: #fef3f2; border: 1px solid #fee4e2; padding: 12px; border-radius: 8px; text-align: center;">
+                    <span style="display: block; font-size: 1.25rem; font-weight: 700; color: #b42318;">{{ selectedEmployee?.taskCount?.pending || 0 }}</span>
+                    <span style="font-size: 0.625rem; font-weight: 600; color: #f04438; text-transform: uppercase;">Pending</span>
+                  </div>
+                  <div style="background: #fffbef; border: 1px solid #fef0c7; padding: 12px; border-radius: 8px; text-align: center;">
+                    <span style="display: block; font-size: 1.25rem; font-weight: 700; color: #b54708;">{{ selectedEmployee?.taskCount?.inProgress || 0 }}</span>
+                    <span style="font-size: 0.625rem; font-weight: 600; color: #f79009; text-transform: uppercase;">In Progress</span>
+                  </div>
+                  <div style="background: #ecfdf3; border: 1px solid #d1fadf; padding: 12px; border-radius: 8px; text-align: center;">
+                    <span style="display: block; font-size: 1.25rem; font-weight: 700; color: #027a48;">{{ selectedEmployee?.taskCount?.completed || 0 }}</span>
+                    <span style="font-size: 0.625rem; font-weight: 600; color: #12b76a; text-transform: uppercase;">Completed</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -6,6 +6,8 @@ import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from 
 import { TaskService, Task, TaskFilter, CreateTaskRequest, ApiError, TaskComment, Activity } from '../../../../core/services/task.service';
 import { EmployeeService, Employee } from '../../../../core/services/employee.service';
 import { RoleService, Role } from '../../../../core/services/role.service';
+import { BranchService } from '../../../../core/services/branch.service';
+import { Branch } from '../../../../core/models/branch.model';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-detail-panel.component';
@@ -436,22 +438,29 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
+                <label>Branch</label>
+                <select class="form-control" [(ngModel)]="selectedBranchId" (change)="loadEmployees()">
+                  <option value="">All Branches</option>
+                  <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
+                </select>
+              </div>
+              <div class="form-group flex-1">
                 <label>Role</label>
                 <select class="form-control" [(ngModel)]="selectedRoleId" (change)="loadEmployees()">
                   <option value="">All Roles</option>
                   <option *ngFor="let role of roles" [value]="role.id">{{ role.name }}</option>
                 </select>
               </div>
-              <div class="form-group flex-1">
-                <label>Assigned To <span class="text-danger">*</span></label>
-                <select class="form-control" [(ngModel)]="newTask.assigneeId" required #assignee="ngModel" [class.is-invalid]="assignee.invalid && assignee.touched">
-                  <option value="" disabled selected>Select employee...</option>
-                  <option *ngFor="let emp of employees" [value]="emp.id">
-                    {{ emp.name || (emp.firstName + ' ' + (emp.lastName || '')) }}
-                  </option>
-                </select>
-                <div class="invalid-feedback" *ngIf="assignee.invalid && assignee.touched">Assignee is required</div>
-              </div>
+            </div>
+            <div class="form-group">
+              <label>Assigned To <span class="text-danger">*</span></label>
+              <select class="form-control" [(ngModel)]="newTask.assigneeId" required #assignee="ngModel" [class.is-invalid]="assignee.invalid && assignee.touched">
+                <option value="" disabled selected>Select employee...</option>
+                <option *ngFor="let emp of employees" [value]="emp.id">
+                  {{ emp.name || (emp.firstName + ' ' + (emp.lastName || '')) }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="assignee.invalid && assignee.touched">Assignee is required</div>
             </div>
             <div class="form-row">
               <div class="form-group flex-1">
@@ -479,7 +488,7 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
           </div>
           <div class="modal-footer">
             <button class="btn-ghost" (click)="closeCreateModal()">Cancel</button>
-            <button class="btn-primary" (click)="createTask()">Create</button>
+            <button class="btn btn-primary" (click)="createTask()">Create</button>
           </div>
         </div>
       </div>
@@ -810,6 +819,8 @@ export class TaskListComponent implements OnInit {
   
   roles: Role[] = [];
   selectedRoleId: string = '';
+  branches: Branch[] = [];
+  selectedBranchId: string = '';
   employees: Employee[] = [];
   minDate = new Date().toISOString().split('T')[0];
   
@@ -860,6 +871,7 @@ export class TaskListComponent implements OnInit {
   private taskService = inject(TaskService);
   private employeeService = inject(EmployeeService);
   private roleService = inject(RoleService);
+  private branchService = inject(BranchService);
 
   constructor() {
     // Close dropdowns when clicking outside
@@ -873,6 +885,16 @@ export class TaskListComponent implements OnInit {
     this.loadTasks();
     this.loadEmployees();
     this.loadRoles();
+    this.loadBranches();
+  }
+
+  loadBranches() {
+    this.branchService.getAllBranches().subscribe({
+      next: (branches) => {
+        this.branches = branches;
+      },
+      error: (err) => console.error('Error loading branches:', err)
+    });
   }
 
   loadRoles() {
@@ -885,7 +907,7 @@ export class TaskListComponent implements OnInit {
   }
 
   loadEmployees() {
-    this.employeeService.getAdminEmployees(this.selectedRoleId).subscribe({
+    this.employeeService.getAdminEmployees(this.selectedRoleId, this.selectedBranchId).subscribe({
       next: (employees) => {
         this.employees = employees;
       },
@@ -988,9 +1010,8 @@ export class TaskListComponent implements OnInit {
 
     this.taskService.createTask(taskData).subscribe({
       next: (task) => {
-        this.tasks.unshift(task);
-        this.groupTasksByStatus();
         this.closeCreateModal();
+        this.loadTasks();
       },
       error: (err: ApiError) => {
         this.error = err.message || 'Failed to create task';

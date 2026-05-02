@@ -89,7 +89,20 @@ export const routes: Routes = [
         path: 'manager',
         canActivate: [authGuard],
         data: { roles: ['MANAGER'] },
-        loadComponent: () => import('./features/dashboards/manager/manager-dashboard.component').then(m => m.ManagerDashboardComponent)
+        children: [
+          { path: '', loadComponent: () => import('./features/dashboards/manager/manager-dashboard.component').then(m => m.ManagerDashboardComponent) },
+          // Reuse admin components with branch-specific filtering
+          { path: 'tasks', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) },
+          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { path: 'employees', loadComponent: () => import('./features/admin/employees/employee-list/employee-list.component').then(m => m.EmployeeListComponent) },
+          { path: 'hierarchy', loadComponent: () => import('./features/admin/hierarchy/hierarchy-manager/hierarchy-manager.component').then(m => m.HierarchyManagerComponent) },
+          { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
+          { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
+          { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
+          { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
+          { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
+        ]
       },
       {
         path: 'company',

@@ -267,17 +267,17 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 
               <div class="form-row" style="display: flex; gap: 1rem;">
                 <div class="form-group" style="flex: 1;">
-                  <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Referral Type</label>
-                  <select class="form-control" formControlName="referralType">
-                    <option value="" disabled>Select Type</option>
-                    <option *ngFor="let type of referralTypes" [value]="type">{{ type }}</option>
-                  </select>
-                </div>
-                <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Branch</label>
                   <select class="form-control" formControlName="branchId">
                     <option value="" disabled>Select Branch</option>
                     <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
+                  </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Referral Type</label>
+                  <select class="form-control" formControlName="referralType">
+                    <option value="" disabled>Select Type</option>
+                    <option *ngFor="let type of referralTypes" [value]="type">{{ type }}</option>
                   </select>
                 </div>
               </div>

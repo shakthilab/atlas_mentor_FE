@@ -127,11 +127,11 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                   <div style="display: flex; gap: 12px;">
                     <div class="entity-info">
                       <span class="entity-subtext">Staff</span>
-                      <span class="entity-name" style="font-size: 0.75rem;">{{ branch.staffCount || 0 }}</span>
+                      <span class="entity-name" style="font-size: 0.75rem;">{{ branch.userCounts?.totalStaffs || branch.staffCount || 0 }}</span>
                     </div>
                     <div class="entity-info">
                       <span class="entity-subtext">Students</span>
-                      <span class="entity-name" style="font-size: 0.75rem;">{{ branch.studentCount || 0 }}</span>
+                      <span class="entity-name" style="font-size: 0.75rem;">{{ branch.userCounts?.totalStudents || branch.studentCount || 0 }}</span>
                     </div>
                   </div>
                 </td>
@@ -189,11 +189,11 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
               <div class="entity-info">
                 <span class="entity-subtext">Staff</span>
-                <span class="entity-name" style="font-size: 0.875rem;">{{ branch.staffCount || 0 }}</span>
+                <span class="entity-name" style="font-size: 0.875rem;">{{ branch.userCounts?.totalStaffs || branch.staffCount || 0 }}</span>
               </div>
               <div class="entity-info">
                 <span class="entity-subtext">Students</span>
-                <span class="entity-name" style="font-size: 0.875rem;">{{ branch.studentCount || 0 }}</span>
+                <span class="entity-name" style="font-size: 0.875rem;">{{ branch.userCounts?.totalStudents || branch.studentCount || 0 }}</span>
               </div>
             </div>
           </div>

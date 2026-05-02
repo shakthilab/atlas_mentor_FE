@@ -119,7 +119,13 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <span class="entity-name" style="font-weight: 500; font-size: 0.8125rem;">{{ company.companyDetails?.address || company.address || company.branch?.name || 'No address' }}</span>
                   </div>
                 </td>
-                <td><a [href]="company.companyDetails?.website || company.website" target="_blank" class="btn-ghost-sm" (click)="$event.stopPropagation()">Visit Site</a></td>
+                <td>
+                  <a [href]="company.companyDetails?.website || company.website" target="_blank" class="website-link" (click)="$event.stopPropagation()" 
+                     style="color: var(--color-primary); font-size: 0.8125rem; text-decoration: none; max-width: 150px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                     [title]="company.companyDetails?.website || company.website">
+                    {{ company.companyDetails?.website || company.website }}
+                  </a>
+                </td>
                 <td>
                   <span class="badge-status" [ngClass]="(company.status || 'ACTIVE').toLowerCase() === 'active' ? 'success' : 'gray'">
                     {{ company.status || 'ACTIVE' }}
