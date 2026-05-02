@@ -15,6 +15,7 @@ interface LoginResponse {
     email: string;
     role: string;
     type: string;
+    employee?: boolean; // Flag to identify employee users (API sends 'employee')
   };
   timestamp: string;
   statusCode: string;
@@ -88,6 +89,7 @@ export class AuthService {
             email: apiUser.email,
             role: apiUser.role, // This will be 'STUDENT', 'ADMIN', etc.
             token: apiUser.token,
+            isEmployee: apiUser.employee || false, // Flag to identify employee users (API sends 'employee')
             status: 'ACTIVE'
           };
           this.setStoredUser(user);

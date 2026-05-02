@@ -82,8 +82,15 @@ export const routes: Routes = [
       {
         path: 'employee',
         canActivate: [authGuard],
-        data: { roles: ['EMPLOYEE'] },
-        loadComponent: () => import('./features/dashboards/employee/employee-dashboard.component').then(m => m.EmployeeDashboardComponent)
+        data: { roles: ['EMPLOYEE', 'SENIOR_COUNSELLOR', 'JUNIOR_COUNSELLOR'] },
+        children: [
+          { path: '', loadComponent: () => import('./features/dashboards/employee/employee-dashboard.component').then(m => m.EmployeeDashboardComponent) },
+          // Reuse admin components with employee-specific filtering
+          { path: 'tasks', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) },
+          { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
+          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
+        ]
       },
       {
         path: 'manager',
@@ -108,13 +115,27 @@ export const routes: Routes = [
         path: 'company',
         canActivate: [authGuard],
         data: { roles: ['COMPANY'] },
-        loadComponent: () => import('./features/dashboards/company/company-dashboard.component').then(m => m.CompanyDashboardComponent)
+        children: [
+          { path: '', loadComponent: () => import('./features/dashboards/company/company-dashboard.component').then(m => m.CompanyDashboardComponent) },
+          // Reuse admin components with company-specific filtering
+          { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
+          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
+          { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
+        ]
       },
       {
         path: 'referral',
         canActivate: [authGuard],
         data: { roles: ['REFERRAL'] },
-        loadComponent: () => import('./features/dashboards/referral/referral-dashboard.component').then(m => m.ReferralDashboardComponent)
+        children: [
+          { path: '', loadComponent: () => import('./features/dashboards/referral/referral-dashboard.component').then(m => m.ReferralDashboardComponent) },
+          // Reuse admin components with referral-specific filtering
+          { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
+          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
+          { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
+        ]
       }
     ]
   },

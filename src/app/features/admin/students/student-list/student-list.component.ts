@@ -6,6 +6,7 @@ import { StudentService } from '../../../../core/services/student.service';
 import { DatePipe } from '@angular/common';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { RoleConfigService } from '../../../../core/services/role-config.service';
 
 @Component({
   selector: 'app-student-list',
@@ -16,8 +17,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
     <div class="module-container">
       <div class="module-header">
         <div class="header-left">
-          <h1 class="page-title">Students</h1>
-          <p class="page-subtitle">Manage all student leads and registered accounts.</p>
+          <h1 class="page-title">{{ roleConfig.getRoleSpecificTitle('Students') }}</h1>
+          <p class="page-subtitle">{{ getRoleSpecificSubtitle() }}</p>
         </div>
         <div class="header-actions">
           <div class="view-switcher">
@@ -288,6 +289,28 @@ export class StudentListComponent implements OnInit {
   }
 
   // Original helper methods kept below...
+
+  get students() {
+    return this.roleConfig.applyRoleBasedFilter(this.allStudents);
+  }
+
+  getRoleSpecificSubtitle(): string {
+    const role = this.roleConfig.getCurrentUserRole();
+    switch (role) {
+      case 'ADMIN':
+        return 'Manage all student leads and registered accounts.';
+      case 'MANAGER':
+        return 'Manage students for your branch.';
+      case 'COMPANY':
+        return 'Manage students referred by your company.';
+      case 'REFERRAL':
+        return 'Manage students you have referred.';
+      case 'STUDENT':
+        return 'View and manage your student profile.';
+      default:
+        return 'Manage student information.';
+    }
+  }
 
   viewDetail(id: string) {
     this.router.navigate(['/admin/students', id]);

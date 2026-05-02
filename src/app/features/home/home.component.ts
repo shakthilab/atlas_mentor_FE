@@ -134,25 +134,28 @@ export class HomeComponent implements AfterViewInit {
     this.authService.currentUser$.subscribe((user: any) => {
       if (user) {
         const role = user.role?.toUpperCase();
-        switch(role) {
-          case 'ADMIN':
-            this.router.navigate(['/admin']);
-            break;
-          case 'STUDENT':
-            this.router.navigate(['/student']);
-            break;
-          case 'EMPLOYEE':
-            this.router.navigate(['/employee']);
-            break;
-          case 'MANAGER':
-            this.router.navigate(['/manager']);
-            break;
-          case 'COMPANY':
-            this.router.navigate(['/company']);
-            break;
-          case 'REFERRAL':
-            this.router.navigate(['/referral']);
-            break;
+        const isEmployee = user.isEmployee;
+
+        if (isEmployee || role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') {
+          this.router.navigate(['/employee']);
+        } else {
+          switch(role) {
+            case 'ADMIN':
+              this.router.navigate(['/admin']);
+              break;
+            case 'STUDENT':
+              this.router.navigate(['/student']);
+              break;
+            case 'MANAGER':
+              this.router.navigate(['/manager']);
+              break;
+            case 'COMPANY':
+              this.router.navigate(['/company']);
+              break;
+            case 'REFERRAL':
+              this.router.navigate(['/referral']);
+              break;
+          }
         }
       }
     });

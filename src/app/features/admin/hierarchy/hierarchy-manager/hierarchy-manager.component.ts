@@ -273,9 +273,9 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 Saving...
               </ng-container>
             </button>
+          </div>
         </div>
       </div>
-    </div>
     </div>
 
       <!-- Assignment Modal -->
@@ -357,6 +357,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 </ng-container>
               </button>
             </div>
+          </div>
         </div>
       </div>
 
@@ -380,6 +381,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 </ng-container>
               </button>
             </div>
+          </div>
         </div>
       </div>
       <!-- Add Manager Modal -->

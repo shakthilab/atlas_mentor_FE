@@ -5,6 +5,7 @@ export interface User {
   role: string;
   status?: 'ACTIVE' | 'PENDING_APPROVAL';
   token?: string;
+  isEmployee?: boolean; // Flag to identify employee users regardless of role
   
   // Specific fields
   phone?: string;

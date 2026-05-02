@@ -14,6 +14,10 @@ export const authGuard: CanActivateFn = (route, state) => {
     const userRole = currentUser.role?.toUpperCase();
 
     if (expectedRoles && (!userRole || !expectedRoles.includes(userRole))) {
+      // Check if it's an employee role and the user has isEmployee flag
+      if (expectedRoles.includes('EMPLOYEE') && currentUser.isEmployee) {
+        return true;
+      }
       // Role not authorized, redirect to home
       router.navigate(['/']);
       return false;

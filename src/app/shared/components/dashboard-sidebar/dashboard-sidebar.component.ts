@@ -26,88 +26,162 @@ declare const lucide: any;
       <nav class="nav-section">
         <div class="nav-subtitle" *ngIf="!isCollapsed">MAIN MENU</div>
         
-        <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">
+        <a [routerLink]="getRoutePath('')" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">
           <div class="link-content">
             <i data-lucide="layout-dashboard"></i>
             <span>Dashboard</span>
           </div>
         </a>
 
-        <a routerLink="/admin/tasks" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="check-square"></i>
-            <span>Tasks</span>
-          </div>
-        </a>
+        <!-- Admin/Manager specific menu items -->
+        <ng-container *ngIf="isAdminOrManager()">
+          <a [routerLink]="getRoutePath('tasks')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="check-square"></i>
+              <span>Tasks</span>
+            </div>
+          </a>
 
-        <div class="nav-subtitle" *ngIf="!isCollapsed">MANAGEMENT</div>
+          <div class="nav-subtitle" *ngIf="!isCollapsed">MANAGEMENT</div>
 
-        <a routerLink="/admin/leads" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="users"></i>
-            <span>Leads</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('students')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="graduation-cap"></i>
+              <span>Students</span>
+            </div>
+          </a>
 
-        <a routerLink="/admin/students" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="graduation-cap"></i>
-            <span>Students</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('employees')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="user-cog"></i>
+              <span>Employees</span>
+            </div>
+          </a>
 
-        <a routerLink="/admin/employees" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="user-cog"></i>
-            <span>Employees</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('hierarchy')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="git-branch"></i>
+              <span>Hierarchy</span>
+            </div>
+          </a>
 
-        <a routerLink="/admin/hierarchy" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="git-branch"></i>
-            <span>Hierarchy</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('referrals')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="user-plus"></i>
+              <span>Referrals</span>
+            </div>
+          </a>
 
-        <a routerLink="/admin/referrals" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="user-plus"></i>
-            <span>Referrals</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('companies')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="briefcase"></i>
+              <span>Companies</span>
+            </div>
+          </a>
 
-        <a routerLink="/admin/companies" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="briefcase"></i>
-            <span>Companies</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('branches')" routerLinkActive="active" class="nav-link" *ngIf="isAdmin()">
+            <div class="link-content">
+              <i data-lucide="building-2"></i>
+              <span>Branches</span>
+            </div>
+          </a>
 
-        <a routerLink="/admin/branches" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="building-2"></i>
-            <span>Branches</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('documents')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="folder-open"></i>
+              <span>Documents</span>
+            </div>
+          </a>
+        </ng-container>
 
-        <a routerLink="/admin/payments" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="credit-card"></i>
-            <span>Payments</span>
-          </div>
-        </a>
+        <!-- Company/Referral specific menu items -->
+        <ng-container *ngIf="isCompanyOrReferral()">
+          <div class="nav-subtitle" *ngIf="!isCollapsed">MANAGEMENT</div>
 
-        <a routerLink="/admin/documents" routerLinkActive="active" class="nav-link">
-          <div class="link-content">
-            <i data-lucide="folder-open"></i>
-            <span>Documents</span>
-          </div>
-        </a>
+          <a [routerLink]="getRoutePath('leads')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="users"></i>
+              <span>Leads</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('students')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="graduation-cap"></i>
+              <span>Students</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('payments')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="credit-card"></i>
+              <span>Payments</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('media')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="file-text"></i>
+              <span>Media</span>
+            </div>
+          </a>
+        </ng-container>
+
+        <!-- Student specific menu items -->
+        <ng-container *ngIf="isStudent()">
+          <div class="nav-subtitle" *ngIf="!isCollapsed">MY ACCOUNT</div>
+
+          <a [routerLink]="getRoutePath('profile')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="user"></i>
+              <span>Profile</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('payments')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="credit-card"></i>
+              <span>Payments</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('documents')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="folder-open"></i>
+              <span>Documents</span>
+            </div>
+          </a>
+        </ng-container>
+
+        <!-- Employee specific menu items -->
+        <ng-container *ngIf="isEmployee()">
+          <div class="nav-subtitle" *ngIf="!isCollapsed">MY WORK</div>
+
+          <a [routerLink]="getRoutePath('tasks')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="check-square"></i>
+              <span>Tasks</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('leads')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="users"></i>
+              <span>Leads</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('students')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="graduation-cap"></i>
+              <span>Students</span>
+            </div>
+          </a>
+        </ng-container>
 
         <div class="nav-subtitle" *ngIf="!isCollapsed">OTHERS</div>
 
-        <a routerLink="/admin/settings" routerLinkActive="active" class="nav-link">
+        <a [routerLink]="getRoutePath('settings')" routerLinkActive="active" class="nav-link">
           <div class="link-content">
             <i data-lucide="settings"></i>
             <span>Settings</span>
@@ -117,12 +191,30 @@ declare const lucide: any;
 
       <!-- Sidebar Footer Logout -->
       <div class="sidebar-logout">
-        <button (click)="authService.logout()" class="logout-footer-btn">
+        <button (click)="openLogoutConfirm()" class="logout-footer-btn">
           <span class="material-icons" style="font-size: 18px;">logout</span>
           <span *ngIf="!isCollapsed">Logout</span>
         </button>
       </div>
     </aside>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-overlay logout-modal" *ngIf="showLogoutConfirm" (click)="closeLogoutConfirm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-body text-center">
+          <div class="logout-icon-wrap">
+            <span class="material-icons">logout</span>
+          </div>
+          <h2 class="modal-title">Confirm Logout</h2>
+          <p class="modal-subtitle">Are you sure you want to log out of your account?</p>
+          
+          <div class="modal-actions">
+            <button class="btn btn-secondary" (click)="closeLogoutConfirm()">Cancel</button>
+            <button class="btn btn-primary btn-logout" (click)="confirmLogout()">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `,
   encapsulation: ViewEncapsulation.None,
   styles: [`
@@ -337,6 +429,89 @@ declare const lucide: any;
         padding: 0.625rem;
       }
     }
+
+    /* Logout Modal Styles */
+    .modal-overlay.logout-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .logout-modal .modal-content {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      padding: 2rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .logout-icon-wrap {
+      width: 56px;
+      height: 56px;
+      background: #fee4e2;
+      color: #d92d20;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .logout-icon-wrap .material-icons {
+      font-size: 28px;
+    }
+
+    .logout-modal .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #101828;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .logout-modal .modal-subtitle {
+      font-size: 0.9375rem;
+      color: #667085;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .btn-logout {
+      background: #d92d20 !important;
+      border-color: #d92d20 !important;
+      color: white !important;
+    }
+
+    .btn-logout:hover {
+      background: #b42318 !important;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
   `]
 })
 export class DashboardSidebarComponent implements AfterViewInit {
@@ -345,6 +520,20 @@ export class DashboardSidebarComponent implements AfterViewInit {
   @Output() toggleCollapse = new EventEmitter<void>();
 
   authService = inject(AuthService);
+  showLogoutConfirm = false;
+
+  openLogoutConfirm() {
+    this.showLogoutConfirm = true;
+  }
+
+  closeLogoutConfirm() {
+    this.showLogoutConfirm = false;
+  }
+
+  confirmLogout() {
+    this.showLogoutConfirm = false;
+    this.authService.logout();
+  }
 
   ngAfterViewInit() {
     this.initIcons();
@@ -358,5 +547,82 @@ export class DashboardSidebarComponent implements AfterViewInit {
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
+  }
+
+  /**
+   * Generate route path based on user role
+   * @param path - The route path (e.g., 'tasks', 'students')
+   * @returns Full route path with role prefix (e.g., '/admin/tasks', '/manager/tasks')
+   */
+  getRoutePath(path: string): string {
+    const currentUser = this.authService.currentUserValue;
+    const userRole = currentUser?.role?.toUpperCase();
+    const isEmployee = currentUser?.isEmployee;
+    
+    // Determine base route based on role
+    let baseRoute = '/admin'; // default
+    
+    if (userRole === 'MANAGER') {
+      baseRoute = '/manager';
+    } else if (userRole === 'STUDENT') {
+      baseRoute = '/student';
+    } else if (isEmployee || userRole === 'EMPLOYEE' || userRole === 'SENIOR_COUNSELLOR' || userRole === 'JUNIOR_COUNSELLOR') {
+      baseRoute = '/employee';
+    } else if (userRole === 'COMPANY') {
+      baseRoute = '/company';
+    } else if (userRole === 'REFERRAL') {
+      baseRoute = '/referral';
+    }
+    
+    // Return base route for empty path, or base + path
+    return path ? `${baseRoute}/${path}` : baseRoute;
+  }
+
+  /**
+   * Check if current user is admin
+   * @returns true if user is admin, false otherwise
+   */
+  isAdmin(): boolean {
+    const currentUser = this.authService.currentUserValue;
+    return currentUser?.role?.toUpperCase() === 'ADMIN';
+  }
+
+  /**
+   * Check if current user is admin or manager
+   * @returns true if user is admin or manager, false otherwise
+   */
+  isAdminOrManager(): boolean {
+    const currentUser = this.authService.currentUserValue;
+    const userRole = currentUser?.role?.toUpperCase();
+    return userRole === 'ADMIN' || userRole === 'MANAGER';
+  }
+
+  /**
+   * Check if current user is company or referral
+   * @returns true if user is company or referral, false otherwise
+   */
+  isCompanyOrReferral(): boolean {
+    const currentUser = this.authService.currentUserValue;
+    const userRole = currentUser?.role?.toUpperCase();
+    return userRole === 'COMPANY' || userRole === 'REFERRAL';
+  }
+
+  /**
+   * Check if current user is student
+   * @returns true if user is student, false otherwise
+   */
+  isStudent(): boolean {
+    const currentUser = this.authService.currentUserValue;
+    return currentUser?.role?.toUpperCase() === 'STUDENT';
+  }
+
+  /**
+   * Check if current user is employee
+   * @returns true if user has isEmployee flag, false otherwise
+   */
+  isEmployee(): boolean {
+    const currentUser = this.authService.currentUserValue;
+    const userRole = currentUser?.role?.toUpperCase();
+    return currentUser?.isEmployee === true || userRole === 'EMPLOYEE' || userRole === 'SENIOR_COUNSELLOR' || userRole === 'JUNIOR_COUNSELLOR';
   }
 }

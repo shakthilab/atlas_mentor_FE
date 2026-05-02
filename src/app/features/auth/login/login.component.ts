@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -104,10 +104,11 @@ import { NotificationService } from '../../../core/services/notification.service
     </div>
   `
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private notificationService = inject(NotificationService);
 
   loginForm = this.fb.group({
     email: ['', [Validators.required]],
@@ -117,7 +118,16 @@ export class LoginComponent {
 
   showPassword = false;
   isLoading = false;
-  private notificationService = inject(NotificationService);
+
+  ngOnInit() {
+    const rememberedEmail = localStorage.getItem('remembered_email');
+    if (rememberedEmail) {
+      this.loginForm.patchValue({
+        email: rememberedEmail,
+        rememberMe: true
+      });
+    }
+  }
 
   togglePassword() {
     this.showPassword = !this.showPassword;
@@ -131,7 +141,13 @@ export class LoginComponent {
 
     this.isLoading = true;
 
-    const { email, password } = this.loginForm.value;
+    const { email, password, rememberMe } = this.loginForm.value;
+
+    if (rememberMe) {
+      localStorage.setItem('remembered_email', email!);
+    } else {
+      localStorage.removeItem('remembered_email');
+    }
 
     this.authService.login(email!, password!).subscribe({
       next: (user) => {
@@ -144,27 +160,30 @@ export class LoginComponent {
           } else {
             // Role-based redirection
             const role = user.role?.toUpperCase();
-            switch(role) {
-              case 'ADMIN':
-                this.router.navigate(['/admin']);
-                break;
-              case 'STUDENT':
-                this.router.navigate(['/student']);
-                break;
-              case 'EMPLOYEE':
-                this.router.navigate(['/employee']);
-                break;
-              case 'MANAGER':
-                this.router.navigate(['/manager']);
-                break;
-              case 'COMPANY':
-                this.router.navigate(['/company']);
-                break;
-              case 'REFERRAL':
-                this.router.navigate(['/referral']);
-                break;
-              default:
-                this.router.navigate(['/']);
+            const isEmployee = user.isEmployee;
+
+            if (isEmployee || role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') {
+              this.router.navigate(['/employee']);
+            } else {
+              switch(role) {
+                case 'ADMIN':
+                  this.router.navigate(['/admin']);
+                  break;
+                case 'STUDENT':
+                  this.router.navigate(['/student']);
+                  break;
+                case 'MANAGER':
+                  this.router.navigate(['/manager']);
+                  break;
+                case 'COMPANY':
+                  this.router.navigate(['/company']);
+                  break;
+                case 'REFERRAL':
+                  this.router.navigate(['/referral']);
+                  break;
+                default:
+                  this.router.navigate(['/']);
+              }
             }
           }
         }

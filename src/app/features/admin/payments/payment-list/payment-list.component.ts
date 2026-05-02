@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { RoleConfigService } from '../../../../core/services/role-config.service';
 
 @Component({
   selector: 'app-payment-list',
@@ -13,8 +14,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
     <div class="module-container">
       <div class="module-header">
         <div>
-          <h1 class="page-title">Payment Tracking</h1>
-          <p class="page-subtitle">Manage student fees, referral commissions, and approvals.</p>
+          <h1 class="page-title">{{ roleConfig.getRoleSpecificTitle('Payment Tracking') }}</h1>
+          <p class="page-subtitle">{{ getRoleSpecificSubtitle() }}</p>
         </div>
         <div class="header-actions">
           <div class="view-switcher mr-3">
@@ -220,6 +221,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   `]
 })
 export class PaymentListComponent {
+  roleConfig = inject(RoleConfigService);
   searchQuery = '';
   filterStatus = '';
   viewMode: 'list' | 'grid' = 'list';
@@ -227,6 +229,24 @@ export class PaymentListComponent {
 
   loadMoreCards() {
     this.displayedCardsCount += 10;
+  }
+
+  getRoleSpecificSubtitle(): string {
+    const role = this.roleConfig.getCurrentUserRole();
+    switch (role) {
+      case 'ADMIN':
+        return 'Manage student fees, referral commissions, and approvals.';
+      case 'MANAGER':
+        return 'Manage payments for your branch.';
+      case 'COMPANY':
+        return 'Manage payments for your company referrals.';
+      case 'REFERRAL':
+        return 'Manage your referral commissions and payments.';
+      case 'STUDENT':
+        return 'View your payment history and pending fees.';
+      default:
+        return 'Manage payment information.';
+    }
   }
 
   payments = [
