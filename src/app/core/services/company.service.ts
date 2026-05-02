@@ -8,6 +8,7 @@ export interface Company {
   name: string;
   email: string;
   phone: string;
+  mobileCountryCodeId?: number;
   firstName?: string;
   lastName?: string;
   role?: string;

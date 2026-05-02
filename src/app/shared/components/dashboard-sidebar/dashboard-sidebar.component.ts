@@ -118,7 +118,7 @@ declare const lucide: any;
       <!-- Sidebar Footer Logout -->
       <div class="sidebar-logout">
         <button (click)="authService.logout()" class="logout-footer-btn">
-          <i data-lucide="log-out"></i>
+          <span class="material-icons" style="font-size: 18px;">logout</span>
           <span *ngIf="!isCollapsed">Logout</span>
         </button>
       </div>
@@ -266,7 +266,7 @@ declare const lucide: any;
       border-color: var(--color-gray-300);
     }
 
-    .logout-footer-btn i {
+    .logout-footer-btn i, .logout-footer-btn .material-icons {
       width: 18px;
       height: 18px;
       color: var(--color-gray-500);

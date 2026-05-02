@@ -600,8 +600,6 @@
   font-family: inherit;
   outline: none;
   white-space: nowrap;
-  background-color: var(--dash-primary);
-  color: white !important;
 }
 
 .btn:active {
@@ -609,13 +607,12 @@
 }
 
 .btn:hover {
-  background-color: var(--dash-primary-dark) !important;
-  color: white !important;
+  transform: translateY(-1px);
 }
 
 .btn-primary {
   background: var(--dash-primary);
-  color: white !important;
+  color: white;
 }
 
 .btn-primary:hover {

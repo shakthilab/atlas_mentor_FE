@@ -2,14 +2,18 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { TaskService, Task, TaskFilter, CreateTaskRequest, ApiError } from '../../../../core/services/task.service';
+import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { TaskService, Task, TaskFilter, CreateTaskRequest, ApiError, TaskComment, Activity } from '../../../../core/services/task.service';
 import { EmployeeService, Employee } from '../../../../core/services/employee.service';
 import { RoleService, Role } from '../../../../core/services/role.service';
+
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-detail-panel.component';
 
 @Component({
   selector: 'app-task-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, DragDropModule, EmptyStateComponent, TaskDetailPanelComponent],
   template: `
     <div class="module-container">
       <div class="module-header">
@@ -18,13 +22,13 @@ import { RoleService, Role } from '../../../../core/services/role.service';
           <p class="page-subtitle">Track and manage student processing workflows.</p>
         </div>
         <div class="header-actions">
-          <div class="view-toggle">
-            <button class="toggle-btn active" [routerLink]="['/admin/tasks']">
+          <div class="view-switcher">
+            <button class="switcher-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List View">
               <span class="material-icons">list</span>
               <span>List</span>
             </button>
-            <button class="toggle-btn" [routerLink]="['/admin/tasks/kanban']">
-              <span class="material-icons">grid_view</span>
+            <button class="switcher-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'" title="Board View">
+              <span class="material-icons">dashboard</span>
               <span>Board</span>
             </button>
           </div>
@@ -39,44 +43,70 @@ import { RoleService, Role } from '../../../../core/services/role.service';
       <div class="filters-card">
         <div class="search-bar">
           <span class="material-icons">search</span>
-          <input type="text" placeholder="Search tasks..." [(ngModel)]="searchQuery">
+          <input type="text" placeholder="Search tasks..." [(ngModel)]="searchQuery" (input)="applyFilters()">
         </div>
         <div class="filter-actions">
           <div class="filter-dropdown">
-            <select class="filter-select" [(ngModel)]="filterStatus">
+            <select class="filter-select" [(ngModel)]="filterStatus" (change)="applyFilters()">
               <option value="">All Statuses</option>
-              <option value="To Do">To Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
+              <option value="TO_DO">To Do</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="DONE">Done</option>
             </select>
             <span class="material-icons dropdown-chevron">expand_more</span>
           </div>
           <div class="filter-dropdown">
-            <select class="filter-select" [(ngModel)]="filterPriority">
+            <select class="filter-select" [(ngModel)]="filterPriority" (change)="applyFilters()">
               <option value="">All Priorities</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
             </select>
             <span class="material-icons dropdown-chevron">expand_more</span>
           </div>
-          <button class="btn-icon-secondary">
+          <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters">
             <span class="material-icons">tune</span>
           </button>
         </div>
       </div>
 
-      <div class="empty-state-container" *ngIf="inProgressTasks.length === 0 && todoTasks.length === 0 && doneTasks.length === 0">
-        <div class="empty-state-content">
-          <span class="material-icons empty-icon">assignment</span>
-          <h3>No Tasks Found</h3>
-          <p>There are currently no tasks assigned. Create your first task to get started.</p>
+      <!-- Advanced Filters (Date Range) -->
+      <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label>Due Date From</label>
+            <input type="date" [(ngModel)]="dueDateFrom" (change)="applyFilters()">
+          </div>
+          <div class="filter-group">
+            <label>Due Date To</label>
+            <input type="date" [(ngModel)]="dueDateTo" (change)="applyFilters()">
+          </div>
+          <div class="filter-group">
+            <label>Assigned From</label>
+            <input type="date" [(ngModel)]="assignedDateFrom" (change)="applyFilters()">
+          </div>
+          <div class="filter-group">
+            <label>Assigned To</label>
+            <input type="date" [(ngModel)]="assignedDateTo" (change)="applyFilters()">
+          </div>
+          <div class="filter-group">
+            <label>&nbsp;</label>
+            <button class="btn-ghost-sm" (click)="clearAdvancedFilters()">Clear All</button>
+          </div>
         </div>
       </div>
 
-      <!-- Task Card List -->
-      <div class="task-list-wrapper">
-        
+      <app-empty-state 
+        *ngIf="inProgressTasks.length === 0 && todoTasks.length === 0 && doneTasks.length === 0"
+        title="No Tasks Found"
+        message="There are currently no tasks assigned. Create your first task to get started."
+        [showAction]="true"
+        actionText="Create Task"
+        (actionClick)="openCreateModal()">
+      </app-empty-state>
+
+      <!-- View: List -->
+      <div class="task-list-wrapper" *ngIf="viewMode === 'list' && !loading && tasks.length > 0">
         <!-- Group: In Progress -->
         <div class="group-section" *ngIf="inProgressTasks.length > 0">
           <div class="group-header in-progress">
@@ -124,8 +154,8 @@ import { RoleService, Role } from '../../../../core/services/role.service';
                   </div>
 
                   <div class="meta-item assignee">
-                    <div class="avatar-circle" [attr.data-initials]="task.assignee || 'NA'" [ngClass]="'avatar-' + (task.assignee?.toLowerCase() || 'default')">
-                      {{ task.assignee || 'NA' }}
+                    <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                      {{ getInitials(task.assigneeName || task.assignee) }}
                     </div>
                   </div>
                 </div>
@@ -145,7 +175,7 @@ import { RoleService, Role } from '../../../../core/services/role.service';
           </div>
 
           <div class="cards-container">
-            <div *ngFor="let task of todoTasks" class="task-card-row" [class.selected]="task.selected" (click)="viewTaskDetails(task)">
+            <div *ngFor="let task of todoTasks" class="task-card-row" (click)="viewTaskDetails(task)">
               <div class="card-content-wrap">
                 <div class="check-box" (click)="$event.stopPropagation()">
                   <span class="material-icons-outlined">radio_button_unchecked</span>
@@ -181,8 +211,8 @@ import { RoleService, Role } from '../../../../core/services/role.service';
                   </div>
 
                   <div class="meta-item assignee">
-                    <div class="avatar-circle" [attr.data-initials]="task.assignee || 'NA'" [ngClass]="'avatar-' + (task.assignee?.toLowerCase() || 'default')">
-                      {{ task.assignee || 'NA' }}
+                    <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                      {{ getInitials(task.assigneeName || task.assignee) }}
                     </div>
                   </div>
                 </div>
@@ -238,10 +268,145 @@ import { RoleService, Role } from '../../../../core/services/role.service';
                   </div>
 
                   <div class="meta-item assignee">
-                    <div class="avatar-circle" [attr.data-initials]="task.assignee || 'NA'" [ngClass]="'avatar-' + (task.assignee?.toLowerCase() || 'default')">
-                      {{ task.assignee || 'NA' }}
+                    <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                      {{ getInitials(task.assigneeName || task.assignee) }}
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View: Board (Kanban) -->
+      <div class="kanban-wrapper" cdkDropListGroup *ngIf="viewMode === 'board' && !loading && tasks.length > 0">
+        <!-- Column: To Do -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <div class="header-left">
+              <span class="status-dot todo"></span>
+              <h3 class="column-title">To Do</h3>
+              <span class="count">{{ todoTasks.length }}</span>
+            </div>
+            <button class="btn-icon-sm" (click)="openCreateModal()"><span class="material-icons">add</span></button>
+          </div>
+          
+          <div
+            cdkDropList
+            [cdkDropListData]="todoTasks"
+            (cdkDropListDropped)="drop($event, 'TO_DO')"
+            class="kanban-task-list">
+            <div *ngFor="let task of todoTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
+              <div class="card-content">
+                <h4 class="task-title">{{ task.title }}</h4>
+                <p class="task-desc">{{ task.description }}</p>
+                
+                <div class="card-meta-row">
+                  <span class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                    <span class="dot"></span> {{ task.priority }}
+                  </span>
+                  <div class="assignee-avatar-sm" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                    {{ getInitials(task.assigneeName || task.assignee) }}
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="footer-item">
+                  <span class="material-icons-outlined">event</span>
+                  {{ task.dueDate | date:'MMM d' }}
+                </div>
+                <div class="footer-item">
+                  <span class="material-icons-outlined">chat_bubble_outline</span>
+                  {{ task.comments || 0 }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: In Progress -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <div class="header-left">
+              <span class="status-dot in-progress"></span>
+              <h3 class="column-title">In Progress</h3>
+              <span class="count">{{ inProgressTasks.length }}</span>
+            </div>
+            <button class="btn-icon-sm" (click)="openCreateModal()"><span class="material-icons">add</span></button>
+          </div>
+          
+          <div
+            cdkDropList
+            [cdkDropListData]="inProgressTasks"
+            (cdkDropListDropped)="drop($event, 'IN_PROGRESS')"
+            class="kanban-task-list">
+            <div *ngFor="let task of inProgressTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
+              <div class="card-content">
+                <h4 class="task-title">{{ task.title }}</h4>
+                <p class="task-desc">{{ task.description }}</p>
+                
+                <div class="card-meta-row">
+                  <span class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                    <span class="dot"></span> {{ task.priority }}
+                  </span>
+                  <div class="assignee-avatar-sm" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                    {{ getInitials(task.assigneeName || task.assignee) }}
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="footer-item">
+                  <span class="material-icons-outlined">event</span>
+                  {{ task.dueDate | date:'MMM d' }}
+                </div>
+                <div class="footer-item">
+                  <span class="material-icons-outlined">chat_bubble_outline</span>
+                  {{ task.comments || 0 }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: Done -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <div class="header-left">
+              <span class="status-dot done"></span>
+              <h3 class="column-title">Done</h3>
+              <span class="count">{{ doneTasks.length }}</span>
+            </div>
+            <button class="btn-icon-sm" (click)="openCreateModal()"><span class="material-icons">add</span></button>
+          </div>
+          
+          <div
+            cdkDropList
+            [cdkDropListData]="doneTasks"
+            (cdkDropListDropped)="drop($event, 'DONE')"
+            class="kanban-task-list">
+            <div *ngFor="let task of doneTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
+              <div class="card-content">
+                <h4 class="task-title">{{ task.title }}</h4>
+                <p class="task-desc">{{ task.description }}</p>
+                
+                <div class="card-meta-row">
+                  <span class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                    <span class="dot"></span> {{ task.priority }}
+                  </span>
+                  <div class="assignee-avatar-sm" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                    {{ getInitials(task.assigneeName || task.assignee) }}
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="footer-item">
+                  <span class="material-icons-outlined">event</span>
+                  {{ task.dueDate | date:'MMM d' }}
+                </div>
+                <div class="footer-item">
+                  <span class="material-icons-outlined">chat_bubble_outline</span>
+                  {{ task.comments || 0 }}
                 </div>
               </div>
             </div>
@@ -282,7 +447,7 @@ import { RoleService, Role } from '../../../../core/services/role.service';
                 <select class="form-control" [(ngModel)]="newTask.assigneeId" required #assignee="ngModel" [class.is-invalid]="assignee.invalid && assignee.touched">
                   <option value="" disabled selected>Select employee...</option>
                   <option *ngFor="let emp of employees" [value]="emp.id">
-                    {{ emp.name }}
+                    {{ emp.name || (emp.firstName + ' ' + (emp.lastName || '')) }}
                   </option>
                 </select>
                 <div class="invalid-feedback" *ngIf="assignee.invalid && assignee.touched">Assignee is required</div>
@@ -319,219 +484,84 @@ import { RoleService, Role } from '../../../../core/services/role.service';
         </div>
       </div>
 
-      <!-- Side Panel Overlay (identical to board) -->
-      <div class="side-panel-overlay" *ngIf="showDetails" (click)="closeDetails()">
-        <div class="side-panel" (click)="$event.stopPropagation()" [class.open]="showDetails">
-          <div class="panel-header">
-            <div class="panel-task-id">
-              <span class="material-icons-outlined">radio_button_unchecked</span>
-              {{ selectedTask?.title }}
-            </div>
-            <button class="btn-icon-sm" (click)="closeDetails()">
-              <span class="material-icons">close</span>
-            </button>
-          </div>
-
-          <div class="panel-body">
-            <h2 class="panel-title">{{ selectedTask?.title }}</h2>
-
-            <div class="panel-grid">
-              <div class="grid-item">
-                <label><span class="material-icons-outlined">person_outline</span> Assignee</label>
-                <div class="assignee-val">
-                  <div class="assignee-avatar-sm" [ngClass]="'avatar-' + selectedTask?.assigneeName?.toLowerCase()">
-                    {{ selectedTask?.assigneeName }}
-                  </div>
-                  {{ selectedTask?.assigneeName }}
-                </div>
-              </div>
-              <div class="grid-item">
-                <label><span class="material-icons-outlined">person_add_alt</span> Assigned By</label>
-                <div class="assignee-val">
-                  <div class="assignee-avatar-sm" [ngClass]="'avatar-' + selectedTask?.assignerName?.toLowerCase()">
-                    {{ selectedTask?.assignerName }}
-                  </div>
-                  {{ selectedTask?.assignerName }}
-                </div>
-              </div>
-              <div class="grid-item">
-                <label><span class="material-icons-outlined">calendar_today</span> Due date</label>
-                <div class="date-val">{{ selectedTask?.dueDate }}</div>
-              </div>
-              <div class="grid-item">
-                <label><span class="material-icons-outlined">event_note</span> Created At</label>
-                <div class="date-val">{{ selectedTask?.createdAt | date:'yyyy-MM-dd' }}</div>
-              </div>
-
-              <div class="grid-item">
-                <label><span class="material-icons-outlined">flag</span> Priority</label>
-                <div class="dropdown-wrapper">
-                  <div class="priority-badge-dropdown" [ngClass]="selectedTask?.priority?.toLowerCase()" (click)="togglePanelDropdown('priority')">
-                    {{ selectedTask?.priority }}
-                    <span class="material-icons">expand_more</span>
-                  </div>
-                  <div class="dropdown-menu" *ngIf="panelDropdown === 'priority'">
-                    <div class="dropdown-item" (click)="updateSelectedTask('priority', 'High')">High</div>
-                    <div class="dropdown-item" (click)="updateSelectedTask('priority', 'Medium')">Medium</div>
-                    <div class="dropdown-item" (click)="updateSelectedTask('priority', 'Low')">Low</div>
-                  </div>
-                </div>
-              </div>
-              <div class="grid-item">
-                <label><span class="material-icons-outlined">radio_button_unchecked</span> Status</label>
-                <div class="dropdown-wrapper">
-                  <div class="status-badge-dropdown" [ngClass]="selectedTask?.status?.toLowerCase()?.replace(' ', '-')" (click)="togglePanelDropdown('status')">
-                    {{ selectedTask?.status }}
-                    <span class="material-icons">expand_more</span>
-                  </div>
-                  <div class="dropdown-menu" *ngIf="panelDropdown === 'status'">
-                    <div class="dropdown-item" (click)="updateSelectedTask('status', 'To Do')">To Do</div>
-                    <div class="dropdown-item" (click)="updateSelectedTask('status', 'In Progress')">In Progress</div>
-                    <div class="dropdown-item" (click)="updateSelectedTask('status', 'Done')">Done</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="panel-section">
-              <label class="section-label">DESCRIPTION</label>
-              <div class="description-box">{{ selectedTask?.description }}</div>
-            </div>
-
-            <div class="tabs-container">
-              <div class="tab" [class.active]="activeTab === 'comments'" (click)="activeTab = 'comments'">Comments ({{ selectedTask?.comments }})</div>
-              <div class="tab" [class.active]="activeTab === 'activity'" (click)="activeTab = 'activity'">Activity</div>
-            </div>
-
-            <!-- Comments Tab -->
-            <div class="comments-list" *ngIf="activeTab === 'comments'">
-              <div class="comment-item">
-                <div class="comment-avatar" style="background: #3b82f6;">RP</div>
-                <div class="comment-content">
-                  <div class="comment-header">
-                    <span class="comment-author">Rohan Patel</span>
-                    <span class="comment-time">2h ago</span>
-                  </div>
-                  <div class="comment-bubble">Documents look complete. Let's submit by EOD.</div>
-                </div>
-              </div>
-              <div class="comment-item">
-                <div class="comment-avatar" style="background: #ef4444;">SK</div>
-                <div class="comment-content">
-                  <div class="comment-header">
-                    <span class="comment-author">Sara Khan</span>
-                    <span class="comment-time">1h ago</span>
-                  </div>
-                  <div class="comment-bubble">Embassy slot booked for Friday 10am 👍</div>
-                </div>
-              </div>
-              <div class="comment-item">
-                <div class="comment-avatar" style="background: #a855f7;">MJ</div>
-                <div class="comment-content">
-                  <div class="comment-header">
-                    <span class="comment-author">Mira Joshi</span>
-                    <span class="comment-time">12m ago</span>
-                  </div>
-                  <div class="comment-bubble">Adding the financial statement scan now.</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Activity Tab -->
-            <div class="activity-list" *ngIf="activeTab === 'activity'">
-              <div class="activity-item">
-                <div class="activity-dot" style="background: #3b82f6;"></div>
-                <div class="activity-content">
-                  <span class="activity-text"><strong>Sara Khan</strong> changed status to <span class="activity-badge in-progress">In Progress</span></span>
-                  <span class="activity-time">3h ago</span>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-dot" style="background: #f59e0b;"></div>
-                <div class="activity-content">
-                  <span class="activity-text"><strong>Rohan Patel</strong> changed priority to <span class="activity-badge high">High</span></span>
-                  <span class="activity-time">5h ago</span>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-dot" style="background: #10b981;"></div>
-                <div class="activity-content">
-                  <span class="activity-text"><strong>Mira Joshi</strong> was assigned to this task</span>
-                  <span class="activity-time">Yesterday</span>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-dot" style="background: #6b7280;"></div>
-                <div class="activity-content">
-                  <span class="activity-text"><strong>Sara Khan</strong> created this task</span>
-                  <span class="activity-time">Apr 10, 2026</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel-footer" *ngIf="activeTab === 'comments'">
-            <div class="comment-input-wrapper">
-              <div class="comment-avatar-small" style="background: #3b82f6;">RP</div>
-              <input type="text" placeholder="Write a comment, use @ to mention...">
-              <div class="input-actions">
-                <span class="material-icons-outlined">alternate_email</span>
-                <span class="material-icons-outlined">mood</span>
-                <button class="send-btn"><span class="material-icons">send</span></button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Side Panel Overlay -->
+      <app-task-detail-panel
+        *ngIf="showDetails"
+        [task]="selectedTask"
+        [comments]="selectedTaskComments"
+        [activities]="selectedTaskActivities"
+        (close)="closeDetails()"
+        (updateField)="onPanelUpdateField($event)"
+        (commentAdded)="addComment($event)">
+      </app-task-detail-panel>
     </div>
   `,
   styles: [`
-    :host { display: block; background-color: #fcfcfd; min-height: 100vh; }
-    .module-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; gap: 1.5rem; }
-    .page-title { font-size: 1.875rem; font-weight: 700; color: #101828; margin: 0; letter-spacing: -0.02em; }
-    .page-subtitle { color: #667085; margin: 0.5rem 0 0; font-size: 1rem; }
-    
-    @media (max-width: 768px) {
-      .module-container { padding: 1rem; }
-      .module-header { flex-direction: column; align-items: stretch; gap: 1rem; margin-bottom: 1.5rem; }
-      .page-title { font-size: 1.5rem; }
-      .header-actions { flex-direction: column-reverse; align-items: stretch; gap: 0.75rem; }
-      .view-toggle { width: 100%; }
-      .toggle-btn { flex: 1; justify-content: center; }
-      .btn-primary { width: 100%; justify-content: center; }
+    :host { display: block; width: 100%; }
+
+    /* Advanced Filters Panel */
+    .advanced-filters-panel {
+      background: white;
+      border: 1px solid #eaecf0;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     }
-    
-    .header-actions { display: flex; align-items: center; gap: 1rem; }
-    .view-toggle { display: flex; background: #f2f4f7; padding: 4px; border-radius: 10px; border: 1px solid #eaecf0; }
-    .toggle-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; border: none; background: transparent; color: #667085; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .toggle-btn.active { background: white; color: #344054; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); }
-    .toggle-btn .material-icons { font-size: 20px; }
-
-    .btn-primary { background: #2e90fa; color: white; border: 1px solid #2e90fa; padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 0.875rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
-    .btn-primary:hover { background: #1570ef; border-color: #1570ef; }
-
-    /* Filters Card */
-    .filters-card { background: white; padding: 16px 24px; border-radius: 12px; border: 1px solid #eaecf0; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); gap: 1.5rem; }
-    .search-bar { display: flex; align-items: center; gap: 12px; flex: 1; max-width: 480px; }
-    .search-bar .material-icons { color: #667085; font-size: 20px; }
-    .search-bar input { border: none; outline: none; width: 100%; font-size: 0.9375rem; color: #101828; }
-    .search-bar input::placeholder { color: #667085; }
-
-    .filter-actions { display: flex; gap: 12px; align-items: center; }
-    
-    @media (max-width: 1024px) {
-      .filters-card { flex-direction: column; align-items: stretch; padding: 16px; gap: 1rem; }
-      .search-bar { max-width: none; border: 1px solid #eaecf0; padding: 10px; border-radius: 8px; }
-      .filter-actions { justify-content: space-between; overflow-x: auto; padding-bottom: 4px; }
-      .filter-select { min-width: 120px; flex: 1; }
+    .advanced-filters-panel.show {
+      max-height: 200px;
+      padding: 20px 24px;
+      opacity: 1;
+      margin-bottom: 32px;
     }
-    .filter-dropdown { position: relative; display: flex; align-items: center; }
-    .filter-select { appearance: none; background: white; border: 1px solid #d0d5dd; padding: 10px 36px 10px 14px; border-radius: 8px; color: #344054; font-size: 0.875rem; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s; min-width: 140px; }
-    .filter-select:hover { border-color: #98a2b3; }
-    .dropdown-chevron { position: absolute; right: 10px; color: #667085; font-size: 20px; pointer-events: none; }
-    
-    .btn-icon-secondary { background: white; border: 1px solid #d0d5dd; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #667085; cursor: pointer; transition: all 0.2s; }
-    .btn-icon-secondary:hover { background: #f9fafb; border-color: #98a2b3; }
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+      align-items: flex-end;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475467;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-group input {
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.875rem;
+      color: #101828;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .filter-group input:focus {
+      border-color: #667cb0;
+      box-shadow: 0 0 0 4px rgba(102, 124, 176, 0.1);
+    }
+    .btn-ghost-sm {
+      background: transparent;
+      border: none;
+      color: #667085;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px;
+      text-align: left;
+    }
+    .btn-ghost-sm:hover {
+      color: #f04438;
+    }
 
     /* Task List Wrapper */
     .task-list-wrapper { display: flex; flex-direction: column; gap: 32px; }
@@ -731,12 +761,52 @@ import { RoleService, Role } from '../../../../core/services/role.service';
     .activity-badge.to-do { color: #4b5563; background: #f3f4f6; }
 
     .mt-4 { margin-top: 1.5rem; }
+
+    /* Kanban Styles */
+    .kanban-wrapper { display: flex; gap: 1.5rem; min-height: 60vh; overflow-x: auto; padding-bottom: 1rem; align-items: flex-start; }
+    .kanban-column { flex: 0 0 340px; background: #f9fafb; border-radius: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 250px); padding: 6px; }
+    .column-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px 8px; }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.todo { background: #4b5563; }
+    .status-dot.in-progress { background: #3b82f6; }
+    .status-dot.done { background: #10b981; }
+    .column-title { font-size: 0.9375rem; font-weight: 600; color: #101828; margin: 0; }
+    .count { font-size: 0.75rem; color: #667085; }
+    .kanban-task-list { flex: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 150px; }
+    .kanban-task-card { background: white; border-radius: 12px; border: 1px solid #eaecf0; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; position: relative; transition: all 0.2s; }
+    .kanban-task-card:hover { border-color: #d0d5dd; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .card-content { display: flex; flex-direction: column; gap: 8px; }
+    .card-content .task-title { font-size: 0.9375rem; font-weight: 600; color: #101828; margin: 0; }
+    .card-content .task-desc { font-size: 0.8125rem; color: #667085; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-meta-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .priority-badge-sm { display: inline-flex; align-items: center; gap: 4px; font-size: 0.6875rem; font-weight: 600; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; }
+    .priority-badge-sm.high { color: #b91c1c; background: #fef2f2; }
+    .priority-badge-sm.high .dot { background: #b91c1c; }
+    .priority-badge-sm.medium { color: #b45309; background: #fffbeb; }
+    .priority-badge-sm.medium .dot { background: #b45309; }
+    .priority-badge-sm.low { color: #047857; background: #f0fdf4; }
+    .priority-badge-sm.low .dot { background: #047857; }
+    .priority-badge-sm .dot { width: 4px; height: 4px; border-radius: 50%; }
+    .assignee-avatar-sm { width: 24px; height: 24px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; border: 2px solid white; }
+    .card-footer { display: flex; gap: 16px; align-items: center; padding-top: 12px; border-top: 1px solid #f2f4f7; margin-top: 12px; }
+    .footer-item { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #667085; font-weight: 500; }
+    .footer-item .material-icons-outlined { font-size: 14px; }
+    .cdk-drag-preview { box-sizing: border-box; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    .cdk-drag-placeholder { opacity: 0; }
+    .cdk-drag-animating { transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); }
   `]
 })
 export class TaskListComponent implements OnInit {
+  viewMode: 'list' | 'board' = 'list';
   searchQuery = '';
   filterStatus = '';
   filterPriority = '';
+  dueDateFrom = '';
+  dueDateTo = '';
+  assignedDateFrom = '';
+  assignedDateTo = '';
+  showAdvancedFilters = false;
   
   roles: Role[] = [];
   selectedRoleId: string = '';
@@ -748,6 +818,9 @@ export class TaskListComponent implements OnInit {
   todoTasks: Task[] = [];
   doneTasks: Task[] = [];
   selectedTask: Task | null = null;
+  selectedTaskComments: TaskComment[] = [];
+  selectedTaskActivities: Activity[] = [];
+  
   showDetails = false;
   showCreateModal = false;
   panelDropdown: string | null = null;
@@ -766,6 +839,23 @@ export class TaskListComponent implements OnInit {
     dueDate: '',
     status: 'TO_DO'
   };
+
+  getInitials(name?: string): string {
+    if (!name || name.trim() === '') return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  getAvatarColor(name?: string): string {
+    if (!name) return '#94a3b8'; // default gray
+    const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#a78bfa', '#e879f9', '#f43f5e'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
 
   private taskService = inject(TaskService);
   private employeeService = inject(EmployeeService);
@@ -812,6 +902,18 @@ export class TaskListComponent implements OnInit {
         this.tasks = tasks;
         this.groupTasksByStatus();
         this.loading = false;
+        
+        // Fetch comments count for each task asynchronously to display on the cards
+        this.tasks.forEach(task => {
+          this.taskService.getComments(task.id).subscribe({
+            next: (comments: any) => {
+              task.comments = comments && Array.isArray(comments) ? comments.length : 0;
+            },
+            error: () => {
+              task.comments = 0;
+            }
+          });
+        });
       },
       error: (err: ApiError) => {
         this.error = err.message || 'Failed to load tasks';
@@ -830,11 +932,23 @@ export class TaskListComponent implements OnInit {
 
   applyFilters() {
     const filter: TaskFilter = {
+      search: this.searchQuery || undefined,
       status: this.filterStatus as Task['status'] || undefined,
       priority: this.filterPriority as Task['priority'] || undefined,
-      keyword: this.searchQuery || undefined
+      dueDateFrom: this.dueDateFrom || undefined,
+      dueDateTo: this.dueDateTo || undefined,
+      assignedDateFrom: this.assignedDateFrom || undefined,
+      assignedDateTo: this.assignedDateTo || undefined
     };
     this.loadTasks(filter);
+  }
+
+  clearAdvancedFilters() {
+    this.dueDateFrom = '';
+    this.dueDateTo = '';
+    this.assignedDateFrom = '';
+    this.assignedDateTo = '';
+    this.applyFilters();
   }
 
   openCreateModal() {
@@ -923,6 +1037,9 @@ export class TaskListComponent implements OnInit {
       this.taskService.updateStatus(task.id, value as Task['status']).subscribe({
         next: () => {
           this.moveTask(task, oldStatus, value);
+          if (this.selectedTask && this.selectedTask.id === task.id) {
+            this.loadActivity(task.id);
+          }
         },
         error: (err: ApiError) => {
           this.error = err.message || 'Failed to update status';
@@ -933,7 +1050,9 @@ export class TaskListComponent implements OnInit {
     } else if (field === 'priority') {
       this.taskService.updatePriority(task.id, value as Task['priority']).subscribe({
         next: () => {
-          // Priority updated
+          if (this.selectedTask && this.selectedTask.id === task.id) {
+            this.loadActivity(task.id);
+          }
         },
         error: (err: ApiError) => {
           this.error = err.message || 'Failed to update priority';
@@ -948,20 +1067,20 @@ export class TaskListComponent implements OnInit {
 
   moveTask(task: Task, from: string, to: string) {
     // Remove from old list
-    if (from === 'In Progress') {
+    if (from === 'IN_PROGRESS') {
       this.inProgressTasks = this.inProgressTasks.filter(t => t.id !== task.id);
-    } else if (from === 'To Do') {
+    } else if (from === 'TO_DO') {
       this.todoTasks = this.todoTasks.filter(t => t.id !== task.id);
-    } else if (from === 'Done') {
+    } else if (from === 'DONE') {
       this.doneTasks = this.doneTasks.filter(t => t.id !== task.id);
     }
 
     // Add to new list
-    if (to === 'In Progress') {
+    if (to === 'IN_PROGRESS') {
       this.inProgressTasks.unshift(task);
-    } else if (to === 'To Do') {
+    } else if (to === 'TO_DO') {
       this.todoTasks.unshift(task);
-    } else if (to === 'Done') {
+    } else if (to === 'DONE') {
       this.doneTasks.unshift(task);
     }
   }
@@ -971,6 +1090,8 @@ export class TaskListComponent implements OnInit {
     this.taskService.getTaskDetails(task.id).subscribe({
       next: (taskDetails) => {
         this.selectedTask = taskDetails.task;
+        this.selectedTaskComments = taskDetails.comments;
+        this.selectedTaskActivities = taskDetails.activities;
         this.showDetails = true;
         this.activeTab = 'comments';
         this.panelDropdown = null;
@@ -983,6 +1104,10 @@ export class TaskListComponent implements OnInit {
         console.error('Error loading task details:', err);
       }
     });
+  }
+
+  onPanelUpdateField(event: any) {
+    this.updateSelectedTask(event.field, event.value);
   }
 
   closeDetails() {
@@ -1005,6 +1130,7 @@ export class TaskListComponent implements OnInit {
           next: () => {
             (this.selectedTask as any)[field] = value;
             this.loadTasks(); // Refresh task list
+            this.loadActivity(this.selectedTask!.id); // Refresh activity timeline
           },
           error: (err: ApiError) => {
             this.error = err.message || 'Failed to update status';
@@ -1016,6 +1142,7 @@ export class TaskListComponent implements OnInit {
         this.taskService.updatePriority(this.selectedTask.id, value as Task['priority']).subscribe({
           next: () => {
             (this.selectedTask as any)[field] = value;
+            this.loadActivity(this.selectedTask!.id); // Refresh activity timeline
           },
           error: (err: ApiError) => {
             this.error = err.message || 'Failed to update priority';
@@ -1027,6 +1154,7 @@ export class TaskListComponent implements OnInit {
         this.taskService.updateDueDate(this.selectedTask.id, value).subscribe({
           next: () => {
             (this.selectedTask as any)[field] = value;
+            this.loadActivity(this.selectedTask!.id); // Refresh activity timeline
           },
           error: (err: ApiError) => {
             this.error = err.message || 'Failed to update due date';
@@ -1046,7 +1174,16 @@ export class TaskListComponent implements OnInit {
     
     this.taskService.addComment(this.selectedTask.id, comment).subscribe({
       next: () => {
-        this.viewTaskDetails(this.selectedTask!); // Reload task details to show new comment
+        // Reload task details to show new comment and activity
+        this.taskService.getTaskDetails(this.selectedTask!.id).subscribe({
+          next: (taskDetails) => {
+            this.selectedTaskComments = taskDetails.comments;
+            this.selectedTaskActivities = taskDetails.activities;
+            // Also update the comment count in the main task list if needed
+            const taskInList = this.tasks.find(t => t.id === this.selectedTask!.id);
+            if (taskInList) taskInList.comments = (taskInList.comments || 0) + 1;
+          }
+        });
       },
       error: (err: ApiError) => {
         this.error = err.message || 'Failed to add comment';
@@ -1059,13 +1196,44 @@ export class TaskListComponent implements OnInit {
   loadActivity(taskId: number) {
     this.taskService.getActivity(taskId).subscribe({
       next: (activities) => {
-        // Handle activity data - you might want to store this in a component property
-        console.log('Activities:', activities);
+        this.selectedTaskActivities = activities;
       },
       error: (err) => {
         this.error = 'Failed to load activity';
         console.error('Error loading activity:', err);
       }
     });
+  }
+
+  drop(event: CdkDragDrop<any[]>, newStatus: string) {
+    if (event.previousContainer === event.container) {
+      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+    } else {
+      const item = event.previousContainer.data[event.previousIndex];
+      const oldStatus = item.status;
+      item.status = newStatus;
+      
+      this.taskService.updateStatus(item.id, newStatus as Task['status']).subscribe({
+        next: () => {
+          transferArrayItem(
+            event.previousContainer.data,
+            event.container.data,
+            event.previousIndex,
+            event.currentIndex,
+          );
+          // Refresh list views to sync
+          this.groupTasksByStatus();
+          // If the panel is open for this task, refresh the activities
+          if (this.selectedTask && this.selectedTask.id === item.id) {
+            this.loadActivity(item.id);
+          }
+        },
+        error: (err: ApiError) => {
+          item.status = oldStatus; // Revert on error
+          this.error = err.message || 'Failed to update task status';
+          console.error('Error updating status on drop:', err);
+        }
+      });
+    }
   }
 }

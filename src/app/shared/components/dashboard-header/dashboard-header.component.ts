@@ -36,12 +36,12 @@ declare const lucide: any;
 
         <div class="profile-container">
           <div class="user-profile-section" (click)="showProfileMenu = !showProfileMenu">
-            <div class="user-avatar-circle">
-              <span>RP</span>
+            <div class="user-avatar-circle" [style.background]="userAvatarBg" [style.color]="userAvatarColor">
+              <span>{{ userInitials }}</span>
             </div>
             <div class="user-info">
-              <div class="user-name">Rohan Patel</div>
-              <div class="user-role">Admin</div>
+              <div class="user-name">{{ currentUser?.name || 'User' }}</div>
+              <div class="user-role">{{ currentUser?.role || '' }}</div>
             </div>
             <i data-lucide="chevron-down" class="chevron-icon" [class.rotated]="showProfileMenu"></i>
           </div>
@@ -49,15 +49,11 @@ declare const lucide: any;
           <!-- Profile Dropdown -->
           <div class="profile-dropdown" *ngIf="showProfileMenu">
             <div class="dropdown-header">
-              <div class="dropdown-user-name">Rohan Patel</div>
-              <div class="dropdown-user-email">admin&#64;example.com</div>
+              <div class="dropdown-user-name">{{ currentUser?.name || 'User' }}</div>
+              <div class="dropdown-user-email">{{ currentUser?.email || '' }}</div>
             </div>
             
             <div class="dropdown-body">
-              <a routerLink="/admin/profile" class="dropdown-item" (click)="showProfileMenu = false">
-                <i data-lucide="user"></i>
-                <span>Your Profile</span>
-              </a>
               <a routerLink="/admin/settings" class="dropdown-item" (click)="showProfileMenu = false">
                 <i data-lucide="settings"></i>
                 <span>Settings</span>
@@ -66,7 +62,7 @@ declare const lucide: any;
 
             <div class="dropdown-footer">
               <button class="dropdown-item logout" (click)="authService.logout()">
-                <i data-lucide="log-out"></i>
+                <span class="material-icons" style="font-size: 18px; margin-right: 8px;">logout</span>
                 <span>Sign out</span>
               </button>
             </div>
@@ -351,7 +347,7 @@ declare const lucide: any;
       color: var(--color-gray-900);
     }
 
-    .dropdown-item i {
+    .dropdown-item i, .dropdown-item .material-icons {
       width: 18px;
       height: 18px;
       color: var(--color-gray-400);
@@ -365,7 +361,7 @@ declare const lucide: any;
       background: var(--color-gray-50);
     }
 
-    .dropdown-item.logout i {
+    .dropdown-item.logout i, .dropdown-item.logout .material-icons {
       color: var(--color-error);
     }
 
@@ -416,6 +412,39 @@ export class DashboardHeaderComponent implements AfterViewInit {
 
   @Output() toggleNotifications = new EventEmitter<void>();
   @Output() toggleSidebar = new EventEmitter<void>();
+
+  get currentUser() {
+    return this.authService.currentUserValue;
+  }
+
+  get userInitials(): string {
+    const name = this.currentUser?.name || '';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  // Deterministic color based on name
+  get userAvatarBg(): string {
+    const colors = [
+      '#eff4ff', '#fdf2fa', '#ecfdf3', '#fff8e1',
+      '#fef3c7', '#e0f2fe', '#f3e8ff', '#fce7f3'
+    ];
+    const name = this.currentUser?.name || '';
+    const idx = name.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0) % colors.length;
+    return colors[idx];
+  }
+
+  get userAvatarColor(): string {
+    const colors = [
+      '#2e90fa', '#c11574', '#027a48', '#b45309',
+      '#d97706', '#0284c7', '#7c3aed', '#db2777'
+    ];
+    const name = this.currentUser?.name || '';
+    const idx = name.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0) % colors.length;
+    return colors[idx];
+  }
 
   ngAfterViewInit() {
     this.initIcons();

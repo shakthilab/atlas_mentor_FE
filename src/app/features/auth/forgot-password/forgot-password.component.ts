@@ -103,8 +103,12 @@ export class ForgotPasswordComponent {
     this.authService.forgotPassword(email).subscribe({
       next: () => {
         this.isLoading = false;
-        this.isSubmitted = true;
-        this.notificationService.success('Reset link sent to your email.');
+        this.notificationService.showModal(
+          'Email Sent!',
+          'Password reset link has been dispatched.',
+          `We have sent a password reset link to ${email}. Please check your inbox and follow the instructions.`
+        );
+        this.isSubmitted = true; // Still keep it to hide the form if desired
       },
       error: (err: any) => {
         this.isLoading = false;

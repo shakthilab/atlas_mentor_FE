@@ -2,10 +2,12 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+
 @Component({
   selector: 'app-document-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, EmptyStateComponent],
   template: `
     <div class="module-container">
       <div class="module-header">
@@ -70,13 +72,14 @@ import { FormsModule } from '@angular/forms';
              </div>
           </div>
 
-          <div class="empty-state-container" *ngIf="files.length === 0">
-            <div class="empty-state-content">
-              <span class="material-icons empty-icon">folder_open</span>
-              <h3>No Documents Found</h3>
-              <p>There are currently no documents uploaded. Upload your first document to get started.</p>
-            </div>
-          </div>
+          <app-empty-state 
+            *ngIf="files.length === 0"
+            title="No Documents Found"
+            message="There are currently no documents uploaded. Upload your first document to get started."
+            [showAction]="true"
+            actionText="Upload Document"
+            actionIcon="cloud_upload">
+          </app-empty-state>
 
           <div class="file-grid" *ngIf="files.length > 0">
             <div class="file-card" *ngFor="let file of files">
@@ -107,11 +110,7 @@ import { FormsModule } from '@angular/forms';
     .page-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
     .page-subtitle { color: var(--color-gray-600); margin: 0.25rem 0 0; font-size: 1rem; }
 
-    .empty-state-container { padding: 4rem 2rem; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); text-align: center; display: flex; justify-content: center; align-items: center; margin-bottom: 2rem; width: 100%; }
-    .empty-state-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-    .empty-icon { font-size: 3rem; color: var(--color-gray-300); margin-bottom: 0.5rem; }
-    .empty-state-content h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-800); margin: 0; }
-    .empty-state-content p { color: var(--color-gray-500); margin: 0; font-size: 0.875rem; max-width: 300px; }
+
 
 
     .main-layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; }

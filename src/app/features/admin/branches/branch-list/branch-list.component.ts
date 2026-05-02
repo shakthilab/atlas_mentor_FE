@@ -5,125 +5,155 @@ import { BranchService } from '../../../../core/services/branch.service';
 import { Branch } from '../../../../core/models/branch.model';
 import { NotificationService } from '../../../../core/services/notification.service';
 
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+
 @Component({
   selector: 'app-branch-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, EmptyStateComponent],
   template: `
     <div class="module-container">
       <div class="module-header">
-        <div>
+        <div class="header-left">
           <h1 class="page-title">Branch Management</h1>
-          <p class="page-subtitle">Manage all your branch locations and their operational status.</p>
+          <p class="page-subtitle">Manage all your branch locations and operational hubs.</p>
         </div>
         <div class="header-actions">
-          <div class="view-switcher mr-3">
+          <div class="view-switcher">
             <button class="switcher-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List View">
               <span class="material-icons">list</span>
+              <span>List</span>
             </button>
             <button class="switcher-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card View">
               <span class="material-icons">grid_view</span>
+              <span>Grid</span>
             </button>
           </div>
           <button class="btn btn-primary" (click)="openAddModal()">
             <span class="material-icons">add</span>
-            Add Branch
+            <span>Add Branch</span>
           </button>
         </div>
       </div>
 
-
-      <div *ngIf="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>Loading branches...</p>
-      </div>
-
-      <div class="empty-state-container" *ngIf="!loading && branches.length === 0">
-        <div class="empty-state-content">
-          <span class="material-icons empty-icon">business</span>
-          <h3>No Branches Found</h3>
-          <p>There are currently no branches configured. Add your first branch to get started.</p>
+      <!-- Filters -->
+      <div class="filters-card">
+        <div class="search-bar">
+          <span class="material-icons">search</span>
+          <input type="text" placeholder="Search branches by name or location..." [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()">
+        </div>
+        <div class="filter-actions">
+          <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
+            <span class="material-icons">tune</span>
+          </button>
         </div>
       </div>
 
-      <!-- Branch Table Card View -->
-      <div class="table-card desktop-view" *ngIf="!loading && branches.length > 0 && viewMode === 'list'">
-        <div class="table-card-header">
-          <div class="table-header-title">
-            <h2>Branch locations</h2>
-            <span class="count-badge">{{ branches.length }} locations</span>
+      <!-- Advanced Filters Panel -->
+      <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label>Status</label>
+            <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">Operational</option>
+              <option value="INACTIVE">Non-Operational</option>
+            </select>
           </div>
-          <button class="btn-icon">
-            <span class="material-icons">more_vert</span>
-          </button>
+          <div class="filter-group">
+            <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
+          </div>
         </div>
+      </div>
 
-        <div style="overflow-x: auto;">
-          <table class="premium-table">
-            <thead>
+      <!-- Loading State -->
+      <div class="loading-container shadow-premium" *ngIf="loading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
+        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+          <div class="loading-spinner"></div>
+        </div>
+        <p style="color: var(--color-gray-500);">Loading branches...</p>
+      </div>
+
+      <app-empty-state 
+        *ngIf="!loading && branches.length === 0"
+        title="No Branches Found"
+        message="There are currently no branches configured. Add your first branch to get started."
+        [showAction]="true"
+        actionText="Add Branch"
+        (actionClick)="openAddModal()">
+      </app-empty-state>
+
+      <!-- Table View -->
+      <div class="table-card" *ngIf="!loading && branches.length > 0 && viewMode === 'list'" style="border-radius: 12px; border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 2rem;">
+        <div class="table-responsive">
+          <table class="premium-table" style="width: 100%; border-collapse: collapse;">
+            <thead style="background: var(--color-gray-50); border-bottom: 1px solid var(--color-gray-200);">
               <tr>
-                <th style="width: 40px;"><input type="checkbox"></th>
                 <th>Branch Name</th>
                 <th>Location</th>
-                <th>Status</th>
-                <th>Team & Students</th>
-                <th>Revenue</th>
                 <th>Manager</th>
+                <th>Stats</th>
+                <th>Status</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let branch of branches" class="clickable-row">
-                <td><input type="checkbox"></td>
-                <td (click)="openEditModal(branch)">
-                  <div class="branch-meta">
-                    <div class="branch-icon-mini">
-                      <span class="material-icons">business</span>
+              <tr *ngFor="let branch of filteredBranches" class="clickable-row" (click)="openEditModal(branch)">
+                <td>
+                  <div class="entity-meta">
+                    <div class="avatar-circle" style="background: var(--color-primary-light); color: var(--color-primary);">
+                      <span class="material-icons" style="font-size: 18px;">business</span>
                     </div>
-                    <div class="info">
-                      <span class="name">{{ branch.name }}</span>
+                    <div class="entity-info">
+                      <span class="entity-name">{{ branch.name }}</span>
                     </div>
                   </div>
                 </td>
-                <td (click)="openEditModal(branch)">
-                  <span class="location-text" [title]="branch.location" style="white-space: normal; word-wrap: break-word; max-width: 200px; display: inline-block;">{{ branch.location }}</span>
-                </td>
-                <td (click)="openEditModal(branch)">
-                  <div class="status-indicator" [class.active]="branch.status !== 'INACTIVE'">
-                    <span class="status-dot"></span>
-                    {{ branch.status === 'INACTIVE' ? 'Non Operational' : 'Operational' }}
+                <td>
+                  <div class="entity-info">
+                    <span class="entity-name" style="font-weight: 500; font-size: 0.8125rem;">{{ branch.location }}</span>
                   </div>
                 </td>
-                <td (click)="openEditModal(branch)">
-                  <div class="metrics">
-                    <span class="metric"><strong>{{ branch.staffCount || 0 }}</strong> Staff</span>
-                    <span class="metric"><strong>{{ branch.studentCount || 0 }}</strong> Students</span>
+                <td>
+                  <div class="entity-meta" *ngIf="branch.manager">
+                    <div class="avatar-circle" [style.background]="getAvatarColor(branch.manager.name)" style="width: 24px; height: 24px; font-size: 10px;">
+                      {{ getInitials(branch.manager.name) }}
+                    </div>
+                    <span class="entity-name" style="font-size: 0.8125rem;">{{ branch.manager.name }}</span>
+                  </div>
+                  <span class="entity-subtext" *ngIf="!branch.manager">Unassigned</span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 12px;">
+                    <div class="entity-info">
+                      <span class="entity-subtext">Staff</span>
+                      <span class="entity-name" style="font-size: 0.75rem;">{{ branch.staffCount || 0 }}</span>
+                    </div>
+                    <div class="entity-info">
+                      <span class="entity-subtext">Students</span>
+                      <span class="entity-name" style="font-size: 0.75rem;">{{ branch.studentCount || 0 }}</span>
+                    </div>
                   </div>
                 </td>
-                <td (click)="openEditModal(branch)">
-                  <span class="revenue-cell">{{ (branch.revenue || 0) | currency:'USD':'symbol':'1.0-0' }}</span>
-                </td>
-                <td (click)="openEditModal(branch)">
-                  <span class="manager-text">{{ branch.manager?.name || 'Unassigned' }}</span>
+                <td>
+                  <span class="badge-status" [ngClass]="branch.status !== 'INACTIVE' ? 'success' : 'gray'">
+                    {{ branch.status === 'INACTIVE' ? 'Non-Operational' : 'Operational' }}
+                  </span>
                 </td>
                 <td style="text-align: right;">
-                  <div class="action-btns" style="position: relative;">
+                  <div class="action-btns" (click)="$event.stopPropagation()">
                     <button class="btn-icon" (click)="openEditModal(branch)" title="Edit"><span class="material-icons">edit</span></button>
-                    <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + branch.id)" title="More Options"><span class="material-icons">more_vert</span></button>
+                    <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + branch.id)"><span class="material-icons">more_vert</span></button>
                     
-                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + branch.id" (click)="$event.stopPropagation()">
-                      <button class="dropdown-item warning" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'">
-                        <span class="material-icons" style="font-size: 18px;">block</span>
-                        Deactivate
+                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + branch.id" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
+                      <button class="dropdown-item" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
+                        <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
                       </button>
-                      <button class="dropdown-item success" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'">
-                        <span class="material-icons" style="font-size: 18px;">check_circle</span>
-                        Reactivate
+                      <button class="dropdown-item" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
+                        <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
                       </button>
-                      <div class="dropdown-divider"></div>
-                      <button class="dropdown-item danger" (click)="onDeleteBranch(branch.id); openDropdownId = null">
-                        <span class="material-icons" style="font-size: 18px;">delete</span>
-                        Delete
+                      <button class="dropdown-item" (click)="onDeleteBranch(branch.id); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
+                        <span class="material-icons" style="font-size: 18px;">delete</span> Delete
                       </button>
                     </div>
                   </div>
@@ -132,187 +162,107 @@ import { NotificationService } from '../../../../core/services/notification.serv
             </tbody>
           </table>
         </div>
-
-        <!-- Pagination Footer (Static for now) -->
-        <div class="table-card-footer">
-          <button class="pagination-btn" disabled>
-            <span class="material-icons">arrow_back</span>
-            Previous
-          </button>
-          
-          <div class="pagination-pages">
-            <button class="page-num active">1</button>
-          </div>
-
-          <button class="pagination-btn" disabled>
-            Next
-            <span class="material-icons">arrow_forward</span>
-          </button>
-        </div>
       </div>
 
-
-      <!-- Branch Grid View (Premium Cards) -->
-      <div class="grid-container-wrapper" *ngIf="!loading && branches.length > 0 && viewMode === 'grid'">
-        <div class="grid-container">
-          <div class="branch-card shadow-premium" *ngFor="let branch of branches | slice:0:displayedCardsCount">
-            <div class="card-header">
-              <div class="branch-icon-wrap">
+      <!-- Grid View -->
+      <div class="grid-container" *ngIf="!loading && branches.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        <div class="table-card" *ngFor="let branch of filteredBranches | slice:0:displayedCardsCount" style="padding: 1.25rem; transition: all 0.2s;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <div class="entity-meta">
+              <div class="avatar-circle" style="background: var(--color-primary-light); color: var(--color-primary);">
                 <span class="material-icons">business</span>
               </div>
-              <div class="status-indicator" [class.active]="branch.status !== 'INACTIVE'">
-                <span class="status-dot"></span>
-                {{ branch.status === 'INACTIVE' ? 'Non Operational' : 'Operational' }}
+              <div class="entity-info">
+                <span class="entity-name">{{ branch.name }}</span>
+                <span class="badge-status" style="margin-top: 4px;" [ngClass]="branch.status !== 'INACTIVE' ? 'success' : 'gray'">
+                  {{ branch.status === 'INACTIVE' ? 'Non-Operational' : 'Operational' }}
+                </span>
               </div>
             </div>
-            
-            <div class="card-body" (click)="openEditModal(branch)">
-              <h3 class="branch-card-title">{{ branch.name }}</h3>
-              <div class="location-item">
-                <span class="material-icons">location_on</span>
-                <span class="text">{{ branch.location }}</span>
+          </div>
+          
+          <div style="padding: 1rem; background: var(--color-gray-50); border-radius: 8px; margin-bottom: 1rem;">
+            <div class="entity-info">
+              <span class="entity-subtext">Location</span>
+              <span class="entity-name" style="font-size: 0.875rem;">{{ branch.location }}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
+              <div class="entity-info">
+                <span class="entity-subtext">Staff</span>
+                <span class="entity-name" style="font-size: 0.875rem;">{{ branch.staffCount || 0 }}</span>
               </div>
-              
-              <div class="metrics-grid">
-                <div class="metric-box">
-                  <span class="label">Staff</span>
-                  <span class="value">{{ branch.staffCount || 0 }}</span>
-                </div>
-                <div class="metric-box">
-                  <span class="label">Students</span>
-                  <span class="value">{{ branch.studentCount || 0 }}</span>
-                </div>
-                <div class="metric-box full">
-                  <span class="label">Total Revenue</span>
-                  <span class="value pr">{{ (branch.revenue || 0) | currency:'USD':'symbol':'1.0-0' }}</span>
-                </div>
-              </div>
-              
-              <div class="manager-item">
-                <div class="avatar-mini">{{ (branch.manager?.name || 'U')[0] }}</div>
-                <div class="mgr-info">
-                  <span class="mgr-label">Manager</span>
-                  <span class="mgr-name">{{ branch.manager?.name || 'Unassigned' }}</span>
-                </div>
+              <div class="entity-info">
+                <span class="entity-subtext">Students</span>
+                <span class="entity-name" style="font-size: 0.875rem;">{{ branch.studentCount || 0 }}</span>
               </div>
             </div>
-            
-            <div class="card-footer">
-              <div class="action-btns" style="position: relative;">
-                <button class="footer-action" (click)="openEditModal(branch)" title="Edit Details">
-                  <span class="material-icons">edit</span>
-                </button>
-                <button class="footer-action" (click)="toggleDropdown($event, 'card-' + branch.id)" title="More Options">
-                  <span class="material-icons">more_vert</span>
-                </button>
-                
-                <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'card-' + branch.id" (click)="$event.stopPropagation()">
-                  <button class="dropdown-item warning" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'">
-                    <span class="material-icons" style="font-size: 18px;">block</span>
-                    Deactivate
-                  </button>
-                  <button class="dropdown-item success" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'">
-                    <span class="material-icons" style="font-size: 18px;">check_circle</span>
-                    Reactivate
-                  </button>
-                  <div class="dropdown-divider"></div>
-                  <button class="dropdown-item danger" (click)="onDeleteBranch(branch.id); openDropdownId = null">
-                    <span class="material-icons" style="font-size: 18px;">delete</span>
-                    Delete
-                  </button>
-                </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
+            <div class="entity-meta" *ngIf="branch.manager">
+              <div class="avatar-circle" [style.background]="getAvatarColor(branch.manager.name)" style="width: 24px; height: 24px; font-size: 10px;">
+                {{ getInitials(branch.manager.name) }}
               </div>
+              <span class="entity-subtext">{{ branch.manager.name }}</span>
+            </div>
+            <div class="action-btns" (click)="$event.stopPropagation()">
+              <button class="btn-icon" (click)="openEditModal(branch)"><span class="material-icons">edit</span></button>
+              <button class="btn-icon" (click)="toggleDropdown($event, 'card-' + branch.id)"><span class="material-icons">more_vert</span></button>
             </div>
           </div>
         </div>
 
-        <!-- Load More Button -->
-        <div class="load-more-container" *ngIf="branches.length > displayedCardsCount">
-          <button class="btn btn-secondary load-more-btn" (click)="loadMoreCards()">
-            <span>Load More Locations</span>
+        <!-- Load More -->
+        <div *ngIf="branches.length > displayedCardsCount" style="grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 1rem;">
+          <button class="btn btn-secondary" (click)="loadMoreCards()">
+            <span>Load More Branches</span>
             <span class="material-icons">expand_more</span>
           </button>
         </div>
       </div>
-    </div>
-
 
     <!-- Add/Edit Branch Modal -->
     <div class="modal-overlay" *ngIf="showAddModal" (click)="closeAddModal()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 500px;">
         <div class="modal-header">
-          <h2 class="modal-title">{{ isEditMode ? 'Edit Branch' : 'Add New Branch' }}</h2>
-          <button class="close-btn" (click)="closeAddModal()">
+          <div class="modal-header-icon" style="background: var(--color-primary-light); color: var(--color-primary); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <span class="material-icons">{{ isEditMode ? 'edit' : 'add_business' }}</span>
+          </div>
+          <div class="modal-header-text" style="flex: 1; padding-left: 1rem;">
+            <h2 class="modal-title" style="margin: 0; font-size: 1.25rem;">{{ isEditMode ? 'Edit Branch' : 'Add New Branch' }}</h2>
+            <p class="modal-subtitle" style="margin: 0.25rem 0 0; color: var(--color-gray-500); font-size: 0.875rem;">{{ isEditMode ? 'Update details for this location.' : 'Enter details for the new location.' }}</p>
+          </div>
+          <button class="btn-icon" (click)="closeAddModal()">
             <span class="material-icons">close</span>
           </button>
         </div>
         
-        <div class="modal-body">
-          <p class="modal-subtitle">
-            {{ isEditMode ? 'Update the details for this physical location.' : 'Enter details for the new physical location.' }}
-          </p>
-          
+        <div class="modal-body" style="padding: 1.5rem;">
           <form #branchForm="ngForm" (ngSubmit)="onSubmitBranch()">
-            <div class="form-group">
-              <label for="branchName">Branch Name</label>
-              <input 
-                type="text" 
-                id="branchName" 
-                name="name" 
-                class="form-control" 
-                [(ngModel)]="newBranch.name" 
-                placeholder="e.g., Chennai Center" 
-                required
-                #nameModel="ngModel"
-              >
-              <div *ngIf="nameModel.invalid && nameModel.touched" class="error-text">
-                Branch name is required.
-              </div>
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+              <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Branch Name</label>
+              <input type="text" name="name" class="form-control" [(ngModel)]="newBranch.name" placeholder="e.g., Chennai Center" required #nameModel="ngModel">
+              <div *ngIf="nameModel.invalid && nameModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">Branch name is required.</div>
             </div>
 
-            <div class="form-group">
-              <label for="branchLocation">Location / Address</label>
-              <textarea 
-                id="branchLocation" 
-                name="location" 
-                class="form-control" 
-                [(ngModel)]="newBranch.location" 
-                placeholder="e.g., 123 Main Street, Downtown" 
-                required
-                rows="3"
-                #locationModel="ngModel"
-              ></textarea>
-              <div *ngIf="locationModel.invalid && locationModel.touched" class="error-text">
-                Location is required.
-              </div>
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+              <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Location / Address</label>
+              <textarea name="location" class="form-control" [(ngModel)]="newBranch.location" placeholder="e.g., 123 Main Street" required rows="3" #locationModel="ngModel"></textarea>
+              <div *ngIf="locationModel.invalid && locationModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">Location is required.</div>
             </div>
 
-            <div class="form-group">
-              <label for="branchManager">Branch Manager *</label>
-              <select 
-                id="branchManager" 
-                name="managerId" 
-                class="form-control" 
-                [(ngModel)]="newBranch.managerId"
-                required
-                #managerModel="ngModel"
-              >
-                <option [ngValue]="undefined" disabled selected>Select Manager</option>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Branch Manager</label>
+              <select name="managerId" class="form-control" [(ngModel)]="newBranch.managerId">
+                <option [ngValue]="undefined">Select Manager (Optional)</option>
                 <option *ngFor="let mgr of managers" [value]="mgr.id">{{ mgr.name }}</option>
               </select>
-              <div *ngIf="managerModel.invalid && managerModel.touched" class="error-text">
-                Branch manager is required.
-              </div>
             </div>
 
-            <div class="modal-footer" style="padding: 1.5rem 0 0; border-top: 1px solid var(--color-gray-100); margin-top: 1.5rem;">
-              <button 
-                type="submit" 
-                class="btn btn-primary btn-block" 
-                [disabled]="branchForm.invalid || submitting"
-              >
-                <span *ngIf="!submitting">{{ isEditMode ? 'Save Changes' : 'Create Branch' }}</span>
-                <span *ngIf="submitting">Processing...</span>
+            <div class="modal-footer" style="padding-top: 1.5rem; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--color-gray-100);">
+              <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="branchForm.invalid || submitting">
+                {{ isEditMode ? 'Save Changes' : 'Create Branch' }}
               </button>
             </div>
           </form>
@@ -320,456 +270,39 @@ import { NotificationService } from '../../../../core/services/notification.serv
       </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Confirmation Modals -->
     <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
-      <div class="modal-content delete-modal" (click)="$event.stopPropagation()">
-        <div class="modal-body text-center" style="padding-top: 2.5rem;">
-          <div class="confirm-icon-wrap btn-danger">
-            <span class="material-icons">delete_forever</span>
-          </div>
-          <h2 class="modal-title mb-2">Delete Branch?</h2>
-          <p class="text-muted mb-4">
-            Are you sure you want to delete <strong>{{ branchToDelete?.name }}</strong>? <br>
-            This action is permanent and cannot be undone.
-          </p>
-          
-          <div class="modal-footer" style="padding: 0; margin-top: 2rem;">
-            <button 
-              type="button" 
-              class="btn btn-danger btn-block" 
-              (click)="confirmDelete()"
-              [disabled]="submitting"
-            >
-              <span *ngIf="!submitting">Yes, Delete Branch</span>
-              <span *ngIf="submitting">Deleting...</span>
-            </button>
-          </div>
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 400px; padding: 2rem; text-align: center;">
+        <div style="background: #fee4e2; color: #d92d20; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <span class="material-icons">delete_forever</span>
+        </div>
+        <h2 style="margin: 0 0 0.5rem; font-size: 1.125rem;">Delete Branch?</h2>
+        <p style="color: var(--color-gray-500); font-size: 0.875rem; margin-bottom: 2rem;">Are you sure you want to delete <strong>{{ branchToDelete?.name }}</strong>? This action cannot be undone.</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" style="flex: 1;" (click)="cancelDelete()">Cancel</button>
+          <button class="btn btn-primary" style="flex: 1; background: #d92d20; border-color: #d92d20;" (click)="confirmDelete()" [disabled]="submitting">Delete</button>
         </div>
       </div>
     </div>
 
-    <!-- Status Change Modal -->
     <div class="modal-overlay" *ngIf="showStatusModal" (click)="cancelStatusToggle()">
-      <div class="modal-content status-modal" (click)="$event.stopPropagation()">
-        <div class="modal-body text-center" style="padding-top: 2.5rem;">
-          <div class="confirm-icon-wrap" [ngClass]="branchToToggle?.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'">
-            <span class="material-icons">{{ branchToToggle?.status === 'ACTIVE' ? 'pause_circle' : 'play_circle' }}</span>
-          </div>
-          <h2 class="modal-title mb-2">Change Status?</h2>
-          <p class="text-muted mb-4">
-            Are you sure you want to <strong>{{ branchToToggle?.status === 'ACTIVE' ? 'deactivate' : 'activate' }}</strong> the branch <strong>{{ branchToToggle?.name }}</strong>?
-          </p>
-          
-          <div class="modal-footer" style="padding: 0; margin-top: 2rem;">
-            <button 
-              type="button" 
-              class="btn btn-block" 
-              [class.btn-primary]="branchToToggle?.status === 'INACTIVE'"
-              [class.btn-warning]="branchToToggle?.status === 'ACTIVE'"
-              (click)="confirmStatusToggle()"
-              [disabled]="submitting"
-            >
-              <span *ngIf="!submitting">Yes, {{ branchToToggle?.status === 'ACTIVE' ? 'Deactivate' : 'Activate' }}</span>
-              <span *ngIf="submitting">Updating...</span>
-            </button>
-          </div>
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 400px; padding: 2rem; text-align: center;">
+        <div [style.background]="branchToToggle?.status === 'ACTIVE' ? '#fef0c7' : '#d1fadf'" [style.color]="branchToToggle?.status === 'ACTIVE' ? '#dc6803' : '#039855'" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <span class="material-icons">{{ branchToToggle?.status === 'ACTIVE' ? 'pause_circle' : 'play_circle' }}</span>
+        </div>
+        <h2 style="margin: 0 0 0.5rem; font-size: 1.125rem;">Change Status?</h2>
+        <p style="color: var(--color-gray-500); font-size: 0.875rem; margin-bottom: 2rem;">Are you sure you want to <strong>{{ branchToToggle?.status === 'ACTIVE' ? 'deactivate' : 'activate' }}</strong> the branch <strong>{{ branchToToggle?.name }}</strong>?</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" style="flex: 1;" (click)="cancelStatusToggle()">Cancel</button>
+          <button class="btn btn-primary" style="flex: 1;" (click)="confirmStatusToggle()" [disabled]="submitting">Confirm</button>
         </div>
       </div>
     </div>
 
-
+    </div>
   `,
   styles: [`
-    .module-container { padding-bottom: 2rem; position: relative; }
-    .module-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; }
-    .header-actions { display: flex; align-items: center; gap: 0.75rem; }
-    .page-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
-    .page-subtitle { color: var(--color-gray-600); margin: 0.25rem 0 0; font-size: 1rem; }
-
-    /* View Switcher */
-    .view-switcher { display: flex; background: var(--color-gray-100); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--color-gray-200); }
-    .switcher-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--color-gray-500); cursor: pointer; border-radius: var(--radius-sm); transition: all var(--transition-fast); }
-    .switcher-btn .material-icons { font-size: 20px; }
-    .switcher-btn:hover { color: var(--color-gray-700); }
-    .switcher-btn.active { background: white; color: var(--color-gray-700); box-shadow: var(--shadow-sm); }
-
-
-    .action-group { display: flex; gap: 0.25rem; justify-content: flex-end; }
-    .btn-icon-sm { width: 34px; height: 34px; border-radius: var(--radius-md); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--transition-fast); background: transparent; color: var(--color-gray-500); }
-    .btn-icon-sm .material-icons { font-size: 20px; }
-    .btn-icon-sm:hover { background: var(--color-gray-100); color: var(--color-gray-700); }
-    
-    .delete-btn:hover { color: var(--color-error); background: #fef2f2; }
-
-    .error-text { color: var(--color-error); font-size: 0.75rem; margin-top: 0.375rem; font-weight: 500; }
-    
-    .loading-state { padding: 4rem 2rem; text-align: center; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); }
-    .empty-state-container { padding: 4rem 2rem; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); text-align: center; display: flex; justify-content: center; align-items: center; }
-    .empty-state-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-    .empty-icon { font-size: 3rem; color: var(--color-gray-300); margin-bottom: 0.5rem; }
-    .empty-state-content h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-800); margin: 0; }
-    .empty-state-content p { color: var(--color-gray-500); margin: 0; font-size: 0.875rem; max-width: 300px; }
-    .spinner { width: 40px; height: 40px; border: 3px solid var(--color-gray-100); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Delete/Status Modal Specifics */
-    .delete-icon-wrap, .status-icon-wrap { width: 3rem; height: 3rem; background: #fef2f2; color: var(--color-error); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; border: 8px solid #fffbfa; }
-    .delete-icon-wrap .material-icons, .status-icon-wrap .material-icons { font-size: 1.5rem; }
-    .status-icon-wrap { background: #ecfdf3; color: #027a48; border-color: #f6fef9; }
-    .status-icon-wrap.inactive { background: #fffcf5; color: #b54708; border-color: #fffaeb; }
-    .status-footer { margin-top: 2.5rem; padding: 0; gap: 1rem; }
-    .btn-warning { background: #f97316; color: white; border: none; }
-    .btn-warning:hover { background: #ea580c; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2); transform: translateY(-1px); }
-
-    /* Grid Layout Specifics */
-    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; animation: modalIn 0.3s ease-out; margin-top: 2rem; width: 100%; }
-    .branch-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); overflow: hidden; display: flex; flex-direction: column; transition: all var(--transition-fast); position: relative; box-shadow: var(--shadow-sm); }
-    .branch-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--color-gray-300); }
-    
-    .card-header { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid var(--color-gray-100); }
-    .branch-icon-wrap { width: 40px; height: 40px; background: var(--color-primary-light); color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-primary-border); }
-    .status-indicator { 
-      display: flex; 
-      align-items: center; 
-      gap: 0.375rem; 
-      font-size: 0.75rem; 
-      font-weight: 500; 
-      padding: 0.25rem 0.75rem; 
-      border-radius: 12px; 
-      background: var(--color-gray-100); 
-      color: var(--color-gray-700); 
-      border: 1px solid var(--color-gray-200); 
-    }
-    .status-indicator.active { 
-      background: #ecfdf3; 
-      color: #027a48; 
-      border-color: #abefc6; 
-    }
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--color-gray-400);
-    }
-    .status-indicator.active .status-dot {
-      background: #10b981;
-    }
-    
-    .card-body { padding: 1.25rem; flex: 1; cursor: pointer; }
-    .branch-card-title { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-900); margin: 0 0 0.5rem; }
-    .location-item { display: flex; gap: 0.5rem; color: var(--color-gray-600); font-size: 0.875rem; margin-bottom: 1.25rem; align-items: flex-start; }
-    .location-item .material-icons { font-size: 18px; color: var(--color-gray-400); margin-top: 1px; }
-    
-    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem; }
-    .metric-box { background: var(--color-gray-50); padding: 0.75rem; border-radius: var(--radius-md); display: flex; flex-direction: column; border: 1px solid var(--color-gray-100); }
-    .metric-box.full { grid-column: span 2; }
-    .metric-box .label { font-size: 0.7rem; text-transform: uppercase; color: var(--color-gray-500); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.025em; }
-    .metric-box .value { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
-    .metric-box .value.pr { color: var(--color-primary); }
-    
-    .manager-item { display: flex; align-items: center; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--color-gray-100); }
-    .avatar-mini { width: 32px; height: 32px; background: var(--color-gray-100); color: var(--color-gray-600); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; border: 1px solid var(--color-gray-200); }
-    .mgr-info { display: flex; flex-direction: column; }
-    .mgr-label { font-size: 0.7rem; color: var(--color-gray-500); font-weight: 500; }
-    .mgr-name { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
-    
-    .card-footer { padding: 1rem 1.25rem; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: flex-end; gap: 0.5rem; }
-    .footer-action { width: 32px; height: 32px; border-radius: var(--radius-md); border: 1px solid var(--color-gray-300); background: white; color: var(--color-gray-500); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--transition-fast); box-shadow: var(--shadow-xs); }
-    .footer-action:hover { color: var(--color-primary); border-color: var(--color-primary); }
-    .footer-action.warning { color: #d97706; border-color: #fbbf24; }
-    .footer-action.warning:hover { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
-    .footer-action.success { color: #059669; border-color: #34d399; }
-    .footer-action.success:hover { background: #d1fae5; color: #047857; border-color: #10b981; }
-    .footer-action.danger { color: #dc2626; border-color: #f87171; }
-    .footer-action.danger:hover { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
-    
-    .error-text { color: var(--color-error); font-size: 0.75rem; margin-top: 0.375rem; font-weight: 500; }
-    
-    .loading-state { padding: 4rem 2rem; text-align: center; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); }
-    .empty-state-container { padding: 4rem 2rem; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); text-align: center; display: flex; justify-content: center; align-items: center; }
-    .empty-state-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-    .empty-icon { font-size: 3rem; color: var(--color-gray-300); margin-bottom: 0.5rem; }
-    .empty-state-content h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-800); margin: 0; }
-    .empty-state-content p { color: var(--color-gray-500); margin: 0; font-size: 0.875rem; max-width: 300px; }
-    .spinner { width: 40px; height: 40px; border: 3px solid var(--color-gray-100); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Delete/Status Modal Specifics */
-    .status-footer { margin-top: 2.5rem; padding: 0; gap: 1rem; }
-    .btn-warning { background: #f97316; color: white; border: none; }
-    .btn-warning:hover { background: #ea580c; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2); transform: translateY(-1px); }
-
-    /* Grid Layout Specifics */
-    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; animation: modalIn 0.3s ease-out; margin-top: 2rem; width: 100%; }
-    .branch-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); overflow: hidden; display: flex; flex-direction: column; transition: all var(--transition-fast); position: relative; box-shadow: var(--shadow-sm); }
-    .branch-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--color-gray-300); }
-    
-    .card-header { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid var(--color-gray-100); }
-    .branch-icon-wrap { width: 40px; height: 40px; background: var(--color-primary-light); color: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-primary-border); }
-    .status-indicator { 
-      display: flex; 
-      align-items: center; 
-      gap: 0.375rem; 
-      font-size: 0.75rem; 
-      font-weight: 500; 
-      padding: 0.25rem 0.75rem; 
-      border-radius: 12px; 
-      background: var(--color-gray-100); 
-      color: var(--color-gray-700); 
-      border: 1px solid var(--color-gray-200); 
-    }
-    .status-indicator.active { 
-      background: #ecfdf3; 
-      color: #027a48; 
-      border-color: #abefc6; 
-    }
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--color-gray-400);
-    }
-    .status-indicator.active .status-dot {
-      background: #10b981;
-    }
-    
-    .card-body { padding: 1.25rem; flex: 1; cursor: pointer; }
-    .branch-card-title { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-900); margin: 0 0 0.5rem; }
-    .location-item { display: flex; gap: 0.5rem; color: var(--color-gray-600); font-size: 0.875rem; margin-bottom: 1.25rem; align-items: flex-start; }
-    .location-item .material-icons { font-size: 18px; color: var(--color-gray-400); margin-top: 1px; }
-    
-    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem; }
-    .metric-box { background: var(--color-gray-50); padding: 0.75rem; border-radius: var(--radius-md); display: flex; flex-direction: column; border: 1px solid var(--color-gray-100); }
-    .metric-box.full { grid-column: span 2; }
-    .metric-box .label { font-size: 0.7rem; text-transform: uppercase; color: var(--color-gray-500); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.025em; }
-    .metric-box .value { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
-    .metric-box .value.pr { color: var(--color-primary); }
-    
-    .manager-item { display: flex; align-items: center; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--color-gray-100); }
-    .avatar-mini { width: 32px; height: 32px; background: var(--color-gray-100); color: var(--color-gray-600); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; border: 1px solid var(--color-gray-200); }
-    .mgr-info { display: flex; flex-direction: column; }
-    .mgr-label { font-size: 0.7rem; color: var(--color-gray-500); font-weight: 500; }
-    .mgr-name { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
-    
-    .card-footer { padding: 1rem 1.25rem; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: flex-end; gap: 0.5rem; }
-    .footer-action { width: 32px; height: 32px; border-radius: var(--radius-md); border: 1px solid var(--color-gray-300); background: white; color: var(--color-gray-500); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--transition-fast); box-shadow: var(--shadow-xs); }
-    .footer-action:hover { color: var(--color-primary); border-color: var(--color-primary); }
-    .footer-action.warning { color: #d97706; border-color: #fbbf24; }
-    .footer-action.warning:hover { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
-    .footer-action.success { color: #059669; border-color: #34d399; }
-    .footer-action.success:hover { background: #d1fae5; color: #047857; border-color: #10b981; }
-    .footer-action.danger { color: #dc2626; border-color: #f87171; }
-    .footer-action.danger:hover { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
-
-    .load-more-container {
-      display: flex;
-      justify-content: center;
-      margin-top: 2.5rem;
-      padding-bottom: 1rem;
-    }
-    
-    .load-more-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      font-weight: 600;
-      box-shadow: var(--shadow-sm);
-      transition: all var(--transition-fast);
-    }
-    
-    .load-more-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
-    }
-
-    /* Action Buttons Styles */
-    .action-btns {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      justify-content: flex-end;
-    }
-    
-    .btn-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-md);
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      background: transparent;
-      color: var(--color-gray-500);
-    }
-    
-    .btn-icon .material-icons {
-      font-size: 18px;
-    }
-    
-    .btn-icon:hover {
-      background: var(--color-gray-100);
-      color: var(--color-gray-700);
-    }
-
-    /* Status Indicator Styles */
-    .status-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.375rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.25rem 0.75rem;
-      border-radius: 12px;
-      background: var(--color-gray-100);
-      color: var(--color-gray-700);
-      border: 1px solid var(--color-gray-200);
-    }
-    
-    .status-indicator.active {
-      background: #ecfdf3;
-      color: #027a48;
-      border-color: #abefc6;
-    }
-    
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--color-gray-400);
-    }
-    
-    .status-indicator.active .status-dot {
-      background: #10b981;
-    }
-    
-    .btn-action {
-      width: 36px;
-      height: 36px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--color-gray-300);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all var(--transition-fast);
-      background: white;
-      box-shadow: var(--shadow-xs);
-    }
-    
-    .btn-action .material-icons {
-      font-size: 18px;
-    }
-    
-    .btn-action.warning {
-      color: #d97706;
-      border-color: #fbbf24;
-    }
-    
-    .btn-action.warning:hover {
-      background: #fef3c7;
-      color: #b45309;
-      border-color: #f59e0b;
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .btn-action.success {
-      color: #059669;
-      border-color: #34d399;
-    }
-    
-    .btn-action.success:hover {
-      background: #d1fae5;
-      color: #047857;
-      border-color: #10b981;
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .btn-action.danger {
-      color: #dc2626;
-      border-color: #f87171;
-    }
-    
-    .btn-action.danger:hover {
-      background: #fee2e2;
-      color: #b91c1c;
-      border-color: #ef4444;
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-sm);
-    }
-
-    /* Action Dropdown Styles */
-    .action-dropdown {
-      position: absolute;
-      right: 0;
-      top: 100%;
-      background: white;
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-lg);
-      z-index: 1000;
-      min-width: 180px;
-      overflow: hidden;
-      margin-top: 4px;
-    }
-    
-    .dropdown-item {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border: none;
-      background: transparent;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--color-gray-700);
-      transition: all var(--transition-fast);
-      white-space: nowrap;
-    }
-    
-    .dropdown-item:hover {
-      background: var(--color-gray-50);
-    }
-    
-    .dropdown-item.warning {
-      color: #d97706;
-    }
-    
-    .dropdown-item.warning:hover {
-      background: #fef3c7;
-      color: #b45309;
-    }
-    
-    .dropdown-item.success {
-      color: #059669;
-    }
-    
-    .dropdown-item.success:hover {
-      background: #d1fae5;
-      color: #047857;
-    }
-    
-    .dropdown-item.danger {
-      color: #dc2626;
-    }
-    
-    .dropdown-item.danger:hover {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-    
-    .dropdown-divider {
-      height: 1px;
-      background: var(--color-gray-200);
-      margin: 4px 0;
-    }
+    :host { display: block; width: 100%; }
   `]
 
 })
@@ -792,6 +325,10 @@ export class BranchListComponent implements OnInit {
   newBranch: Partial<Branch> = { name: '', location: '' };
   branchToDelete: Branch | null = null;
   branchToToggle: Branch | null = null;
+  
+  searchQuery = '';
+  filterStatus = '';
+  showAdvancedFilters = false;
 
   ngOnInit() {
     this.loadBranches();
@@ -823,11 +360,54 @@ export class BranchListComponent implements OnInit {
     });
   }
 
+  getInitials(name?: string): string {
+    if (!name || name.trim() === '') return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  getAvatarColor(name?: string): string {
+    if (!name) return '#94a3b8'; // default gray
+    const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#a78bfa', '#e879f9', '#f43f5e'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
   loadManagers() {
     this.branchService.getManagers().subscribe({
       next: (data) => this.managers = data,
       error: (err) => console.error('Failed to load managers', err)
     });
+  }
+
+  get filteredBranches(): Branch[] {
+    return this.branches.filter(branch => {
+      const matchesSearch = !this.searchQuery || 
+        branch.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        branch.location.toLowerCase().includes(this.searchQuery.toLowerCase());
+      
+      const matchesStatus = !this.filterStatus || branch.status === this.filterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }
+
+  onSearchChange() {
+    this.displayedCardsCount = 10;
+  }
+
+  onFilterChange() {
+    this.displayedCardsCount = 10;
+  }
+
+  resetFilters() {
+    this.searchQuery = '';
+    this.filterStatus = '';
+    this.onFilterChange();
   }
 
   openAddModal() {
@@ -851,7 +431,7 @@ export class BranchListComponent implements OnInit {
   }
 
   onSubmitBranch() {
-    if (!this.newBranch.name || !this.newBranch.location || !this.newBranch.managerId) return;
+    if (!this.newBranch.name || !this.newBranch.location) return;
 
     this.submitting = true;
     

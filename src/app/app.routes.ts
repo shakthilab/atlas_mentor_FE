@@ -50,8 +50,7 @@ export const routes: Routes = [
           },
           {
             path: 'tasks', children: [
-              { path: '', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) },
-              { path: 'kanban', loadComponent: () => import('./features/admin/tasks/task-kanban/task-kanban.component').then(m => m.TaskKanbanComponent) }
+              { path: '', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) }
             ]
           },
           {

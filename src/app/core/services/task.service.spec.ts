@@ -60,7 +60,7 @@ describe('TaskService', () => {
     service.updateStatus(taskId, newStatus).subscribe();
 
     const req = httpMock.expectOne(`http://localhost:8080/api/tasks/${taskId}/status`);
-    expect(req.request.method).toBe('PATCH');
+    expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual({ status: newStatus });
     req.flush({});
   });
@@ -84,7 +84,7 @@ describe('TaskService', () => {
     service.assignUser(taskId, userId).subscribe();
 
     const req = httpMock.expectOne(`http://localhost:8080/api/tasks/${taskId}/assignee`);
-    expect(req.request.method).toBe('PATCH');
+    expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual({ assignedToId: userId });
     req.flush({});
   });

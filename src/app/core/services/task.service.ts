@@ -31,11 +31,11 @@ export interface Task {
 
 export interface TaskDetails {
   task: Task;
-  comments: Comment[];
+  comments: TaskComment[];
   activities: Activity[];
 }
 
-export interface Comment {
+export interface TaskComment {
   id: number;
   comment: string;
   commentedByName: string;
@@ -53,10 +53,15 @@ export interface Activity {
 }
 
 export interface TaskFilter {
+  search?: string;
   status?: Task['status'];
+  priority?: Task['priority'];
+  dueDateFrom?: string;
+  dueDateTo?: string;
+  assignedDateFrom?: string;
+  assignedDateTo?: string;
   assigneeId?: number;
   branchId?: number;
-  priority?: Task['priority'];
   createdBy?: number;
   keyword?: string;
   overdue?: boolean;
@@ -136,10 +141,15 @@ export class TaskService {
     let params = new HttpParams();
     
     if (filter) {
+      if (filter.search) params = params.set('search', filter.search);
       if (filter.status) params = params.set('status', filter.status);
+      if (filter.priority) params = params.set('priority', filter.priority);
+      if (filter.dueDateFrom) params = params.set('dueDateFrom', filter.dueDateFrom);
+      if (filter.dueDateTo) params = params.set('dueDateTo', filter.dueDateTo);
+      if (filter.assignedDateFrom) params = params.set('assignedDateFrom', filter.assignedDateFrom);
+      if (filter.assignedDateTo) params = params.set('assignedDateTo', filter.assignedDateTo);
       if (filter.assigneeId) params = params.set('assigneeId', filter.assigneeId.toString());
       if (filter.branchId) params = params.set('branchId', filter.branchId.toString());
-      if (filter.priority) params = params.set('priority', filter.priority);
       if (filter.createdBy) params = params.set('createdBy', filter.createdBy.toString());
       if (filter.keyword) params = params.set('keyword', filter.keyword);
       if (filter.overdue !== undefined) params = params.set('overdue', filter.overdue.toString());
@@ -185,9 +195,9 @@ export class TaskService {
     );
   }
 
-  // Partial Updates (PATCH)
+  // Task Updates (PUT)
   updateStatus(taskId: number, status: Task['status']): Observable<Task> {
-    return this.http.patch<Task>(`${this.baseUrl}/tasks/${taskId}/status`, 
+    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/status`, 
       { status }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -196,7 +206,7 @@ export class TaskService {
   }
 
   assignUser(taskId: number, userId: number): Observable<Task> {
-    return this.http.patch<Task>(`${this.baseUrl}/tasks/${taskId}/assignee`, 
+    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/assignee`, 
       { assignedToId: userId }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -205,7 +215,7 @@ export class TaskService {
   }
 
   updatePriority(taskId: number, priority: Task['priority']): Observable<Task> {
-    return this.http.patch<Task>(`${this.baseUrl}/tasks/${taskId}/priority`, 
+    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/priority`, 
       { priority }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -214,7 +224,7 @@ export class TaskService {
   }
 
   updateDueDate(taskId: number, dueDate: string): Observable<Task> {
-    return this.http.patch<Task>(`${this.baseUrl}/tasks/${taskId}/due-date`, 
+    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/due-date`, 
       { dueDate }, 
       { headers: this.getAuthHeaders() }
     ).pipe(

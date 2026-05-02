@@ -1,36 +1,41 @@
 import { Component, inject, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { CompanyService, Company } from '../../../../core/services/company.service';
 import { BranchService } from '../../../../core/services/branch.service';
 import { Branch } from '../../../../core/models/branch.model';
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
+
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-company-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, EmptyStateComponent],
   template: `
     <div class="module-container">
       <div class="module-header">
-        <div>
+        <div class="header-left">
           <h1 class="page-title">Corporate Partners</h1>
           <p class="page-subtitle">Manage university tie-ups and recruitment companies.</p>
         </div>
         <div class="header-actions">
-          <div class="view-switcher mr-3">
+          <div class="view-switcher">
             <button class="switcher-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List View">
               <span class="material-icons">list</span>
+              <span>List</span>
             </button>
             <button class="switcher-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card View">
               <span class="material-icons">grid_view</span>
+              <span>Grid</span>
             </button>
           </div>
           <button class="btn btn-primary" (click)="openAddModal()">
-            <span class="material-icons">domain_add</span>
-            Add Company
+            <span class="material-icons">add</span>
+            <span>Add Company</span>
           </button>
         </div>
       </div>
@@ -41,37 +46,49 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
           <span class="material-icons">search</span>
           <input type="text" placeholder="Search companies by name..." [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()">
         </div>
+        <div class="filter-actions">
+          <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
+            <span class="material-icons">tune</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced Filters Panel -->
+      <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label>Branch</label>
+            <select [(ngModel)]="filterBranch" (change)="onFilterChange()">
+              <option value="">All Branches</option>
+              <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
+          </div>
+        </div>
       </div>
 
       <!-- Loading State -->
-      <div class="loading-container shadow-premium" *ngIf="isLoading">
-        <div class="spinner-container">
+      <div class="loading-container shadow-premium" *ngIf="isLoading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
+        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
           <div class="loading-spinner"></div>
         </div>
-        <p>Loading companies...</p>
+        <p style="color: var(--color-gray-500);">Loading companies...</p>
       </div>
 
-      <div class="empty-state-container" *ngIf="!isLoading && companies.length === 0">
-        <div class="empty-state-content">
-          <span class="material-icons empty-icon">domain</span>
-          <h3>No Companies Found</h3>
-          <p>There are currently no corporate partners found. Add your first company to get started.</p>
-        </div>
-      </div>
+      <app-empty-state 
+        *ngIf="!isLoading && companies.length === 0"
+        title="No Companies Found"
+        message="There are currently no corporate partners found. Add your first company to get started."
+        [showAction]="true"
+        actionText="Add Company"
+        (actionClick)="openAddModal()">
+      </app-empty-state>
 
       <!-- Table View -->
       <div class="table-card" *ngIf="!isLoading && companies.length > 0 && viewMode === 'list'">
-        <div class="table-card-header">
-          <div class="table-header-title">
-            <h2>Partners & Agencies</h2>
-            <span class="count-badge">{{ totalElements }} total</span>
-          </div>
-          <button class="btn-icon">
-            <span class="material-icons">more_vert</span>
-          </button>
-        </div>
-
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
           <table class="premium-table">
             <thead>
               <tr>
@@ -84,49 +101,45 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let company of companies" class="clickable-row">
+              <tr *ngFor="let company of companies" class="clickable-row" (click)="viewDetails(company)">
                 <td>
-                  <div class="user-info">
-                    <div class="avatar logo-box-small">{{ company.name.charAt(0) }}</div>
-                    <div class="details">
-                      <span class="name">{{ company.name }}</span>
-                      <span class="email">{{ company.email }}</span>
+                  <div class="entity-meta">
+                    <div class="avatar-circle" [style.background]="getAvatarColor(company.companyDetails?.companyName || company.name || company.firstName)">
+                      {{ getInitials(company.companyDetails?.companyName || company.name || company.firstName) }}
+                    </div>
+                    <div class="entity-info">
+                      <span class="entity-name">{{ company.companyDetails?.companyName || company.name || company.firstName || 'Unknown Company' }}</span>
+                      <span class="entity-subtext">{{ company.email }}</span>
                     </div>
                   </div>
                 </td>
-                <td><span class="type-badge">{{ company.companyDetails?.industry || company.industry }}</span></td>
+                <td><span class="badge-status gray">{{ company.companyDetails?.industry || company.industry }}</span></td>
                 <td>
-                  <div class="location-td">
-                    <span class="material-icons">location_on</span>
-                    {{ company.companyDetails?.address || company.address || company.branch?.name || 'No address available' }}
+                  <div class="entity-info">
+                    <span class="entity-name" style="font-weight: 500; font-size: 0.8125rem;">{{ company.companyDetails?.address || company.address || company.branch?.name || 'No address' }}</span>
                   </div>
                 </td>
-                <td><a [href]="company.companyDetails?.website || company.website" target="_blank" class="website-link">{{ company.companyDetails?.website || company.website }}</a></td>
+                <td><a [href]="company.companyDetails?.website || company.website" target="_blank" class="btn-ghost-sm" (click)="$event.stopPropagation()">Visit Site</a></td>
                 <td>
-                  <span class="status-dot-wrap" [ngClass]="(company.status || 'ACTIVE').toLowerCase()">
-                    <span class="status-dot"></span>
+                  <span class="badge-status" [ngClass]="(company.status || 'ACTIVE').toLowerCase() === 'active' ? 'success' : 'gray'">
                     {{ company.status || 'ACTIVE' }}
                   </span>
                 </td>
                 <td style="text-align: right;">
-                  <div class="action-btns" style="position: relative;">
-                    <button class="btn-icon view" (click)="viewDetails(company)" title="View Details"><span class="material-icons">visibility</span></button>
-                    <button class="btn-icon" (click)="openEditModal(company)" title="Edit"><span class="material-icons">edit</span></button>
+                  <div class="action-btns" (click)="$event.stopPropagation()">
+                    <button class="btn-icon" (click)="viewDetails(company)" title="View Details"><span class="material-icons">visibility</span></button>
+                    <button class="btn-icon" (click)="openEditModal(company)"><span class="material-icons">edit</span></button>
                     <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + company.id)"><span class="material-icons">more_vert</span></button>
                     
-                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + company.id" (click)="$event.stopPropagation()">
-                      <button class="dropdown-item warning" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'">
-                        <span class="material-icons" style="font-size: 18px;">block</span>
-                        Deactivate
+                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + company.id" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
+                      <button class="dropdown-item" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
+                        <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
                       </button>
-                      <button class="dropdown-item success" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'">
-                        <span class="material-icons" style="font-size: 18px;">check_circle</span>
-                        Reactivate
+                      <button class="dropdown-item" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
+                        <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
                       </button>
-                      <div class="dropdown-divider"></div>
-                      <button class="dropdown-item danger" (click)="confirmDelete(company); openDropdownId = null">
-                        <span class="material-icons" style="font-size: 18px;">delete</span>
-                        Delete
+                      <button class="dropdown-item" (click)="confirmDelete(company); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
+                        <span class="material-icons" style="font-size: 18px;">delete</span> Delete
                       </button>
                     </div>
                   </div>
@@ -137,18 +150,16 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
         </div>
 
         <!-- Pagination Footer -->
-        <div class="table-card-footer">
+        <div class="table-card-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-gray-200);">
           <button class="pagination-btn" [disabled]="currentPage === 0" (click)="changePage(currentPage - 1)">
             <span class="material-icons">arrow_back</span>
             Previous
           </button>
           
-          <div class="pagination-pages">
+          <div class="pagination-pages" style="display: flex; gap: 4px;">
             <button class="page-num" [class.active]="currentPage === 0" (click)="changePage(0)">1</button>
             <button *ngIf="totalPages > 1" class="page-num" [class.active]="currentPage === 1" (click)="changePage(1)">2</button>
             <button *ngIf="totalPages > 2" class="page-num" [class.active]="currentPage === 2" (click)="changePage(2)">3</button>
-            <span *ngIf="totalPages > 5" class="page-dots">...</span>
-            <button *ngIf="totalPages > 4" class="page-num" [class.active]="currentPage === totalPages - 1" (click)="changePage(totalPages - 1)">{{ totalPages }}</button>
           </div>
 
           <button class="pagination-btn" [disabled]="currentPage >= totalPages - 1" (click)="changePage(currentPage + 1)">
@@ -158,78 +169,47 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
         </div>
       </div>
 
-      <!-- Company Grid View -->
-      <div class="grid-container-wrapper" *ngIf="!isLoading && companies.length > 0 && viewMode === 'grid'">
-        <div class="grid-container">
-          <div class="referral-card shadow-premium" *ngFor="let company of companies | slice:0:displayedCardsCount">
-            <div class="card-header">
-              <div class="user-info-grid">
-                <div class="avatar">{{ company.name.charAt(0) }}</div>
-                <div class="details">
-                  <span class="name">{{ company.name }}</span>
-                  <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 4px;">
-                    <span class="type-badge">{{ company.companyDetails?.industry || company.industry }}</span>
-                    <span class="status-dot-wrap" [ngClass]="(company.status || 'ACTIVE').toLowerCase()">
-                      <span class="status-dot"></span>
-                      {{ company.status || 'ACTIVE' }}
-                    </span>
-                  </div>
-                </div>
+      <!-- Grid View -->
+      <div class="grid-container" *ngIf="!isLoading && companies.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        <div class="table-card" *ngFor="let company of companies | slice:0:displayedCardsCount" style="padding: 1.25rem; transition: all 0.2s;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <div class="entity-meta">
+              <div class="avatar-circle" [style.background]="getAvatarColor(company.companyDetails?.companyName || company.name || company.firstName)">
+                {{ getInitials(company.companyDetails?.companyName || company.name || company.firstName) }}
               </div>
-              <div class="action-btns" style="position: relative;">
-                <button class="btn-icon" (click)="openEditModal(company)"><span class="material-icons">edit</span></button>
-                <button class="btn-icon" (click)="toggleDropdown($event, 'card-' + company.id)">
-                  <span class="material-icons">more_vert</span>
-                </button>
-                
-                <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'card-' + company.id" (click)="$event.stopPropagation()">
-                  <button class="dropdown-item warning" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'">
-                    <span class="material-icons" style="font-size: 18px;">block</span>
-                    Deactivate
-                  </button>
-                  <button class="dropdown-item success" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'">
-                    <span class="material-icons" style="font-size: 18px;">check_circle</span>
-                    Reactivate
-                  </button>
-                  <div class="dropdown-divider"></div>
-                  <button class="dropdown-item danger" (click)="confirmDelete(company); openDropdownId = null">
-                    <span class="material-icons" style="font-size: 18px;">delete</span>
-                    Delete
-                  </button>
-                </div>
+              <div class="entity-info">
+                <span class="entity-name">{{ company.companyDetails?.companyName || company.name || company.firstName || 'Unknown Company' }}</span>
+                <span class="badge-status gray" style="margin-top: 4px;">{{ company.companyDetails?.industry || company.industry }}</span>
               </div>
             </div>
-            
-            <div class="card-body">
-              <div class="metrics-grid">
-                <div class="metric-box">
-                  <span class="label">Contact Person</span>
-                  <span class="value">{{ company.contactPerson || 'Not specified' }}</span>
-                </div>
-                <div class="metric-box">
-                  <span class="label">Phone</span>
-                  <span class="value">{{ company.phone }}</span>
-                </div>
-                <div class="metric-box full">
-                  <span class="label">Address</span>
-                  <span class="value" style="font-size: 0.85rem; font-weight: 500;">{{ company.companyDetails?.address || company.address || company.branch?.name || 'No address available' }}</span>
-                </div>
-              </div>
-              <div class="contact-item">
-                <span class="material-icons">email</span>
-                <span>{{ company.email }}</span>
-              </div>
-              <div class="contact-item" style="margin-top: 0.5rem;" *ngIf="company.website">
-                <span class="material-icons">language</span>
-                <a [href]="company.website" target="_blank" class="website-link" style="color: var(--color-primary);">{{ company.website }}</a>
-              </div>
+            <span class="badge-status" [ngClass]="(company.status || 'ACTIVE').toLowerCase() === 'active' ? 'success' : 'gray'">
+              {{ company.status || 'ACTIVE' }}
+            </span>
+          </div>
+          
+          <div style="padding: 1rem; background: var(--color-gray-50); border-radius: 8px; margin-bottom: 1rem;">
+            <div class="entity-info">
+              <span class="entity-subtext">Contact Person</span>
+              <span class="entity-name" style="font-size: 0.875rem;">{{ company.companyDetails?.contactPerson || 'N/A' }}</span>
+            </div>
+            <div class="entity-info" style="margin-top: 0.75rem;">
+              <span class="entity-subtext">Address</span>
+              <span class="entity-name" style="font-size: 0.8125rem; font-weight: 500;">{{ company.companyDetails?.address || company.address || company.branch?.name || 'No address' }}</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
+            <span class="entity-subtext" style="font-size: 0.75rem;">{{ company.email }}</span>
+            <div class="action-btns" (click)="$event.stopPropagation()">
+              <button class="btn-icon" (click)="viewDetails(company)"><span class="material-icons">visibility</span></button>
+              <button class="btn-icon" (click)="toggleDropdown($event, 'card-' + company.id)"><span class="material-icons">more_vert</span></button>
             </div>
           </div>
         </div>
 
-        <!-- Load More Button -->
-        <div class="load-more-container" *ngIf="companies.length > displayedCardsCount">
-          <button class="btn btn-secondary load-more-btn" (click)="loadMoreCards()">
+        <!-- Load More -->
+        <div *ngIf="companies.length > displayedCardsCount" style="grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 1rem;">
+          <button class="btn btn-secondary" (click)="loadMoreCards()">
             <span>Load More Companies</span>
             <span class="material-icons">expand_more</span>
           </button>
@@ -240,76 +220,81 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
     <div class="modal-overlay" *ngIf="showAddModal" (click)="closeAddModal()">
       <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 650px;">
         <div class="modal-header">
-          <h2 class="modal-title">{{ isEditMode ? 'Edit Company' : 'Add New Company' }}</h2>
-          <button class="close-btn" (click)="closeAddModal()">
+          <div class="modal-header-icon" style="background: var(--color-primary-light); color: var(--color-primary); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <span class="material-icons">{{ isEditMode ? 'edit' : 'domain_add' }}</span>
+          </div>
+          <div class="modal-header-text" style="flex: 1; padding-left: 1rem;">
+            <h2 class="modal-title" style="margin: 0; font-size: 1.25rem;">{{ isEditMode ? 'Edit Company' : 'Add New Company' }}</h2>
+            <p class="modal-subtitle" style="margin: 0.25rem 0 0; color: var(--color-gray-500); font-size: 0.875rem;">{{ isEditMode ? 'Update details for the corporate partner.' : 'Enter details for the new corporate partner.' }}</p>
+          </div>
+          <button class="btn-icon" (click)="closeAddModal()">
             <span class="material-icons">close</span>
           </button>
         </div>
         
-        <div class="modal-body">
-          <p class="modal-subtitle">{{ isEditMode ? 'Update details for the corporate partner.' : 'Enter details for the new corporate partner.' }}</p>
-          
-          <form #companyForm="ngForm" (ngSubmit)="onSubmitCompany()">
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="compName">Company Name *</label>
-                <input type="text" id="compName" name="name" class="form-control" [(ngModel)]="newCompany.name" placeholder="Tech Company Inc" required>
+        <div class="modal-body" style="padding: 1.5rem;">
+          <form [formGroup]="companyForm" (ngSubmit)="onSubmitCompany()">
+            <div class="form-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Company Name</label>
+                <input type="text" class="form-control" formControlName="name" placeholder="Tech Company Inc">
               </div>
-
-              <div class="form-group">
-                <label for="compIndustry">Industry *</label>
-                <input type="text" id="compIndustry" name="industry" class="form-control" [(ngModel)]="newCompany.industry" placeholder="Technology" required>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Industry</label>
+                <input type="text" class="form-control" formControlName="industry" placeholder="Technology">
               </div>
             </div>
 
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="compEmail">Email Address *</label>
-                <input type="email" id="compEmail" name="email" class="form-control" [(ngModel)]="newCompany.email" placeholder="contact@company.com" required>
+            <div class="form-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Email Address</label>
+                <input type="email" class="form-control" formControlName="email" placeholder="contact@company.com" [readonly]="isEditMode">
               </div>
-
-              <div class="form-group">
-                <label for="compPhone">Phone Number *</label>
-                <input type="text" id="compPhone" name="phone" class="form-control" [(ngModel)]="newCompany.phone" placeholder="+1234567890" required>
-              </div>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="compFirstName">Contact First Name *</label>
-                <input type="text" id="compFirstName" name="firstName" class="form-control" [(ngModel)]="newCompany.firstName" placeholder="John" required>
-              </div>
-
-              <div class="form-group">
-                <label for="compLastName">Contact Last Name *</label>
-                <input type="text" id="compLastName" name="lastName" class="form-control" [(ngModel)]="newCompany.lastName" placeholder="Doe" required>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Phone Number</label>
+                <div style="display: flex; border: 1px solid var(--color-gray-300); border-radius: 8px; overflow: hidden;">
+                  <div style="padding: 0 12px; background: var(--color-gray-50); display: flex; align-items: center; border-right: 1px solid var(--color-gray-300); cursor: pointer;" (click)="toggleCountryDropdown($event)">
+                    <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" style="width: 20px; height: 14px; margin-right: 6px;">
+                    <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
+                  </div>
+                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number">
+                </div>
               </div>
             </div>
 
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="compWebsite">Website *</label>
-                <input type="text" id="compWebsite" name="website" class="form-control" [(ngModel)]="newCompany.website" placeholder="https://example.com" required>
+            <div class="form-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Contact First Name</label>
+                <input type="text" class="form-control" formControlName="firstName" placeholder="John">
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Contact Last Name</label>
+                <input type="text" class="form-control" formControlName="lastName" placeholder="Doe">
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="compAddress">Address *</label>
-              <textarea id="compAddress" name="address" class="form-control" [(ngModel)]="newCompany.address" placeholder="123 Business St, City, State" required rows="2"></textarea>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Website</label>
+              <input type="text" class="form-control" formControlName="website" placeholder="https://example.com">
             </div>
 
-            <div class="form-group">
-              <label for="compBranch">Branch *</label>
-              <select id="compBranch" name="branchId" class="form-control" [(ngModel)]="newCompany.branchId" required>
-                <option [ngValue]="undefined" disabled selected>Select Branch</option>
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Address</label>
+              <textarea class="form-control" formControlName="address" placeholder="123 Business St, City, State" rows="2"></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+              <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Branch</label>
+              <select class="form-control" formControlName="branchId">
+                <option value="" disabled>Select Branch</option>
                 <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
               </select>
             </div>
 
-            <div class="modal-footer" style="padding: 1.5rem 0 0; border-top: 1px solid var(--color-gray-100); margin-top: 1.5rem;">
-              <button type="submit" class="btn btn-primary" [disabled]="companyForm.invalid || submitting" style="width: 100%; height: 48px; font-size: 1rem;">
-                <span *ngIf="!submitting">{{ isEditMode ? 'Save Changes' : 'Create Company' }}</span>
-                <span *ngIf="submitting">Processing...</span>
+            <div class="modal-footer" style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 12px;">
+              <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="companyForm.invalid || submitting">
+                {{ isEditMode ? 'Save Changes' : 'Create Company' }}
               </button>
             </div>
           </form>
@@ -319,286 +304,77 @@ import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 
     <!-- Company Detail Modal -->
     <div class="modal-overlay" *ngIf="showDetailModal" (click)="closeDetailModal()">
-      <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
-        <div class="modal-header premium-bg">
-          <div class="header-content">
-            <div class="company-brand">
-              <div class="avatar logo-box">{{ selectedCompany?.name?.charAt(0) }}</div>
-              <div class="title-wrap">
-                <h2 class="modal-title">{{ selectedCompany?.name }}</h2>
-                <div class="badges-row">
-                  <span class="type-badge">{{ selectedCompany?.companyDetails?.industry }}</span>
-                  <span class="status-dot-wrap" [ngClass]="(selectedCompany?.status || 'ACTIVE').toLowerCase()">
-                    <span class="status-dot"></span>
-                    {{ selectedCompany?.status || 'ACTIVE' }}
-                  </span>
-                </div>
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 600px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #667cb0 0%, #4a5d8a 100%); color: white; padding: 2.5rem;">
+          <div style="display: flex; align-items: center; gap: 1.5rem; width: 100%;">
+            <div class="avatar-circle" style="width: 64px; height: 64px; font-size: 1.5rem; background: rgba(255,255,255,0.2); border: 2px solid white;">
+              {{ (selectedCompany?.companyDetails?.companyName || selectedCompany?.name || 'C').charAt(0) }}
+            </div>
+            <div>
+              <h2 style="margin: 0; color: white; font-size: 1.5rem;">{{ selectedCompany?.companyDetails?.companyName || selectedCompany?.name }}</h2>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <span style="background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem;">{{ selectedCompany?.companyDetails?.industry }}</span>
+                <span style="background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem;">{{ selectedCompany?.status }}</span>
               </div>
             </div>
           </div>
-          <button class="close-btn white" (click)="closeDetailModal()">
+          <button class="btn-icon" (click)="closeDetailModal()" style="color: white; position: absolute; top: 1.5rem; right: 1.5rem;">
             <span class="material-icons">close</span>
           </button>
         </div>
         
-        <div class="modal-body detail-body">
-          <div class="detail-section">
-            <h3 class="section-title">General Information</h3>
-            <div class="info-grid-modern">
-              <div class="info-item">
-                <span class="label">Contact Person</span>
-                <span class="value">{{ selectedCompany?.companyDetails?.contactPerson }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Email Address</span>
-                <span class="value">{{ selectedCompany?.email }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Phone Number</span>
-                <span class="value">{{ selectedCompany?.phone }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Website</span>
-                <a [href]="selectedCompany?.companyDetails?.website" target="_blank" class="value link">{{ selectedCompany?.companyDetails?.website }}</a>
-              </div>
+        <div class="modal-body" style="padding: 2rem; background: #fcfcfd;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <div class="entity-info">
+              <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Contact Person</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.companyDetails?.contactPerson }}</span>
             </div>
-          </div>
-
-          <div class="detail-section">
-            <h3 class="section-title">Address & Branch</h3>
-            <div class="info-grid-modern">
-              <div class="info-item full">
-                <span class="label">Physical Address</span>
-                <span class="value">{{ selectedCompany?.companyDetails?.address }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Primary Branch</span>
-                <span class="value">{{ selectedCompany?.branch?.name }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Branch Location</span>
-                <span class="value">{{ selectedCompany?.branch?.location }}</span>
-              </div>
+            <div class="entity-info">
+              <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Email</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.email }}</span>
             </div>
-          </div>
-
-          <div class="detail-section">
-            <h3 class="section-title">System Details</h3>
-            <div class="info-grid-modern">
-              <div class="info-item">
-                <span class="label">Assigned To ID</span>
-                <span class="value">#{{ selectedCompany?.companyDetails?.assignedTo }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Verification Status</span>
-                <span class="value">
-                  <span class="verify-badge" [class.verified]="selectedCompany?.isVerified">
-                    <span class="material-icons">{{ selectedCompany?.isVerified ? 'verified' : 'pending' }}</span>
-                    {{ selectedCompany?.isVerified ? 'Verified' : 'Unverified' }}
-                  </span>
-                </span>
-              </div>
+            <div class="entity-info">
+              <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Phone</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.phone }}</span>
+            </div>
+            <div class="entity-info">
+              <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Branch</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.branch?.name }}</span>
+            </div>
+            <div class="entity-info" style="grid-column: span 2;">
+              <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Address</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.companyDetails?.address }}</span>
             </div>
           </div>
         </div>
         
-        <div class="modal-footer">
-          <button type="button" class="btn btn-primary btn-block" (click)="closeDetailModal()">Close Detailed View</button>
+        <div class="modal-footer" style="padding: 1.5rem; display: flex; justify-content: flex-end;">
+          <button class="btn btn-primary" (click)="closeDetailModal()">Close</button>
         </div>
       </div>
     </div>
 
     <!-- Confirmation Modal -->
     <div class="modal-overlay" *ngIf="showConfirmModal" (click)="closeConfirmModal()">
-      <div class="modal-content confirm-modal" (click)="$event.stopPropagation()">
-        <div class="modal-body text-center" style="padding-top: 2.5rem;">
-          <div class="confirm-icon-wrap" [ngClass]="confirmModalBtnClass">
-            <span class="material-icons">
-              {{ confirmActionType === 'delete' ? 'delete_forever' : 
-                 (confirmActionType === 'deactivate' ? 'pause_circle' : 'play_circle') }}
-            </span>
-          </div>
-          <h2 class="modal-title mb-2">{{ confirmModalTitle }}</h2>
-          <p class="text-muted mb-4">{{ confirmModalMessage }}</p>
-          
-          <div class="modal-footer" style="padding: 0; margin-top: 2rem;">
-            <button type="button" class="btn btn-block" [ngClass]="confirmModalBtnClass" (click)="executeConfirmAction()" [disabled]="processingAction">
-              <span *ngIf="!processingAction">{{ confirmModalBtnText }}</span>
-              <span *ngIf="processingAction">Processing...</span>
-            </button>
-          </div>
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 400px; padding: 2rem; text-align: center;">
+        <div [style.background]="confirmModalBtnClass === 'btn-danger' ? '#fee4e2' : (confirmModalBtnClass === 'btn-warning' ? '#fef0c7' : '#d1fadf')" 
+             [style.color]="confirmModalBtnClass === 'btn-danger' ? '#d92d20' : (confirmModalBtnClass === 'btn-warning' ? '#dc6803' : '#039855')" 
+             style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <span class="material-icons">{{ confirmModalBtnClass === 'btn-danger' ? 'delete_forever' : (confirmModalBtnClass === 'btn-warning' ? 'pause_circle' : 'play_circle') }}</span>
+        </div>
+        <h2 style="margin: 0 0 0.5rem; font-size: 1.125rem;">{{ confirmModalTitle }}</h2>
+        <p style="color: var(--color-gray-500); font-size: 0.875rem; margin-bottom: 2rem;">{{ confirmModalMessage }}</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" style="flex: 1;" (click)="closeConfirmModal()">Cancel</button>
+          <button class="btn btn-primary" style="flex: 1;" [ngClass]="confirmModalBtnClass" (click)="executeConfirmAction()" [disabled]="processingAction">{{ confirmModalBtnText }}</button>
         </div>
       </div>
     </div>
-  </div>
+
+    </div>
   `,
   styles: [`
-    .module-container { padding-bottom: 2rem; }
-    .module-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; gap: 1rem; }
-    .page-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
-    .page-subtitle { color: var(--color-gray-600); margin: 0.25rem 0 0; font-size: 1rem; }
-    
-    @media (max-width: 768px) {
-      .module-header { flex-direction: column; align-items: stretch; }
-      .header-actions { justify-content: space-between; width: 100%; }
-      .page-title { font-size: 1.5rem; }
-    }
-
-    .empty-state-container { padding: 4rem 2rem; background: white; border-radius: var(--radius-lg); border: 1px dashed var(--color-gray-300); text-align: center; display: flex; justify-content: center; align-items: center; margin-bottom: 2rem; }
-    .empty-state-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-    .empty-icon { font-size: 3rem; color: var(--color-gray-300); margin-bottom: 0.5rem; }
-    .empty-state-content h3 { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-800); margin: 0; }
-    .empty-state-content p { color: var(--color-gray-500); margin: 0; font-size: 0.875rem; max-width: 300px; }
-    
-    .filters-card { background: white; padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; box-shadow: var(--shadow-sm); }
-    .search-bar { display: flex; align-items: center; gap: 0.5rem; background: white; border: 1px solid var(--color-gray-300); padding: 0.625rem 0.875rem; border-radius: var(--radius-md); flex: 1; box-shadow: var(--shadow-xs); transition: all var(--transition-fast); }
-    .search-bar input { background: none; border: none; width: 100%; font-size: 0.95rem; color: var(--color-gray-900); outline: none; }
-    
-    .premium-table { width: 100%; border-collapse: collapse; table-layout: auto; }
-    .premium-table th { text-align: center !important; padding: 0.75rem 1.5rem; font-size: 0.725rem; font-weight: 600; color: var(--color-gray-600); background: var(--color-gray-50); border-bottom: 1px solid var(--color-gray-200); white-space: nowrap; }
-    .premium-table td { text-align: center !important; padding: 1rem 1.5rem; border-bottom: 1px solid var(--color-gray-200); font-size: 0.875rem; vertical-align: middle; color: var(--color-gray-600); }
-    
-    .premium-table th:first-child, .premium-table td:first-child { padding-left: 1.5rem; }
-    .premium-table th:last-child, .premium-table td:last-child { padding-right: 1.5rem; }
-
-    .user-info { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; text-align: center; }
-    .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary-light); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; border: 1px solid var(--color-primary-border); flex-shrink: 0; }
-    .logo-box-small { border-radius: var(--radius-sm); }
-    .details { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.3; }
-    .name { font-weight: 600; color: var(--color-gray-900); font-size: 0.875rem; margin-bottom: 2px; }
-    .email { font-size: 0.75rem; color: var(--color-gray-500); }
-    
-    .status-dot-wrap { display: flex; align-items: center; gap: 0.375rem; font-size: 0.75rem; font-weight: 500; padding: 0.125rem 0.5rem; border-radius: 6px; width: fit-content; text-transform: capitalize; margin: 0 auto; }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .status-dot-wrap.active { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
-    .status-dot-wrap.active .status-dot { background: #12b76a; }
-    .status-dot-wrap.inactive { background: var(--color-gray-100); color: var(--color-gray-700); border: 1px solid var(--color-gray-200); }
-    .status-dot-wrap.inactive .status-dot { background: var(--color-gray-500); }
-
-    .type-badge { background: var(--color-gray-100); color: var(--color-gray-700); padding: 0.125rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--color-gray-200); display: inline-block; }
-    
-    .location-td { display: flex; align-items: center; justify-content: center; gap: 0.25rem; font-size: 0.875rem; color: var(--color-gray-600); }
-    .location-td .material-icons { font-size: 16px; color: var(--color-gray-400); }
-    .website-link { color: var(--color-primary); text-decoration: none; font-size: 0.875rem; display: block; text-align: center; }
-    .website-link:hover { text-decoration: underline; }
-
-    /* Action Buttons */
-    .btn-icon.view { color: var(--color-primary); }
-    .btn-icon.view:hover { background: var(--color-primary-light); }
-
-    /* Detail Modal Styles */
-    .detail-modal { max-width: 750px !important; overflow: hidden; border: none; }
-    .premium-bg { background: linear-gradient(135deg, #667cb0 0%, #4a5d8a 100%); padding: 2rem !important; position: relative; }
-    .header-content { display: flex; align-items: center; width: 100%; }
-    .company-brand { display: flex; align-items: center; gap: 1.5rem; }
-    .logo-box { width: 64px; height: 64px; font-size: 1.5rem; background: rgba(255,255,255,0.2); border: 2px solid white; color: white; border-radius: 12px; }
-    .title-wrap h2 { color: white; margin: 0 0 0.5rem; font-size: 1.5rem; }
-    .badges-row { display: flex; gap: 0.75rem; align-items: center; }
-    .badges-row .type-badge { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
-    .badges-row .status-dot-wrap { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
-    .close-btn.white { color: white; background: rgba(255,255,255,0.1); }
-    .close-btn.white:hover { background: rgba(255,255,255,0.2); }
-
-    .detail-body { padding: 2rem !important; background: #fcfcfd; }
-    .detail-section { margin-bottom: 2rem; }
-    .detail-section:last-child { margin-bottom: 0; }
-    .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-gray-500); margin-bottom: 1rem; font-weight: 700; border-bottom: 1px solid var(--color-gray-100); padding-bottom: 0.5rem; }
-    
-    .info-grid-modern { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .info-item { display: flex; flex-direction: column; gap: 0.375rem; }
-    .info-item.full { grid-column: span 2; }
-    .info-item .label { font-size: 0.8125rem; color: var(--color-gray-500); font-weight: 500; }
-    .info-item .value { font-size: 0.9375rem; color: var(--color-gray-900); font-weight: 600; }
-    .info-item .value.link { color: var(--color-primary); text-decoration: underline; }
-
-    .verify-badge { display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; font-weight: 600; color: var(--color-gray-500); }
-    .verify-badge.verified { color: #027a48; }
-    .verify-badge .material-icons { font-size: 18px; }
-
-    @media (max-width: 768px) {
-      .info-grid-modern { grid-template-columns: 1fr; gap: 1rem; }
-      .company-brand { flex-direction: column; gap: 1rem; text-align: center; width: 100%; }
-      .title-wrap { display: flex; flex-direction: column; align-items: center; }
-      .badges-row { justify-content: center; }
-      .premium-bg { padding: 1.5rem !important; }
-      .detail-body { padding: 1.5rem !important; }
-    }
-
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    
-    @media (max-width: 640px) {
-      .form-grid { grid-template-columns: 1fr; gap: 0; }
-      .modal-content { border-radius: 20px 20px 0 0; }
-    }
-
-    .action-btns { display: flex; gap: 0.25rem; justify-content: flex-end; }
-    .btn-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--color-gray-500); cursor: pointer; border-radius: var(--radius-md); transition: all var(--transition-fast); }
-    .btn-icon:hover { background: var(--color-gray-50); color: var(--color-gray-700); }
-    .btn-icon .material-icons { font-size: 20px; }
-
-    /* Loading State */
-    .loading-container { background: white; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 350px; padding: 3rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem; }
-    .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--color-gray-100); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* View Switcher */
-    .view-switcher { display: flex; background: var(--color-gray-100); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--color-gray-200); }
-    .switcher-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: var(--color-gray-500); cursor: pointer; border-radius: var(--radius-sm); transition: all var(--transition-fast); }
-    .switcher-btn .material-icons { font-size: 20px; }
-    .switcher-btn:hover { color: var(--color-gray-700); }
-    .switcher-btn.active { background: white; color: var(--color-gray-700); box-shadow: var(--shadow-sm); }
-
-    /* Grid Layout */
-    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
-    .referral-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); overflow: hidden; display: flex; flex-direction: column; transition: all var(--transition-fast); box-shadow: var(--shadow-sm); }
-    .referral-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--color-primary); }
-    .card-header { padding: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--color-gray-100); }
-    .user-info-grid { display: flex; align-items: center; gap: 0.75rem; }
-    .card-body { padding: 1.25rem; flex: 1; }
-    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
-    .metric-box { background: var(--color-gray-50); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--color-gray-100); display: flex; flex-direction: column; }
-    .metric-box.full { grid-column: span 2; }
-    .metric-box .label { font-size: 0.7rem; text-transform: uppercase; color: var(--color-gray-500); font-weight: 700; margin-bottom: 4px; }
-    .metric-box .value { font-size: 1rem; font-weight: 600; color: var(--color-gray-900); }
-    .contact-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--color-gray-600); }
-    .contact-item .material-icons { font-size: 18px; color: var(--color-gray-400); }
-
-    .load-more-container { display: flex; justify-content: center; margin-top: 2.5rem; padding-bottom: 1rem; }
-    .load-more-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; font-weight: 600; }
-
-    /* Pagination */
-    .pagination-container { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; background: white; padding: 1rem 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); }
-    .pagination-info { font-size: 0.875rem; color: var(--color-gray-600); }
-    .pagination-controls { display: flex; align-items: center; gap: 1rem; }
-    .page-current { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
-    .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.875rem; border-radius: var(--radius-md); }
-
-    @media (max-width: 1024px) {
-      .header-actions { width: 100%; justify-content: space-between; }
-      .module-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-      .premium-table th:nth-child(3), .premium-table td:nth-child(3) { display: none; }
-      .form-grid { grid-template-columns: 1fr; }
-    }
-
-    /* Action Dropdown */
-    .action-dropdown { position: absolute; right: 0; top: 100%; margin-top: 0.5rem; background: white; border: 1px solid var(--color-gray-200); border-radius: var(--radius-md); padding: 0.25rem; min-width: 180px; z-index: 100; animation: fadeIn 0.2s ease-out; box-shadow: var(--shadow-lg); }
-    .dropdown-item { width: 100%; text-align: left; background: none; border: none; padding: 0.625rem 1rem; font-size: 0.875rem; color: var(--color-gray-700); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; border-radius: var(--radius-sm); transition: all var(--transition-fast); }
-    .dropdown-item:hover { background: var(--color-gray-50); color: var(--color-gray-900); }
-    .dropdown-item.warning { color: #b54708; }
-    .dropdown-item.warning:hover { background: #fffaeb; color: #93370d; }
-    .dropdown-item.success { color: #027a48; }
-    .dropdown-item.success:hover { background: #ecfdf3; color: #026aa2; }
-    .dropdown-item.danger { color: #b42318; }
-    .dropdown-item.danger:hover { background: #fef3f2; color: #912018; }
-    .dropdown-divider { height: 1px; background: var(--color-gray-100); margin: 0.25rem 0; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* Confirm Modal Extras */
-    .confirm-icon-wrap { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
-    .confirm-icon-wrap .material-icons { font-size: 24px; }
-    .confirm-icon-wrap.btn-danger { background: #fee4e2; color: #d92d20; border: 8px solid #fef3f2; box-sizing: content-box; }
-    .confirm-icon-wrap.btn-warning { background: #fef0c7; color: #dc6803; border: 8px solid #fffaeb; box-sizing: content-box; }
-    .confirm-icon-wrap.btn-success { background: #d1fadf; color: #039855; border: 8px solid #ecfdf3; box-sizing: content-box; }
+    :host { display: block; width: 100%; }
   `]
 })
 export class CompanyListComponent implements OnInit {
@@ -606,6 +382,14 @@ export class CompanyListComponent implements OnInit {
   private branchService = inject(BranchService);
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
+  private countryService = inject(CountryService);
+  private fb = inject(FormBuilder);
+
+  companyForm: FormGroup;
+  countryCodes: CountryMobileCode[] = [];
+  selectedCountry: CountryMobileCode | null = null;
+  isCountryDropdownOpen = false;
+  editingCompanyId: string | number | null = null;
 
   searchQuery = '';
 
@@ -622,6 +406,8 @@ export class CompanyListComponent implements OnInit {
   isEditMode = false;
   selectedCompany: Company | null = null;
   openDropdownId: string | null = null;
+  showAdvancedFilters = false;
+  filterBranch = '';
 
   // Pagination
   currentPage = 0;
@@ -632,21 +418,80 @@ export class CompanyListComponent implements OnInit {
 
   private searchSubject = new Subject<string>();
 
-  newCompany: Partial<Company> = {
-    name: '',
-    email: '',
-    phone: '',
-    contactPerson: '',
-    address: '',
-    industry: '',
-    website: '',
-    branchId: undefined,
-    assignedTo: 1
-  };
+  constructor() {
+    this.companyForm = this.fb.group({
+      name: ['', Validators.required],
+      industry: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      dialCode: ['+91', Validators.required],
+      phone: ['', Validators.required],
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
+      website: ['', Validators.required],
+      address: ['', Validators.required],
+      branchId: ['', Validators.required]
+    });
+  }
 
-  @HostListener('document:click')
-  closeDropdown() {
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => {
+        this.countryCodes = data;
+        if (this.countryCodes.length > 0) {
+          const india = this.countryCodes.find(c => c.countryCode === 'IN' || c.mobileCode === '+91');
+          this.selectCountry(india || this.countryCodes[0], new Event('init'));
+        }
+      },
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.custom-dropdown')) {
+      this.isCountryDropdownOpen = false;
+    }
+    // Handle action dropdown close
     this.openDropdownId = null;
+  }
+
+  toggleCountryDropdown(event: Event) {
+    event.stopPropagation();
+    this.isCountryDropdownOpen = !this.isCountryDropdownOpen;
+  }
+
+  selectCountry(country: CountryMobileCode, event: Event) {
+    if (event.type !== 'init') event.stopPropagation();
+    this.selectedCountry = country;
+    this.companyForm.get('dialCode')?.setValue(country.mobileCode);
+    this.isCountryDropdownOpen = false;
+    this.updatePhoneValidation();
+  }
+
+  onFilterChange() {
+    this.currentPage = 0;
+    this.loadCompanies();
+  }
+
+  resetFilters() {
+    this.searchQuery = '';
+    this.filterBranch = '';
+    this.onFilterChange();
+  }
+
+  updatePhoneValidation() {
+    const phoneControl = this.companyForm.get('phone');
+    if (!phoneControl || !this.selectedCountry || !this.selectedCountry.mobileNumberLength) return;
+    
+    const length = this.selectedCountry.mobileNumberLength;
+    phoneControl.setValidators([
+      Validators.required,
+      Validators.minLength(length),
+      Validators.maxLength(length),
+      Validators.pattern('^[0-9]*$')
+    ]);
+    phoneControl.updateValueAndValidity();
   }
 
   toggleDropdown(event: Event, id: string) {
@@ -745,6 +590,7 @@ export class CompanyListComponent implements OnInit {
   ngOnInit() {
     this.loadBranches();
     this.loadCompanies();
+    this.loadCountryCodes();
 
     this.searchSubject.pipe(
       debounceTime(400),
@@ -776,11 +622,27 @@ export class CompanyListComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load companies', err);
-        this.notificationService.error('Failed to load companies.');
         this.isLoading = false;
         this.companies = [];
       }
     });
+  }
+
+  getInitials(name?: string): string {
+    if (!name || name.trim() === '') return 'C';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  getAvatarColor(name?: string): string {
+    if (!name) return '#94a3b8'; // default gray
+    const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#a78bfa', '#e879f9', '#f43f5e'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
   }
 
   onSearchChange() {
@@ -796,42 +658,54 @@ export class CompanyListComponent implements OnInit {
 
   openAddModal() {
     this.isEditMode = false;
-    this.newCompany = {
+    this.editingCompanyId = null;
+    this.companyForm.reset({
       name: '',
+      industry: '',
       email: '',
+      dialCode: this.selectedCountry?.mobileCode || '+91',
       phone: '',
       firstName: '',
       lastName: '',
-      contactPerson: '',
-      address: '',
-      industry: '',
       website: '',
-      branchId: undefined,
-      assignedTo: Number(this.authService.currentUserValue?.id || 1)
-    };
+      address: '',
+      branchId: ''
+    });
     this.showAddModal = true;
   }
 
   openEditModal(comp: Company) {
     this.isEditMode = true;
+    this.editingCompanyId = comp.id || null;
     
     const contactPerson = comp.companyDetails?.contactPerson || comp.contactPerson || '';
     const nameParts = contactPerson.trim().split(' ');
-    const firstName = nameParts[0];
+    const firstName = nameParts[0] || '';
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
-    // Map nested data to flat model for form binding
-    this.newCompany = { 
-      ...comp,
+    // Extract dial code and phone
+    let dialCode = '+91';
+    let phone = comp.phone || '';
+    
+    const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
+    if (matchedCountry) {
+      dialCode = matchedCountry.mobileCode;
+      phone = phone.substring(dialCode.length);
+      this.selectedCountry = matchedCountry;
+    }
+
+    this.companyForm.patchValue({
+      name: comp.companyDetails?.companyName || comp.name || comp.firstName,
       industry: comp.companyDetails?.industry || comp.industry,
+      email: comp.email,
+      dialCode: dialCode,
+      phone: phone,
       firstName: firstName,
       lastName: lastName,
-      contactPerson: contactPerson,
-      address: comp.companyDetails?.address || comp.address,
       website: comp.companyDetails?.website || comp.website,
-      branchId: comp.branch?.id || comp.branchId,
-      assignedTo: comp.companyDetails?.assignedTo || comp.assignedTo || 1
-    };
+      address: comp.companyDetails?.address || comp.address,
+      branchId: comp.branch?.id || comp.branchId
+    });
     
     this.showAddModal = true;
     this.openDropdownId = null;
@@ -853,48 +727,62 @@ export class CompanyListComponent implements OnInit {
   }
 
   onSubmitCompany() {
-    if (!this.newCompany.name || !this.newCompany.email || !this.newCompany.phone || !this.newCompany.firstName || !this.newCompany.lastName || !this.newCompany.address || !this.newCompany.industry || !this.newCompany.website || !this.newCompany.branchId) return;
-
-    // Ensure assignedTo is set (as per API requirement in the curl example)
-    if (!this.newCompany.assignedTo) {
-      this.newCompany.assignedTo = Number(this.authService.currentUserValue?.id || 1);
+    if (this.companyForm.invalid) {
+      this.companyForm.markAllAsTouched();
+      return;
     }
 
     this.submitting = true;
+    const formValue = this.companyForm.value;
     
-    const payload = {
-      ...this.newCompany,
-      firstName: this.newCompany.firstName,
-      lastName: this.newCompany.lastName
+    const companyData: Partial<Company> = {
+      name: formValue.name,
+      industry: formValue.industry,
+      email: formValue.email,
+      phone: `${formValue.dialCode}${formValue.phone}`,
+      mobileCountryCodeId: this.selectedCountry?.id,
+      firstName: formValue.firstName,
+      lastName: formValue.lastName,
+      contactPerson: `${formValue.firstName} ${formValue.lastName}`,
+      website: formValue.website,
+      address: formValue.address,
+      branchId: Number(formValue.branchId),
+      assignedTo: 1 // Default or from logic
     };
 
-    if (this.isEditMode && this.newCompany.id) {
-      this.companyService.updateCompany(this.newCompany.id, payload).subscribe({
+    if (this.isEditMode && this.editingCompanyId) {
+      this.companyService.updateCompany(this.editingCompanyId, companyData).subscribe({
         next: () => {
-          this.notificationService.success('Company updated successfully!');
           this.submitting = false;
           this.showAddModal = false;
           this.loadCompanies();
+          this.notificationService.showModal(
+            'Company Updated',
+            'Company partner details have been successfully updated.',
+            undefined,
+            'success'
+          );
         },
         error: (err) => {
-          console.error('Failed to update company', err);
-          this.notificationService.error('Failed to update company. Please try again.');
           this.submitting = false;
+          this.notificationService.error(err.message || 'Failed to update company');
         }
       });
     } else {
-      this.companyService.createCompany(payload).subscribe({
+      this.companyService.createCompany(companyData).subscribe({
         next: () => {
-          this.notificationService.success('Company created successfully!');
           this.submitting = false;
           this.showAddModal = false;
-          this.currentPage = 0;
           this.loadCompanies();
+          this.notificationService.showModal(
+            'Company Created!',
+            'The corporate partner has been successfully registered.',
+            'Access credentials have been shared to the company\'s email address. They can now access the partner portal.'
+          );
         },
         error: (err) => {
-          console.error('Failed to create company', err);
-          this.notificationService.error('Failed to create company. Please try again.');
           this.submitting = false;
+          this.notificationService.error(err.message || 'Failed to create company');
         }
       });
     }

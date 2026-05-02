@@ -10,6 +10,7 @@ export interface Employee {
   name: string;
   email: string;
   phone: string;
+  mobileCountryCodeId?: number;
   branchId: number;
   roleId: number;
   role?: { id: number; name: string; description?: string };
@@ -51,9 +52,12 @@ export class EmployeeService {
 
   createEmployee(employee: Partial<Employee>): Observable<Employee> {
     const payload = {
-      name: employee.name,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      name: employee.name || `${employee.firstName} ${employee.lastName}`,
       email: employee.email,
       phone: employee.phone,
+      mobileCountryCodeId: employee.mobileCountryCodeId,
       branchId: Number(employee.branchId),
       roleId: Number(employee.roleId)
     };
@@ -64,8 +68,11 @@ export class EmployeeService {
 
   updateEmployee(id: string | number, employee: Partial<Employee>): Observable<Employee> {
     const payload = {
-      name: employee.name,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      name: employee.name || `${employee.firstName} ${employee.lastName}`,
       phone: employee.phone,
+      mobileCountryCodeId: employee.mobileCountryCodeId,
       branchId: Number(employee.branchId),
       roleId: Number(employee.roleId)
     };
@@ -78,7 +85,7 @@ export class EmployeeService {
     let params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString());
-      
+
     if (search) params = params.set('search', search);
     if (role) params = params.set('role', role);
     if (branch) params = params.set('branch', branch.toString());
@@ -112,9 +119,9 @@ export class EmployeeService {
     if (roleId) {
       params = params.set('roleId', roleId.toString());
     }
-    return this.http.get<any>(`http://localhost:8080/api/admin/get-all-employee`, { 
+    return this.http.get<any>(`http://localhost:8080/api/admin/get-all-employee`, {
       headers: this.getHeaders(),
-      params 
+      params
     }).pipe(
       map(response => response.data || response)
     );

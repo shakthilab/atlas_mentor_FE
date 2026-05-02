@@ -10,6 +10,7 @@ export interface Referral {
   name: string;
   email: string;
   phone: string;
+  mobileCountryCodeId?: number;
   referralType: string;
   branchId?: number;
   branch?: {
@@ -22,6 +23,7 @@ export interface Referral {
   conversion?: number;
   payout?: number;
   status?: string;
+  assignedToUsername?: string;
 }
 
 export interface ReferralResponse {

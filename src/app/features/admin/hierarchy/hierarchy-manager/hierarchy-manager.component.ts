@@ -7,90 +7,64 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { BranchService } from '../../../../core/services/branch.service';
 import { EmployeeService, Employee } from '../../../../core/services/employee.service';
 
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+
 @Component({
   selector: 'app-hierarchy-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, EmptyStateComponent],
   template: `
-    <div class="hierarchy-layout">
-      <!-- Main Content Area -->
-      <div class="main-content">
-        <!-- Header Section -->
-        <div class="header-section">
-          <div class="header-title">
-            <h1>Hierarchy Management</h1>
-            <p>Manage reporting structure and team assignments</p>
+    <div class="module-container">
+      <div class="module-header">
+        <div class="header-left">
+          <h1 class="page-title">Hierarchy Management</h1>
+          <p class="page-subtitle">Manage reporting structure and team assignments</p>
+        </div>
+        <div class="header-actions">
+          <div class="filter-dropdown">
+            <span class="material-icons filter-icon">location_on</span>
+            <select class="filter-select" [(ngModel)]="locationFilter" style="padding-left: 3.5rem !important;">
+              <option>All locations</option>
+              <option *ngFor="let branch of branches">{{ branch.name }}</option>
+            </select>
           </div>
-          <div class="header-actions">
-            <div class="search-box">
-              <span class="material-icons">search</span>
-              <input type="text" [(ngModel)]="searchQuery" placeholder="Search people, teams...">
-            </div>
-            <div class="location-picker">
-              <span class="material-icons loc-icon">place</span>
-              <select [(ngModel)]="locationFilter">
-                <option>All locations</option>
-                <option *ngFor="let branch of branches">{{ branch.name }}</option>
-              </select>
-            </div>
+
+        </div>
+      </div>
+
+
+      <!-- KPI Cards Grid -->
+      <div class="stats-grid">
+        <div class="stat-mini-card">
+          <div class="stat-icon-wrap" style="background: #eff4ff; color: #2e90fa;">
+            <span class="material-icons">groups</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">Total Teams</span>
+            <span class="value">{{ stats.totalTeams }}</span>
           </div>
         </div>
-
-        <!-- KPI Cards Grid -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-info">
-              <span class="stat-label">Total Teams</span>
-              <div class="stat-value-wrap">
-                <span class="stat-value">{{ stats.totalTeams }}</span>
-              </div>
-              <span class="stat-change positive">+2 this month</span>
-            </div>
-            <div class="stat-icon team-icon">
-              <span class="material-icons">account_tree</span>
-            </div>
+        <div class="stat-mini-card">
+          <div class="stat-icon-wrap" style="background: #fdf2fa; color: #c11574;">
+            <span class="material-icons">people</span>
           </div>
-
-          <div class="stat-card">
-            <div class="stat-info">
-              <span class="stat-label">Total Members</span>
-              <div class="stat-value-wrap">
-                <span class="stat-value">{{ stats.totalMembers }}</span>
-              </div>
-              <span class="stat-change">Across all roles</span>
-            </div>
-            <div class="stat-icon member-icon">
-              <span class="material-icons">groups</span>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-info">
-              <span class="stat-label">Locations</span>
-              <div class="stat-value-wrap">
-                <span class="stat-value">{{ stats.totalLocations }}</span>
-              </div>
-              <span class="stat-change">Active branches</span>
-            </div>
-            <div class="stat-icon location-icon">
-              <span class="material-icons">location_on</span>
-            </div>
-          </div>
-
-          <div class="stat-card ghost">
-             <div class="stat-info">
-               <span class="stat-label">Active Roles</span>
-               <div class="stat-value-wrap">
-                 <span class="stat-value">5</span>
-               </div>
-               <span class="stat-change">Configured roles</span>
-             </div>
-             <div class="stat-icon role-icon">
-               <span class="material-icons">badge</span>
-             </div>
+          <div class="stat-content">
+            <span class="label">Total Members</span>
+            <span class="value">{{ stats.totalMembers }}</span>
           </div>
         </div>
+        <div class="stat-mini-card">
+          <div class="stat-icon-wrap" style="background: #ecfdf3; color: #027a48;">
+            <span class="material-icons">place</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">Locations</span>
+            <span class="value">{{ stats.totalLocations }}</span>
+          </div>
+        </div>
+      </div>
 
+      <div class="hierarchy-layout">
         <!-- Organization Tree Card -->
         <div class="org-tree-card">
           <div class="card-header">
@@ -100,13 +74,14 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
               </div>
               <div>
                 <h3>Organization Tree</h3>
-                <p>{{ stats.totalTeams }} teams • Click a node to expand</p>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
+                  <p style="margin: 0;">{{ stats.totalTeams }} teams</p>
+                  <button class="btn-ghost-sm" (click)="toggleAllNodes()" style="font-size: 0.75rem; color: #2e90fa; padding: 0; background: none; border: none; cursor: pointer; font-weight: 600;">
+                    {{ expandedNodes.size > 0 ? 'Collapse All' : 'Expand All' }}
+                  </button>
+                </div>
               </div>
             </div>
-            <button class="btn btn-outline btn-add-manager" (click)="openAddManagerModal()">
-              <span class="material-icons">add</span>
-              Add Manager
-            </button>
           </div>
 
           <div class="tree-container">
@@ -134,8 +109,8 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
                           {{ isExpanded(team.leader.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_right' }}
                         </span>
                       </div>
-                      <div class="node-avatar" [class.manager-avatar]="level === 'MANAGER'">
-                        {{ team.leader.name.charAt(0) }}
+                      <div class="node-avatar" [class.manager-avatar]="level === 'MANAGER'" [style.background]="getAvatarColor(team.leader.name)">
+                        {{ getInitials(team.leader.name) }}
                       </div>
                       <div class="node-info">
                         <div class="name-role">
@@ -179,7 +154,7 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
                         <div class="node-content child">
                           <div class="node-main">
                             <div class="node-toggle spacer"></div>
-                            <div class="node-avatar child-avatar">{{ member.name.charAt(0) }}</div>
+                            <div class="node-avatar child-avatar" [style.background]="getAvatarColor(member.name)">{{ getInitials(member.name) }}</div>
                             <div class="node-info">
                               <div class="name-role">
                                 <span class="name">{{ member.name }}</span>
@@ -213,14 +188,15 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
               </ng-template>
 
               <!-- Empty State -->
-              <div class="empty-tree" *ngIf="filteredHierarchy.length === 0">
-                <span class="material-icons">search_off</span>
-                <p>No results found for your search.</p>
-              </div>
+              <app-empty-state 
+                *ngIf="filteredHierarchy.length === 0"
+                title="No Hierarchy Results Found"
+                message="No teams or managers found matching your current search or location filter."
+                [showAction]="false">
+              </app-empty-state>
             </div>
           </div>
         </div>
-      </div>
 
       <!-- Right Sidebar: Quick Assignment -->
       <div class="right-sidebar">
@@ -269,7 +245,7 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
                   <div class="check-box" [class.checked]="selectedEmployeeIds.includes(emp.id)">
                     <span class="material-icons" *ngIf="selectedEmployeeIds.includes(emp.id)">check</span>
                   </div>
-                  <div class="emp-avatar">{{ emp.name.charAt(0) }}</div>
+                  <div class="emp-avatar" [style.background]="getAvatarColor(emp.name)">{{ getInitials(emp.name) }}</div>
                   <div class="emp-info">
                     <span class="emp-name">{{ emp.name }}</span>
                     <span class="badge" [class.badge-senior]="isSenior(emp)" [class.badge-junior]="isJunior(emp)" style="font-size: 0.625rem;">
@@ -297,9 +273,10 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
                 Saving...
               </ng-container>
             </button>
-          </div>
         </div>
       </div>
+    </div>
+    </div>
 
       <!-- Assignment Modal -->
       <div class="modal-overlay" *ngIf="showAssignModal" (click)="closeAssignModal()">
@@ -380,7 +357,6 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
                 </ng-container>
               </button>
             </div>
-          </div>
         </div>
       </div>
 
@@ -404,18 +380,18 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
                 </ng-container>
               </button>
             </div>
-          </div>
         </div>
       </div>
       <!-- Add Manager Modal -->
       <div class="modal-overlay" *ngIf="showAddManagerModal" (click)="closeAddManagerModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 540px;">
           <div class="modal-header">
-            <div class="modal-title-wrap">
-               <div class="modal-icon">
-                 <span class="material-icons">person_add</span>
-               </div>
-               <h2 class="modal-title">Add New Manager</h2>
+            <div class="modal-header-icon" style="background: #eff4ff; color: #2e90fa; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+              <span class="material-icons">person_add</span>
+            </div>
+            <div class="modal-header-text" style="flex: 1; padding-left: 1rem;">
+              <h2 class="modal-title" style="margin: 0; font-size: 1.25rem;">Add New Manager</h2>
+              <p class="modal-subtitle" style="margin: 0.25rem 0 0; color: #667085; font-size: 0.875rem;">Enter details for the new manager.</p>
             </div>
             <button class="close-btn" (click)="closeAddManagerModal()">
               <span class="material-icons">close</span>
@@ -423,7 +399,6 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
           </div>
           
           <div class="modal-body">
-            <p class="modal-subtitle">Enter details for the new manager.</p>
             
             <form #managerForm="ngForm" (ngSubmit)="onSubmitManager()">
               <div class="form-group">
@@ -470,56 +445,14 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
     </div>
   `,
   styles: [`
+    :host { display: block; width: 100%; }
     .hierarchy-layout { 
       display: grid; 
       grid-template-columns: 1fr 340px; 
       gap: 2rem; 
-      padding-bottom: 2rem;
+      margin-top: 2rem;
     }
 
-    .main-content { display: flex; flex-direction: column; gap: 2rem; }
-
-    /* Header Section */
-    .header-section { display: flex; justify-content: space-between; align-items: center; background: white; padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid #eaecf0; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
-    .header-title h1 { font-size: 1.25rem; font-weight: 700; color: #101828; margin-bottom: 0.125rem; }
-    .header-title p { color: #667085; font-size: 0.8125rem; }
-
-    .header-actions { display: flex; gap: 0.75rem; align-items: center; }
-    
-    .search-box { position: relative; }
-    .search-box .material-icons { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #667085; font-size: 1.125rem; }
-    .search-box input { padding: 0.5rem 0.75rem 0.5rem 2.25rem; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 0.875rem; width: 240px; transition: 0.2s; }
-    .search-box input:focus { border-color: #2e90fa; box-shadow: 0 0 0 4px #eff4ff; outline: none; }
-
-    .location-picker { position: relative; }
-    .location-picker .loc-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #667085; font-size: 1.125rem; z-index: 1; pointer-events: none; }
-    .location-picker select { 
-      padding: 0.5rem 2rem 0.5rem 2.25rem; 
-      border: 1px solid #d0d5dd; 
-      border-radius: 8px; 
-      font-size: 0.875rem; 
-      appearance: none; 
-      background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23667085' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 0.75rem center;
-      min-width: 180px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .location-picker select:hover { border-color: #b2ccff; }
-    .location-picker select:focus { border-color: #2e90fa; box-shadow: 0 0 0 4px #eff4ff; outline: none; }
-
-    /* KPI Cards */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
-    .stat-card { background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #eaecf0; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); }
-    .stat-label { font-size: 0.75rem; font-weight: 600; color: #667085; text-transform: none; margin-bottom: 0.5rem; display: block; }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: #101828; }
-    .stat-change { font-size: 0.75rem; margin-top: 0.5rem; display: block; color: #667085; }
-    .stat-change.positive { color: #027a48; font-weight: 600; }
-    .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-    .stat-icon .material-icons { font-size: 1.25rem; }
-    .team-icon { background: #eff4ff; color: #2e90fa; }
-    .member-icon { background: #f9f5ff; color: #7f56d9; }
-    .location-icon { background: #f2f4f7; color: #667085; }
-    .role-icon { background: #fef6ee; color: #b93815; }
 
     /* Org Tree Card */
     .org-tree-card { background: white; border-radius: 12px; border: 1px solid #eaecf0; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); position: relative; min-height: 400px; }
@@ -528,7 +461,6 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
     .card-icon { width: 36px; height: 36px; border-radius: 8px; background: #eff4ff; color: #2e90fa; display: flex; align-items: center; justify-content: center; }
     .card-title-info h3 { font-size: 1rem; font-weight: 600; color: #101828; margin: 0; }
     .card-title-info p { font-size: 0.75rem; color: #667085; margin: 0; }
-    .btn-add-manager { border-color: #d0d5dd; color: #344054; font-size: 0.8125rem; padding: 0.5rem 0.875rem; }
 
     /* Tree View Styles */
     .tree-container { padding: 1.5rem; min-height: 300px; position: relative; }
@@ -539,8 +471,8 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
     .node-main:hover { background-color: #f9fafb; }
     
     .node-toggle { width: 24px; display: flex; align-items: center; justify-content: center; color: #667085; }
-    .node-avatar { width: 40px; height: 40px; border-radius: 50%; background: #f2f4f7; color: #475467; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; border: 1px solid #eaecf0; }
-    .manager-avatar { background: #eff4ff; color: #2e90fa; }
+    .node-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; color: white; border: 2px solid white; box-shadow: 0 0 0 1px #eaecf0; flex-shrink: 0; }
+    .manager-avatar { width: 44px; height: 44px; }
     
     .node-info { flex: 1; }
     .name-role { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.125rem; }
@@ -609,7 +541,7 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
     .check-box.checked { background: #2e90fa; border-color: #2e90fa; color: white; }
     .check-box .material-icons { font-size: 0.875rem; }
     
-    .emp-avatar { width: 24px; height: 24px; border-radius: 50%; background: #f2f4f7; font-size: 0.6875rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .emp-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.65rem; color: white; border: 1px solid white; box-shadow: 0 0 0 1px #eaecf0; flex-shrink: 0; }
     .emp-info { flex: 1; display: flex; justify-content: space-between; align-items: center; }
     .emp-name { font-size: 0.8125rem; font-weight: 500; color: #344054; }
 
@@ -741,6 +673,12 @@ export class HierarchyManagerComponent implements OnInit {
 
   private checkAllLoaded() {
     if (this.counsellorHierarchy.length >= 0 && this.managerHierarchy.length >= 0) {
+      // Expand all top-level managers by default
+      this.managerHierarchy.forEach(team => {
+        if (team.leader?.id) {
+          this.expandedNodes.add(team.leader.id);
+        }
+      });
       setTimeout(() => this.isLoading = false, 300);
     }
   }
@@ -766,9 +704,9 @@ export class HierarchyManagerComponent implements OnInit {
   calculateStats() {
     const allTeams = [...this.managerHierarchy, ...this.counsellorHierarchy];
     this.stats.totalTeams = allTeams.length;
-    
+
     let membersSet = new Set();
-    
+
     allTeams.forEach(team => {
       membersSet.add(team.leader.id);
       const members = team.employees || team.members || [];
@@ -776,36 +714,36 @@ export class HierarchyManagerComponent implements OnInit {
         membersSet.add(m.id);
       });
     });
-    
+
     this.stats.totalMembers = membersSet.size;
   }
 
   get filteredHierarchy() {
     // Only show actual managers as top-level nodes
     let allTopLevel = [...this.managerHierarchy];
-    
+
     if (this.searchQuery) {
       const query = this.searchQuery.toLowerCase();
-      allTopLevel = allTopLevel.filter(team => 
+      allTopLevel = allTopLevel.filter(team =>
         team.leader.name.toLowerCase().includes(query) ||
         (team.employees || team.members || []).some((m: any) => m.name.toLowerCase().includes(query))
       );
     }
-    
+
     if (this.locationFilter !== 'All locations') {
       allTopLevel = allTopLevel.filter(team => team.leader.branch?.name === this.locationFilter || team.leader.branch === this.locationFilter);
     }
-    
+
     return allTopLevel;
   }
 
   get filteredSidebarEmployees() {
     let filtered = this.sidebarEmployees;
-    
+
     if (this.sidebarSelectedManagerId) {
-      const selectedManager = this.managerHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId) || 
-                              this.counsellorHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId);
-      
+      const selectedManager = this.managerHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId) ||
+        this.counsellorHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId);
+
       if (selectedManager) {
         const leaderRole = (selectedManager.leader.primaryRole || (selectedManager.leader.roles && selectedManager.leader.roles[0]) || '').toUpperCase();
         if (leaderRole.includes('MANAGER') || leaderRole === 'ADMIN') {
@@ -831,6 +769,20 @@ export class HierarchyManagerComponent implements OnInit {
     return this.expandedNodes.has(id);
   }
 
+  toggleAllNodes() {
+    if (this.expandedNodes.size > 0) {
+      this.expandedNodes.clear();
+    } else {
+      this.managerHierarchy.forEach(team => {
+        if (team.leader?.id) this.expandedNodes.add(team.leader.id);
+        // Also expand seniors if they have sub-teams
+        (team.employees || team.members || []).forEach((m: any) => {
+          if (this.getSubTeam(m)) this.expandedNodes.add(m.id);
+        });
+      });
+    }
+  }
+
   toggleNode(id: number) {
     if (this.expandedNodes.has(id)) {
       this.expandedNodes.delete(id);
@@ -842,19 +794,19 @@ export class HierarchyManagerComponent implements OnInit {
   getDisplayRole(member: any, level?: string): string {
     if (level === 'MANAGER') return 'Manager';
     if (level === 'SENIOR') return 'Senior Counsellor';
-    
+
     const role = this.getRoleName(member);
     if (role.includes('MANAGER') || role === 'ADMIN') return 'Manager';
     if (role.includes('SENIOR')) return 'Senior Counsellor';
     if (role.includes('JUNIOR')) return 'Junior Counsellor';
-    
+
     return this.formatRole(role) || 'Team Member';
   }
 
   getFilteredMembers(team: any, level: string) {
     if (!team) return [];
     const members = team.employees || team.members || [];
-    
+
     if (level === 'MANAGER') {
       const assignedToSeniorIds = new Set();
       this.counsellorHierarchy.forEach(ch => {
@@ -864,7 +816,7 @@ export class HierarchyManagerComponent implements OnInit {
 
       return members.filter((m: any) => !assignedToSeniorIds.has(m.id));
     }
-    
+
     return members;
   }
 
@@ -905,10 +857,10 @@ export class HierarchyManagerComponent implements OnInit {
   }
 
   getSidebarConstraintText() {
-    const selectedManager = this.managerHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId) || 
-                            this.counsellorHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId);
+    const selectedManager = this.managerHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId) ||
+      this.counsellorHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId);
     if (!selectedManager) return '';
-    
+
     const leaderRole = (selectedManager.leader.primaryRole || (selectedManager.leader.roles && selectedManager.leader.roles[0]) || '').toUpperCase();
     if (leaderRole.includes('MANAGER') || leaderRole === 'ADMIN') return 'Managers can assign Seniors, Editors, and other staff.';
     if (leaderRole.includes('SENIOR')) return 'Senior Counsellors can only assign Junior Counsellors.';
@@ -923,21 +875,21 @@ export class HierarchyManagerComponent implements OnInit {
 
   saveSidebarAssignment() {
     if (!this.sidebarSelectedManagerId || this.selectedEmployeeIds.length === 0) return;
-    
+
     this.isSubmitting = true;
-    
+
     this.roleService.getAllRoles().subscribe({
       next: (roles) => {
-        const selectedManager = this.managerHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId) || 
-                                this.counsellorHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId);
-        
+        const selectedManager = this.managerHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId) ||
+          this.counsellorHierarchy.find(t => t.leader.id === this.sidebarSelectedManagerId);
+
         if (!selectedManager) {
           this.isSubmitting = false;
           return;
         }
 
         const leaderRole = this.getRoleName(selectedManager.leader);
-        
+
         if (leaderRole.includes('SENIOR')) {
           const juniorPayload = {
             seniorCounsellorId: this.sidebarSelectedManagerId!,
@@ -955,11 +907,11 @@ export class HierarchyManagerComponent implements OnInit {
             }
           });
         } else {
-          let targetRoleName = 'SENIOR_COUNSELLOR'; 
+          let targetRoleName = 'SENIOR_COUNSELLOR';
           const role = roles.find(r => r.name === targetRoleName);
-          
+
           const payload = {
-            roleId: role?.id || 0, 
+            roleId: role?.id || 0,
             managerId: this.sidebarSelectedManagerId!,
             userIds: this.selectedEmployeeIds
           };
@@ -994,13 +946,13 @@ export class HierarchyManagerComponent implements OnInit {
     this.selectedRoleName = '';
     this.employeesByRoleList = [];
     this.selectedEmployeeIds = [];
-    
+
     this.roleService.getAllRoles().subscribe({
       next: (roles) => {
         if (level === 'MANAGER') {
-          this.rolesList = roles.filter(role => 
-            role.name !== 'ADMIN' && 
-            role.name !== 'JUNIOR_COUNSELLOR' && 
+          this.rolesList = roles.filter(role =>
+            role.name !== 'ADMIN' &&
+            role.name !== 'JUNIOR_COUNSELLOR' &&
             role.name !== 'STUDENT' &&
             !role.name.includes('MANAGER')
           );
@@ -1011,9 +963,9 @@ export class HierarchyManagerComponent implements OnInit {
             this.onRoleChange();
           }
         } else {
-          this.rolesList = roles.filter(role => 
-            role.name !== 'ADMIN' && 
-            !role.name.includes('MANAGER') && 
+          this.rolesList = roles.filter(role =>
+            role.name !== 'ADMIN' &&
+            !role.name.includes('MANAGER') &&
             role.name !== 'STUDENT'
           );
         }
@@ -1056,7 +1008,7 @@ export class HierarchyManagerComponent implements OnInit {
   assignEmployees() {
     if (this.selectedEmployeeIds.length === 0 || !this.currentTeam) return;
     this.isSubmitting = true;
-    
+
     const selectedRole = this.rolesList.find(r => r.name === this.selectedRoleName);
     if (!selectedRole) {
       this.isSubmitting = false;
@@ -1126,7 +1078,7 @@ export class HierarchyManagerComponent implements OnInit {
   executeUnassign() {
     if (!this.memberToUnassign) return;
     this.isUnassigning = true;
-    
+
     const obs = this.isJunior(this.memberToUnassign)
       ? this.hierarchyService.unassignJuniorCounsellor(this.memberToUnassign.id)
       : this.hierarchyService.unassignEmployee(this.memberToUnassign.id);
@@ -1146,26 +1098,47 @@ export class HierarchyManagerComponent implements OnInit {
   }
 
   // --- Add Manager Logic ---
+  openAddModal() {
+  }
+
+  getInitials(name?: string): string {
+    if (!name || name.trim() === '') return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+
+  getAvatarColor(name?: string): string {
+    if (!name) return '#94a3b8'; // default gray
+    const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#2dd4bf', '#38bdf8', '#818cf8', '#a78bfa', '#e879f9', '#f43f5e'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
   openAddManagerModal() {
+    console.log('Opening Add Manager Modal...');
     this.newManager = { name: '', email: '', phone: '', branchId: '' as unknown as number, roleId: '' as unknown as number };
     this.showAddManagerModal = true;
-    
+
     // Ensure managerRoles are loaded
     if (this.managerRoles.length === 0) {
-        this.roleService.getAllRoles().subscribe({
-            next: (roles) => {
-                this.managerRoles = roles.filter(r => r.name.toUpperCase().includes('MANAGER') || r.name.toUpperCase() === 'ADMIN');
-                const defaultRole = this.managerRoles.find(r => r.name.toUpperCase() === 'MANAGER');
-                if (defaultRole) {
-                    this.newManager.roleId = defaultRole.id;
-                }
-            }
-        });
-    } else {
-        const defaultRole = this.managerRoles.find(r => r.name.toUpperCase() === 'MANAGER');
-        if (defaultRole) {
+      this.roleService.getAllRoles().subscribe({
+        next: (roles) => {
+          this.managerRoles = roles.filter(r => r.name.toUpperCase().includes('MANAGER') || r.name.toUpperCase() === 'ADMIN');
+          const defaultRole = this.managerRoles.find(r => r.name.toUpperCase() === 'MANAGER');
+          if (defaultRole) {
             this.newManager.roleId = defaultRole.id;
+          }
         }
+      });
+    } else {
+      const defaultRole = this.managerRoles.find(r => r.name.toUpperCase() === 'MANAGER');
+      if (defaultRole) {
+        this.newManager.roleId = defaultRole.id;
+      }
     }
   }
 

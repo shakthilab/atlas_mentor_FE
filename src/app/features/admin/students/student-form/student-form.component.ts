@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-student-form',
@@ -177,6 +178,7 @@ import { FormsModule } from '@angular/forms';
 export class StudentFormComponent implements OnInit {
   route = inject(ActivatedRoute);
   router = inject(Router);
+  notificationService = inject(NotificationService);
   
   isEdit = false;
   student: any = {
@@ -210,7 +212,13 @@ export class StudentFormComponent implements OnInit {
 
   onSubmit() {
     console.log('Student Data:', this.student);
-    // Success toast and redirection
+    this.notificationService.showModal(
+      this.isEdit ? 'Student Updated!' : 'Student Created!',
+      this.isEdit ? 'The student record has been successfully updated.' : 'A new student lead has been successfully registered.',
+      this.isEdit 
+        ? 'All changes have been saved to the database. You can now view the updated details in the list.'
+        : 'The student account is now active. They will receive a welcome email with further instructions shortly.'
+    );
     this.router.navigate(['/admin/students']);
   }
 }
