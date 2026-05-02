@@ -1,7 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { StudentService } from '../../../../core/services/student.service';
+import { DatePipe } from '@angular/common';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 
@@ -9,6 +11,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
   selector: 'app-student-list',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent],
+  providers: [DatePipe],
   template: `
     <div class="module-container">
       <div class="module-header">
@@ -38,14 +41,14 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       <div class="filters-card">
         <div class="search-bar">
           <span class="material-icons">search</span>
-          <input type="text" placeholder="Search by name, email or phone..." [(ngModel)]="searchQuery">
+          <input type="text" placeholder="Search by name, email or phone..." [(ngModel)]="searchQuery" (keyup.enter)="onSearch()">
         </div>
         <div class="filter-actions">
-          <select class="filter-select" [(ngModel)]="filterStatus">
+          <select class="filter-select" [(ngModel)]="filterStatus" (change)="onStatusChange()">
             <option value="">All Status</option>
-            <option value="Lead">Lead</option>
-            <option value="Registered">Registered</option>
-            <option value="Lost">Lost</option>
+            <option value="LEAD">Lead</option>
+            <option value="REGISTERED">Registered</option>
+            <option value="LOST">Lost</option>
           </select>
           <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
             <span class="material-icons">tune</span>
@@ -202,8 +205,11 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
     :host { display: block; width: 100%; }
   `]
 })
-export class StudentListComponent {
+export class StudentListComponent implements OnInit {
   router = inject(Router);
+  studentService = inject(StudentService);
+  datePipe = inject(DatePipe);
+  
   searchQuery = '';
   filterStatus = '';
   filterCountry = '';
@@ -212,18 +218,76 @@ export class StudentListComponent {
   showAdvancedFilters = false;
   viewMode: 'list' | 'grid' = 'list';
   displayedCardsCount = 10;
+  
+  students: any[] = [];
+  loading = false;
+  totalElements = 0;
+  currentPage = 0;
+  pageSize = 10;
 
-  loadMoreCards() {
-    this.displayedCardsCount += 10;
+  ngOnInit() {
+    this.loadStudents();
   }
 
-  students = [
-    { id: 'ST1001', name: 'Mukul Sharma', phone: '+91 9876543210', email: 'mukul@example.com', status: 'Registered', counsellor: 'Siddharth Patel', country: 'Germany', university: 'Technical University of Munich', date: '12 Apr 2024' },
-    { id: 'ST1002', name: 'Priya Rai', phone: '+91 8765432109', email: 'priya@example.com', status: 'Lead', counsellor: 'Rohan Gupta', country: 'USA', university: 'Stanford University', date: '10 Apr 2024' },
-    { id: 'ST1003', name: 'Amit Kumar', phone: '+91 7654321098', email: 'amit@example.com', status: 'Lead', counsellor: 'Siddharth Patel', country: 'UK', university: 'Oxford University', date: '08 Apr 2024' },
-    { id: 'ST1004', name: 'Sonal Singh', phone: '+91 6543210987', email: 'sonal@example.com', status: 'Lost', counsellor: 'Admin', country: 'Poland', university: 'University of Warsaw', date: '05 Apr 2024' },
-    { id: 'ST1005', name: 'Rahul Verma', phone: '+91 5432109876', email: 'rahul@example.com', status: 'Registered', counsellor: 'Rohan Gupta', country: 'Canada', university: 'University of Toronto', date: '01 Apr 2024' }
-  ];
+  loadStudents() {
+    this.loading = true;
+    this.studentService.getStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+      .subscribe({
+        next: (data) => {
+          this.students = data.content.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            phone: s.phone,
+            email: s.email,
+            status: s.status,
+            counsellor: s.createdBy?.fullName || 'Unassigned',
+            country: s.country?.name || 'N/A',
+            university: s.university?.name || 'N/A',
+            date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
+          }));
+          this.totalElements = data.totalElements;
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Error fetching students:', err);
+          this.loading = false;
+        }
+      });
+  }
+
+  onSearch() {
+    this.currentPage = 0;
+    this.loadStudents();
+  }
+
+  onStatusChange() {
+    this.currentPage = 0;
+    this.loadStudents();
+  }
+
+  loadMoreCards() {
+    this.currentPage++;
+    this.studentService.getStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+      .subscribe({
+        next: (data) => {
+          const newStudents = data.content.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            phone: s.phone,
+            email: s.email,
+            status: s.status,
+            counsellor: s.createdBy?.fullName || 'Unassigned',
+            country: s.country?.name || 'N/A',
+            university: s.university?.name || 'N/A',
+            date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
+          }));
+          this.students = [...this.students, ...newStudents];
+          this.currentPage = data.number;
+        }
+      });
+  }
+
+  // Original helper methods kept below...
 
   viewDetail(id: string) {
     this.router.navigate(['/admin/students', id]);

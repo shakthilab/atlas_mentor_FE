@@ -1,13 +1,14 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { StudentService } from '../../../../core/services/student.service';
 
 @Component({
   selector: 'app-student-detail',
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="module-container">
+    <div class="module-container" *ngIf="student">
       <!-- Header with Profile Info -->
       <div class="detail-header">
         <div class="header-main">
@@ -48,9 +49,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
         <div class="tabs">
           <button class="tab-btn" [class.active]="activeTab === 'overview'" (click)="activeTab = 'overview'">Overview</button>
           <button class="tab-btn" [class.active]="activeTab === 'documents'" (click)="activeTab = 'documents'">Documents</button>
-          <button class="tab-btn" [class.active]="activeTab === 'tasks'" (click)="activeTab = 'tasks'">Tasks</button>
           <button class="tab-btn" [class.active]="activeTab === 'payments'" (click)="activeTab = 'payments'">Payments</button>
-          <button class="tab-btn" [class.active]="activeTab === 'activity'" (click)="activeTab = 'activity'">Activity Timeline</button>
         </div>
       </div>
 
@@ -74,10 +73,18 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
                   <span class="label">Intake</span>
                   <span class="value">Winter 2024</span>
                 </div>
-                <div class="info-item">
-                  <span class="label">Last Qualification</span>
-                  <span class="value">B.Tech in CS, IIT Delhi</span>
+              <div class="academic-timeline">
+                <div class="academic-entry" *ngFor="let record of student.academicHistory">
+                  <div class="entry-icon">
+                    <span class="material-icons">school</span>
+                  </div>
+                  <div class="entry-details">
+                    <span class="qualification">{{ record.qualification }} - {{ record.stream }}</span>
+                    <span class="institution">{{ record.institution_name }} ({{ record.board_university }})</span>
+                    <span class="score">Passed in {{ record.passing_year }} • {{ record.score }}</span>
+                  </div>
                 </div>
+              </div>
               </div>
             </div>
 
@@ -102,30 +109,11 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 
           <div class="panel-column sidebar">
             <div class="panel-card">
-              <h3 class="panel-title">Team Assignment</h3>
-              <div class="assignment-item">
-                <span class="label">Assignee Counsellor</span>
-                <div class="user-pill">
-                  <div class="user-avatar">SP</div>
-                  <span>Siddharth Patel</span>
-                </div>
-              </div>
-              <div class="assignment-item mt-1">
-                <span class="label">Branch</span>
-                <span class="value">Ahmedabad</span>
-              </div>
-            </div>
-
-            <div class="panel-card mt-1-5">
               <h3 class="panel-title">Quick Actions</h3>
               <div class="action-list">
                 <button class="action-btn">
                   <span class="material-icons">upload_file</span>
                   Upload Document
-                </button>
-                <button class="action-btn">
-                  <span class="material-icons">add_task</span>
-                  Create Task
                 </button>
                 <button class="action-btn">
                   <span class="material-icons">receipt</span>
@@ -144,40 +132,21 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
               <button class="btn btn-primary btn-sm">Upload New</button>
             </div>
             <div class="doc-grid">
-              <div class="doc-item" *ngFor="let doc of documents">
-                <div class="doc-icon">
+              <div class="doc-item" *ngFor="let doc of documentList">
+                <div class="doc-icon" [class.uploaded]="student.documents[doc.key]">
                   <span class="material-icons">description</span>
                 </div>
                 <div class="doc-info">
-                  <span class="doc-name">{{ doc.name }}</span>
-                  <span class="doc-size">{{ doc.size }} • {{ doc.date }}</span>
+                  <span class="doc-name">{{ doc.label }}</span>
+                  <span class="doc-status" [class.uploaded]="student.documents[doc.key]">
+                    {{ student.documents[doc.key] ? 'Verified • ' + student.documents[doc.key] : 'Pending Upload' }}
+                  </span>
                 </div>
-                <div class="doc-actions">
-                  <button class="btn-icon circle"><span class="material-icons">download</span></button>
-                  <button class="btn-icon circle"><span class="material-icons">delete</span></button>
+                <div class="doc-actions" *ngIf="student.documents[doc.key]">
+                  <button class="btn-icon circle" title="Download"><span class="material-icons">download</span></button>
+                  <button class="btn-icon circle" title="View"><span class="material-icons">visibility</span></button>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Activity Timeline -->
-        <div *ngIf="activeTab === 'activity'" class="tab-panel">
-          <div class="panel-card">
-            <h3 class="panel-title">Activity Timeline</h3>
-            <div class="timeline">
-              <div class="timeline-item" *ngFor="let activity of activities">
-                <div class="timeline-meta">
-                  <span class="time">{{ activity.time }}</span>
-                  <span class="date">{{ activity.date }}</span>
-                </div>
-                <div class="timeline-dot"></div>
-                <div class="timeline-content">
-                  <div class="activity-header">
-                    <strong>{{ activity.user }}</strong> {{ activity.action }}
-                  </div>
-                  <p class="activity-desc">{{ activity.details }}</p>
-                </div>
+                <button class="btn btn-primary btn-sm" *ngIf="!student.documents[doc.key]">Upload</button>
               </div>
             </div>
           </div>
@@ -233,16 +202,32 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
     .action-btn:hover { background: var(--color-gray-50); color: var(--color-gray-900); border-color: var(--color-gray-400); }
     .action-btn .material-icons { font-size: 20px; color: var(--color-gray-400); }
 
+    /* Academic History in Detail View */
+    .academic-timeline { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 0.5rem; }
+    .academic-entry { display: flex; gap: 1rem; position: relative; }
+    .academic-entry::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: -1rem; width: 2px; background: var(--color-gray-100); }
+    .academic-entry:last-child::before { content: none; }
+    
+    .entry-icon { width: 32px; height: 32px; background: white; border: 2px solid var(--color-gray-200); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 1; }
+    .entry-icon .material-icons { font-size: 1rem; color: var(--color-gray-400); }
+    .entry-details { display: flex; flex-direction: column; gap: 0.125rem; }
+    .qualification { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
+    .institution { font-size: 0.8125rem; color: var(--color-gray-600); }
+    .score { font-size: 0.75rem; color: var(--color-gray-500); }
+
     /* Documents */
     .header-with-action { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 
-    .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
     .doc-item { display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--color-gray-200); border-radius: var(--radius-md); transition: all var(--transition-fast); background: white; }
-    .doc-item:hover { border-color: var(--color-primary); box-shadow: var(--shadow-xs); }
+    .doc-item:hover { border-color: var(--color-primary-border); box-shadow: var(--shadow-sm); }
     .doc-icon { width: 44px; height: 44px; background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--color-gray-400); }
-    .doc-info { flex: 1; display: flex; flex-direction: column; }
+    .doc-icon.uploaded { background: var(--color-primary-light); border-color: var(--color-primary-border); color: var(--color-primary); }
+    .doc-info { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; }
     .doc-name { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-900); }
-    .doc-size { font-size: 0.75rem; color: var(--color-gray-500); }
+    .doc-status { font-size: 0.75rem; color: var(--color-gray-400); }
+    .doc-status.uploaded { color: var(--color-success); font-weight: 600; }
+    .doc-actions { display: flex; gap: 0.5rem; }
     .btn-icon.circle { width: 32px; height: 32px; border-radius: 50%; background: white; border: 1px solid var(--color-gray-300); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: var(--color-gray-500); transition: all var(--transition-fast); cursor: pointer; }
     .btn-icon.circle:hover { color: var(--color-primary); border-color: var(--color-primary); background: var(--color-primary-light); }
 
@@ -271,20 +256,47 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 })
 export class StudentDetailComponent implements OnInit {
   activeTab = 'overview';
-  
-  documents = [
-    { name: 'Passport Copy.pdf', size: '2.4 MB', date: '12 Apr 2024' },
-    { name: 'IELTS Result.pdf', size: '1.1 MB', date: '12 Apr 2024' },
-    { name: 'B.Tech Certificate.pdf', size: '4.5 MB', date: '10 Apr 2024' }
+  route = inject(ActivatedRoute);
+  router = inject(Router);
+  studentService = inject(StudentService);
+
+  documentList = [
+    { key: 'passport', label: 'Passport (Full Copy)' },
+    { key: 'marksheet10', label: '10th Marksheet' },
+    { key: 'marksheet12', label: '12th Marksheet' },
+    { key: 'birthCertificate', label: 'Birth Certificate' },
+    { key: 'policeClearance', label: 'Police Clearance (PCC)' },
+    { key: 'bankStatement', label: 'Bank Statement (6 Months)' },
+    { key: 'insurance', label: 'Insurance Document' },
+    { key: 'neetScorecard', label: 'NEET Scorecard' }
   ];
 
+  student: any = null;
+
   activities = [
-    { time: '10:30 AM', date: '12 Apr 2024', user: 'Siddharth Patel', action: 'uploaded documents', details: 'Added Passport and IELTS scores' },
+    { time: '10:30 AM', date: '12 Apr 2024', user: 'Siddharth Patel', action: 'uploaded documents', details: 'Added Passport and 10th Marksheet' },
     { time: '04:15 PM', date: '11 Apr 2024', user: 'Siddharth Patel', action: 'updated status', details: 'Status changed from Lead to Registered' },
     { time: '09:00 AM', date: '10 Apr 2024', user: 'Admin', action: 'assigned counsellor', details: 'Assigned Siddharth Patel to Mukul' }
   ];
 
   ngOnInit() {
-    // Fetch student by ID logic
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.studentService.getStudentById(id).subscribe({
+        next: (data) => {
+          this.student = {
+            ...data,
+            country: data.country?.name || data.country,
+            university: data.university?.name || data.university,
+            academicHistory: data.academicHistories || [],
+            documents: data.documents || {}
+          };
+        },
+        error: (err) => {
+          console.error('Error fetching student detail:', err);
+          this.router.navigate(['/admin/students']);
+        }
+      });
+    }
   }
 }
