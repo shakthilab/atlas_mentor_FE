@@ -8,13 +8,17 @@ import { DatePipe } from '@angular/common';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
 
+import { StudentFormComponent } from '../student-form/student-form.component';
+import { StudentDetailComponent } from '../student-detail/student-detail.component';
+import { NotificationService } from '../../../../core/services/notification.service';
+
 @Component({
   selector: 'app-student-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent],
+  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent],
   providers: [DatePipe],
   template: `
-    <div class="module-container">
+    <div class="module-container" (click)="closeAllDropdowns()">
       <div class="module-header">
         <div class="header-left">
           <h1 class="page-title">{{ roleConfig.getRoleSpecificTitle('Students') }}</h1>
@@ -31,7 +35,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               <span>Grid</span>
             </button>
           </div>
-          <button class="btn btn-primary" [routerLink]="['add']">
+          <button class="btn btn-primary" (click)="openAddModal()">
             <span class="material-icons">add</span>
             <span>Add Student</span>
           </button>
@@ -48,7 +52,9 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
           <select class="filter-select" [(ngModel)]="filterStatus" (change)="onStatusChange()">
             <option value="">All Status</option>
             <option value="LEAD">Lead</option>
+            <option value="PROSPECTIVE">Prospective</option>
             <option value="REGISTERED">Registered</option>
+            <option value="STUDENT">Student</option>
             <option value="LOST">Lost</option>
           </select>
           <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
@@ -89,13 +95,13 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
         message="There are currently no students registered. Add your first student to get started."
         [showAction]="true"
         actionText="Add Student"
-        [routerLink]="['add']">
+        (actionClick)="openAddModal()">
       </app-empty-state>
 
       <!-- List View -->
-      <div class="table-card" *ngIf="students.length > 0 && viewMode === 'list'">
-        <div class="table-responsive">
-          <table class="premium-table">
+      <div class="table-card overflow-visible" *ngIf="students.length > 0 && viewMode === 'list'">
+        <div class="table-responsive overflow-visible">
+          <table class="premium-table" style="min-width: 1100px;">
             <thead>
               <tr>
                 <th>Student</th>
@@ -108,7 +114,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let student of students" (click)="viewDetail(student.id)" class="clickable-row">
+              <tr *ngFor="let student of students" [class.row-active]="openStatusDropdownId === student.id">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(student.name)">
@@ -126,10 +132,21 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                     <span class="entity-subtext">{{ student.email }}</span>
                   </div>
                 </td>
-                <td>
-                  <span class="badge-status" [ngClass]="getStatusClass(student.status)">
-                    {{ student.status }}
-                  </span>
+                <td (click)="$event.stopPropagation()">
+                  <div class="status-dropdown-container">
+                    <span class="badge-status" [ngClass]="[getStatusClass(student.status), roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? 'clickable' : '']" 
+                          (click)="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? toggleStatusDropdown($event, student.id) : null">
+                      {{ student.status }}
+                      <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
+                    </span>
+                    
+                    <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === student.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                      <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(student.id, s)">
+                        <span class="dot" [ngClass]="getStatusClass(s)"></span>
+                        {{ s }}
+                      </div>
+                    </div>
+                  </div>
                 </td>
                 <td>{{ student.counsellor }}</td>
                 <td>
@@ -141,10 +158,10 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                 <td>{{ student.date }}</td>
                 <td style="text-align: right;">
                   <div class="action-btns" (click)="$event.stopPropagation()">
-                    <button class="btn-icon" [routerLink]="['edit', student.id]">
+                    <button class="btn-icon" (click)="openEditModal(student.id)" title="Edit">
                       <span class="material-icons">edit</span>
                     </button>
-                    <button class="btn-icon" style="color: var(--color-error);">
+                    <button class="btn-icon" style="color: var(--color-error);" (click)="deleteStudent(student.id)" title="Delete">
                       <span class="material-icons">delete_outline</span>
                     </button>
                   </div>
@@ -157,7 +174,10 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 
       <!-- Grid View -->
       <div class="grid-container" *ngIf="students.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
-        <div class="table-card" *ngFor="let student of students | slice:0:displayedCardsCount" (click)="viewDetail(student.id)" style="cursor: pointer; padding: 1.25rem; transition: all 0.2s;">
+        <div class="table-card" *ngFor="let student of students | slice:0:displayedCardsCount" 
+             [class.overflow-visible]="openStatusDropdownId === student.id || openActionDropdownId === student.id"
+             [style.z-index]="(openStatusDropdownId === student.id || openActionDropdownId === student.id) ? '100' : '1'"
+             style="padding: 1.25rem; transition: all 0.2s; position: relative;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
             <div class="entity-meta">
               <div class="avatar-circle" [style.background]="getAvatarColor(student.name)">
@@ -168,7 +188,19 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                 <span class="entity-subtext">#{{ student.id }}</span>
               </div>
             </div>
-            <span class="badge-status" [ngClass]="getStatusClass(student.status)">{{ student.status }}</span>
+            <div class="status-dropdown-container" (click)="$event.stopPropagation()">
+              <span class="badge-status" [ngClass]="[getStatusClass(student.status), roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? 'clickable' : '']" 
+                    (click)="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? toggleStatusDropdown($event, student.id) : null">
+                {{ student.status }}
+                <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
+              </span>
+              <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === student.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(student.id, s)">
+                  <span class="dot" [ngClass]="getStatusClass(s)"></span>
+                  {{ s }}
+                </div>
+              </div>
+            </div>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
@@ -184,10 +216,20 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 
           <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
             <span class="entity-subtext">{{ student.date }}</span>
-            <div class="action-btns" (click)="$event.stopPropagation()">
-              <button class="btn-icon">
+            <div class="action-dropdown-container" (click)="$event.stopPropagation()" style="position: relative;">
+              <button class="btn-icon" (click)="toggleActionDropdown($event, student.id)">
                 <span class="material-icons">more_vert</span>
               </button>
+              <div class="status-dropdown shadow-premium" *ngIf="openActionDropdownId === student.id" (click)="$event.stopPropagation()" style="right: 0; left: auto; top: calc(100% + 4px); min-width: 120px;">
+                <div class="dropdown-item" (click)="openEditModal(student.id); openActionDropdownId = null">
+                  <span class="material-icons" style="font-size: 18px;">edit</span>
+                  <span style="font-weight: 500;">Edit</span>
+                </div>
+                <div class="dropdown-item" style="color: var(--color-error);" (click)="deleteStudent(student.id); openActionDropdownId = null">
+                  <span class="material-icons" style="font-size: 18px;">delete_outline</span>
+                  <span style="font-weight: 500;">Delete</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -201,16 +243,133 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
         </div>
       </div>
     </div>
+
+    <!-- Student Form Modal -->
+    <div class="modal-overlay" *ngIf="showFormModal" (click)="closeFormModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 1050px; width: 95%; height: 85vh; min-height: 600px;">
+        <app-student-form 
+          [studentId]="selectedStudentId" 
+          (close)="closeFormModal()"
+          (success)="onFormSuccess()">
+        </app-student-form>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" *ngIf="showConfirmModal" (click)="closeConfirmModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 400px; padding: 2rem; text-align: center;">
+        <div style="background: #fee4e2; color: #d92d20; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <span class="material-icons">delete_forever</span>
+        </div>
+        <h2 style="margin: 0 0 0.5rem; font-size: 1.125rem;">Delete Student</h2>
+        <p style="color: var(--color-gray-500); font-size: 0.875rem; margin-bottom: 2rem;">Are you sure you want to delete this student? This action cannot be undone and all associated data will be removed.</p>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" style="flex: 1; border: 1px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: 8px; font-weight: 600;" (click)="closeConfirmModal()">Cancel</button>
+          <button class="btn" style="flex: 1; background: #d92d20; color: white; border: none; border-radius: 8px; font-weight: 600;" (click)="executeDelete()" [disabled]="deleting">
+            {{ deleting ? 'Deleting...' : 'Delete Student' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Comment Modal -->
+    <div class="modal-overlay" *ngIf="showStatusCommentModal" (click)="closeStatusCommentModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 450px; padding: 2rem;">
+        <div style="background: var(--color-primary-light); color: var(--color-primary); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <span class="material-icons">comment</span>
+        </div>
+        <h2 style="margin: 0 0 0.5rem; font-size: 1.125rem; text-align: center;">Update Status to {{ pendingStatus }}</h2>
+        <p style="color: var(--color-gray-500); font-size: 0.875rem; margin-bottom: 1.5rem; text-align: center;">Please provide a reason for changing the status.</p>
+        
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <textarea 
+            [(ngModel)]="statusComment" 
+            class="form-control" 
+            placeholder="Enter reason for status change..."
+            style="min-height: 100px; padding: 12px; border-radius: 8px; width: 100%; border: 1px solid var(--color-gray-300); width: 100%;"
+          ></textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" style="flex: 1; border: 1px solid var(--color-gray-300); background: white; color: var(--color-gray-700); border-radius: 8px; font-weight: 600; padding: 10px;" (click)="closeStatusCommentModal()">Cancel</button>
+          <button class="btn" style="flex: 1; background: var(--color-primary); color: white; border: none; border-radius: 8px; font-weight: 600; padding: 10px;" (click)="confirmStatusChange()" [disabled]="!statusComment || updatingStatus">
+            {{ updatingStatus ? 'Updating...' : 'Confirm Change' }}
+          </button>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     :host { display: block; width: 100%; }
+
+    .table-responsive.overflow-visible { 
+      overflow-x: auto; 
+      overflow-y: visible !important; 
+      padding-bottom: 180px !important;
+      margin-bottom: -180px !important;
+    }
+    .table-card.overflow-visible { overflow: visible !important; }
+
+    .row-active { position: relative; z-index: 100 !important; }
+
+    .status-dropdown-container { position: relative; display: inline-flex; align-items: center; z-index: 10; }
+    .badge-status.clickable { cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }
+    .badge-status.clickable:hover { filter: brightness(0.9); transform: translateY(-1px); }
+    .badge-status.clickable:active { transform: translateY(0); }
+    
+    .status-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: white;
+      border: 1px solid var(--color-gray-200);
+      border-radius: 12px;
+      padding: 6px;
+      z-index: 9999;
+      min-width: 170px;
+      text-align: left;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.05);
+      animation: dropdownIn 0.2s ease-out;
+    }
+
+    @keyframes dropdownIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-gray-700);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .dropdown-item:hover { background: var(--color-gray-50); color: var(--color-primary); }
+    .dropdown-item .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot.info { background: #3b82f6; }
+    .dot.success { background: #10b981; }
+    .dot.error { background: #ef4444; }
+    .dot.gray { background: #8b5cf6; }
+    .dot.prospective { background: #f59e0b; }
+    .dot.student { background: #06b6d4; }
+    
+    .badge-status.prospective { background: #fffbeb; color: #f59e0b; }
+    .badge-status.student { background: #ecfeff; color: #0891b2; }
   `]
 })
 export class StudentListComponent implements OnInit {
   router = inject(Router);
   studentService = inject(StudentService);
   datePipe = inject(DatePipe);
-  
+  roleConfig = inject(RoleConfigService);
+  notificationService = inject(NotificationService);
+
   searchQuery = '';
   filterStatus = '';
   filterCountry = '';
@@ -219,8 +378,27 @@ export class StudentListComponent implements OnInit {
   showAdvancedFilters = false;
   viewMode: 'list' | 'grid' = 'list';
   displayedCardsCount = 10;
-  
-  students: any[] = [];
+
+  // Modal State
+  showFormModal = false;
+  selectedStudentId: string | null = null;
+
+  // Confirm Modal State
+  showConfirmModal = false;
+  studentIdToDelete: string | null = null;
+  deleting = false;
+
+  // Status Change State
+  openStatusDropdownId: string | null = null;
+  openActionDropdownId: string | null = null;
+  showStatusCommentModal = false;
+  pendingStatusStudentId: string | null = null;
+  pendingStatus = '';
+  statusComment = '';
+  updatingStatus = false;
+  statusOptions = ['LEAD', 'PROSPECTIVE', 'REGISTERED', 'STUDENT', 'LOST'];
+
+  allStudents: any[] = [];
   loading = false;
   totalElements = 0;
   currentPage = 0;
@@ -230,12 +408,129 @@ export class StudentListComponent implements OnInit {
     this.loadStudents();
   }
 
+  openAddModal() {
+    this.selectedStudentId = null;
+    this.showFormModal = true;
+  }
+
+  openEditModal(id: string) {
+    this.selectedStudentId = id;
+    this.showFormModal = true;
+  }
+
+  viewStudentDetail(id: string) {
+    const role = this.roleConfig.getCurrentUserRole();
+    let prefix = 'admin';
+    
+    if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
+    else if (role === 'COMPANY') prefix = 'company';
+    else if (role === 'REFERRAL') prefix = 'referral';
+    
+    this.router.navigate([`/${prefix}/students`, id]);
+  }
+
+  closeFormModal() {
+    this.showFormModal = false;
+    this.selectedStudentId = null;
+  }
+
+  onFormSuccess() {
+    this.closeFormModal();
+    this.loadStudents();
+  }
+
+  toggleStatusDropdown(event: Event, id: string) {
+    event.stopPropagation();
+    this.openStatusDropdownId = this.openStatusDropdownId === id ? null : id;
+    this.openActionDropdownId = null;
+  }
+
+  toggleActionDropdown(event: Event, id: string) {
+    event.stopPropagation();
+    this.openActionDropdownId = this.openActionDropdownId === id ? null : id;
+    this.openStatusDropdownId = null;
+  }
+
+  closeAllDropdowns() {
+    this.openStatusDropdownId = null;
+    this.openActionDropdownId = null;
+  }
+
+  selectNewStatus(studentId: string, status: string) {
+    const student = this.allStudents.find(s => s.id === studentId);
+    if (student && student.status === status) {
+      this.openStatusDropdownId = null;
+      return;
+    }
+    this.pendingStatusStudentId = studentId;
+    this.pendingStatus = status;
+    this.openStatusDropdownId = null;
+    this.statusComment = '';
+    this.showStatusCommentModal = true;
+  }
+
+  closeStatusCommentModal() {
+    if (this.updatingStatus) return;
+    this.showStatusCommentModal = false;
+  }
+
+  confirmStatusChange() {
+    if (!this.statusComment || this.updatingStatus || !this.pendingStatusStudentId) return;
+    this.updatingStatus = true;
+
+    this.studentService.updateStudentStatus(this.pendingStatusStudentId, this.pendingStatus, this.statusComment).subscribe({
+      next: () => {
+        this.updatingStatus = false;
+        this.showStatusCommentModal = false;
+        this.notificationService.success(`Status updated to ${this.pendingStatus}`);
+        this.loadStudents();
+      },
+      error: (err) => {
+        console.error('Error updating status:', err);
+        this.updatingStatus = false;
+        this.notificationService.error('Failed to update status');
+      }
+    });
+  }
+
+  deleteStudent(id: string) {
+    this.studentIdToDelete = id;
+    this.showConfirmModal = true;
+  }
+
+  closeConfirmModal() {
+    if (this.deleting) return;
+    this.showConfirmModal = false;
+    this.studentIdToDelete = null;
+  }
+
+  executeDelete() {
+    if (!this.studentIdToDelete || this.deleting) return;
+    this.deleting = true;
+
+    this.studentService.deleteStudent(this.studentIdToDelete).subscribe({
+      next: () => {
+        this.deleting = false;
+        this.showConfirmModal = false;
+        this.studentIdToDelete = null;
+        this.notificationService.success('Student deleted successfully');
+        this.loadStudents();
+      },
+      error: (err: any) => {
+        this.deleting = false;
+        console.error('Error deleting student:', err);
+        this.notificationService.error('Failed to delete student');
+      }
+    });
+  }
+
   loadStudents() {
     this.loading = true;
-    this.studentService.getStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+    this.studentService.getRegisteredStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
       .subscribe({
         next: (data) => {
-          this.students = data.content.map((s: any) => ({
+          this.allStudents = data.content.map((s: any) => ({
             id: s.id,
             name: s.name,
             phone: s.phone,
@@ -268,7 +563,7 @@ export class StudentListComponent implements OnInit {
 
   loadMoreCards() {
     this.currentPage++;
-    this.studentService.getStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+    this.studentService.getRegisteredStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
       .subscribe({
         next: (data) => {
           const newStudents = data.content.map((s: any) => ({
@@ -282,7 +577,7 @@ export class StudentListComponent implements OnInit {
             university: s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
           }));
-          this.students = [...this.students, ...newStudents];
+          this.allStudents = [...this.allStudents, ...newStudents];
           this.currentPage = data.number;
         }
       });
@@ -312,10 +607,6 @@ export class StudentListComponent implements OnInit {
     }
   }
 
-  viewDetail(id: string) {
-    this.router.navigate(['/admin/students', id]);
-  }
-
   resetFilters() {
     this.searchQuery = '';
     this.filterStatus = '';
@@ -325,10 +616,13 @@ export class StudentListComponent implements OnInit {
   }
 
   getStatusClass(status: string): string {
+    if (!status) return 'gray';
     switch (status.toLowerCase()) {
       case 'registered': return 'success';
       case 'lead': return 'info';
       case 'lost': return 'error';
+      case 'prospective': return 'prospective';
+      case 'student': return 'student';
       default: return 'gray';
     }
   }

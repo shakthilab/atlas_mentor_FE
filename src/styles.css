@@ -786,13 +786,13 @@ textarea.form-control {
 
 @media (max-width: 640px) {
   .modal-overlay {
-    padding: 0;
-    align-items: flex-end;
+    padding: 1rem;
+    align-items: center;
   }
   
   .modal-content {
     max-width: 100%;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-radius: var(--radius-xl);
     max-height: 95vh;
   }
   
@@ -881,8 +881,8 @@ textarea.form-control {
 
 /* Standardized Module Layout System */
 .module-container {
-  padding: 2rem;
-  max-width: 1400px;
+  padding: 1.5rem 2rem;
+  max-width: 1800px;
   margin: 0 auto;
   animation: fadeInLayout 0.4s ease-out;
 }

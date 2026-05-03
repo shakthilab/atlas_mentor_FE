@@ -80,7 +80,9 @@ declare const lucide: any;
       width: 100%; 
       background: #ffffff;
       border-bottom: 1px solid var(--dash-border);
-      position: relative;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
     .main-header {

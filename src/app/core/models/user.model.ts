@@ -19,6 +19,7 @@ export interface User {
   dialCode?: string;
   referralCode?: string;
   branch?: string;
+  branchId?: number | string;
 }
 
 export interface AuthState {

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 // Task interfaces for type safety
 export interface Task {
@@ -155,18 +155,31 @@ export class TaskService {
       if (filter.overdue !== undefined) params = params.set('overdue', filter.overdue.toString());
     }
     
-    return this.http.get<Task[]>(`${this.baseUrl}/tasks`, {
+    return this.http.get<any>(`${this.baseUrl}/tasks`, {
       headers: this.getAuthHeaders(),
       params
     }).pipe(
+      map((response: any) => {
+        // Handle paginated response: { data: { content: [...] } }
+        if (response && response.data && response.data.content && Array.isArray(response.data.content)) {
+          return response.data.content;
+        }
+        // Handle wrapped non-paginated: { data: [...] }
+        if (response && response.data && Array.isArray(response.data)) {
+          return response.data;
+        }
+        // Handle direct array or other
+        return Array.isArray(response) ? response : [];
+      }),
       catchError(this.handleError)
     );
   }
 
   getTask(taskId: number): Observable<Task> {
-    return this.http.get<Task>(`${this.baseUrl}/tasks/${taskId}`, {
+    return this.http.get<any>(`${this.baseUrl}/tasks/${taskId}`, {
       headers: this.getAuthHeaders()
     }).pipe(
+      map((response: any) => response && response.data ? response.data : response),
       catchError(this.handleError)
     );
   }
@@ -180,9 +193,10 @@ export class TaskService {
   }
 
   createTask(taskData: CreateTaskRequest): Observable<Task> {
-    return this.http.post<Task>(`${this.baseUrl}/tasks`, taskData, {
+    return this.http.post<any>(`${this.baseUrl}/tasks`, taskData, {
       headers: this.getAuthHeaders()
     }).pipe(
+      map((response: any) => response && response.data ? response.data : response),
       catchError(this.handleError)
     );
   }

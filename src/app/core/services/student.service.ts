@@ -29,6 +29,26 @@ export class StudentService {
     );
   }
 
+  getRegisteredStudents(page: number = 0, size: number = 10, search: string = '', status: string = ''): Observable<any> {
+    let url = `${this.apiUrl}/registered?page=${page}&size=${size}`;
+    if (search) url += `&keyword=${search}`;
+    if (status) url += `&status=${status}`;
+
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  getNonRegisteredStudents(page: number = 0, size: number = 10, search: string = '', status: string = ''): Observable<any> {
+    let url = `${this.apiUrl}/non-registered?page=${page}&size=${size}`;
+    if (search) url += `&keyword=${search}`;
+    if (status) url += `&status=${status}`;
+
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
   getStudentById(id: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
@@ -43,6 +63,42 @@ export class StudentService {
 
   updateStudent(id: string, student: any): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/${id}`, student, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  getRequiredDocuments(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/required-documents`, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  onboardStudent(student: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/onboarding`, student, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  getStudentByEmail(email: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/by-email/${email}`, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  deleteStudent(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  updateStudentStatus(id: string | number, status: string, notes: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/status`, { status, notes }, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  getStudentsWithPayments(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/with-payment-by-referral-company`, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }

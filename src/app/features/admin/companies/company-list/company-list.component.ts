@@ -263,7 +263,14 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" style="width: 20px; height: 14px; margin-right: 6px;">
                     <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
                   </div>
-                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number">
+                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+                </div>
+                <div *ngIf="companyForm.get('phone')?.touched && companyForm.get('phone')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  <span *ngIf="companyForm.get('phone')?.hasError('required')">Phone number is required.</span>
+                  <span *ngIf="companyForm.get('phone')?.hasError('minlength') || companyForm.get('phone')?.hasError('maxlength')">
+                    Phone number must be exactly {{ selectedCountry?.mobileNumberLength }} digits for {{ selectedCountry?.countryName }}.
+                  </span>
+                  <span *ngIf="companyForm.get('phone')?.hasError('pattern')">Only numeric digits allowed.</span>
                 </div>
               </div>
             </div>
@@ -713,6 +720,7 @@ export class CompanyListComponent implements OnInit {
       branchId: comp.branch?.id || comp.branchId
     });
     
+    this.updatePhoneValidation();
     this.showAddModal = true;
     this.openDropdownId = null;
   }

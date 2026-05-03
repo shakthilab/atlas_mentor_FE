@@ -53,9 +53,8 @@ export class RoleConfigService {
   };
 
   getCurrentUserRole(): string {
-    const user = this.authService.currentUser$;
-    // In a real app, this would get the role from the current user
-    return 'ADMIN'; // Default for now
+    const user = this.authService.currentUserValue;
+    return user?.role?.toUpperCase() || 'ADMIN';
   }
 
   getConfig(role?: string) {
@@ -84,14 +83,8 @@ export class RoleConfigService {
     const currentRole = role || this.getCurrentUserRole();
     
     // For now, return all data since we don't have real role-based data
-    // In a real implementation, this would filter based on the user's role
-    if (currentRole === 'ADMIN') {
-      return data;
-    }
-    
-    // For other roles, you would filter based on their scope
-    // This is a placeholder implementation
-    return data.slice(0, Math.floor(data.length * 0.6)); // Show subset for non-admin
+    // In a real implementation, this would filter based on the user's data scope
+    return data;
   }
 
   getRoleSpecificTitle(baseTitle: string, role?: string): string {

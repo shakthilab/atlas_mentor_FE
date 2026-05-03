@@ -11,6 +11,9 @@ import { Branch } from '../../../../core/models/branch.model';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-detail-panel.component';
+import { AuthService } from '../../../../core/services/auth.service';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { RoleConfigService } from '../../../../core/services/role-config.service';
 
 @Component({
   selector: 'app-task-list',
@@ -34,7 +37,7 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
               <span>Board</span>
             </button>
           </div>
-          <button class="btn btn-primary" (click)="openCreateModal()">
+          <button class="btn btn-primary" (click)="openCreateModal()" *ngIf="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'">
             <span class="material-icons">add</span>
             <span>Create Task</span>
           </button>
@@ -101,8 +104,8 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
       <app-empty-state 
         *ngIf="inProgressTasks.length === 0 && todoTasks.length === 0 && doneTasks.length === 0"
         title="No Tasks Found"
-        message="There are currently no tasks assigned. Create your first task to get started."
-        [showAction]="true"
+        message="There are currently no tasks assigned."
+        [showAction]="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'"
         actionText="Create Task"
         (actionClick)="openCreateModal()">
       </app-empty-state>
@@ -291,7 +294,7 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
               <h3 class="column-title">To Do</h3>
               <span class="count">{{ todoTasks.length }}</span>
             </div>
-            <button class="btn-icon-sm" (click)="openCreateModal()"><span class="material-icons">add</span></button>
+            <button class="btn-icon-sm" (click)="openCreateModal()" *ngIf="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'"><span class="material-icons">add</span></button>
           </div>
           
           <div
@@ -335,7 +338,7 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
               <h3 class="column-title">In Progress</h3>
               <span class="count">{{ inProgressTasks.length }}</span>
             </div>
-            <button class="btn-icon-sm" (click)="openCreateModal()"><span class="material-icons">add</span></button>
+            <button class="btn-icon-sm" (click)="openCreateModal()" *ngIf="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'"><span class="material-icons">add</span></button>
           </div>
           
           <div
@@ -379,7 +382,7 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
               <h3 class="column-title">Done</h3>
               <span class="count">{{ doneTasks.length }}</span>
             </div>
-            <button class="btn-icon-sm" (click)="openCreateModal()"><span class="material-icons">add</span></button>
+            <button class="btn-icon-sm" (click)="openCreateModal()" *ngIf="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'"><span class="material-icons">add</span></button>
           </div>
           
           <div
@@ -436,7 +439,7 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
               <label>Description</label>
               <textarea class="form-control" rows="3" placeholder="Add more details..." [(ngModel)]="newTask.description"></textarea>
             </div>
-            <div class="form-row">
+            <div class="form-row" *ngIf="roleConfig.getCurrentUserRole() !== 'SENIOR_COUNSELLOR'">
               <div class="form-group flex-1">
                 <label>Branch</label>
                 <select class="form-control" [(ngModel)]="selectedBranchId" (change)="loadEmployees()">
@@ -872,6 +875,8 @@ export class TaskListComponent implements OnInit {
   private employeeService = inject(EmployeeService);
   private roleService = inject(RoleService);
   private branchService = inject(BranchService);
+  private authService = inject(AuthService);
+  roleConfig = inject(RoleConfigService);
 
   constructor() {
     // Close dropdowns when clicking outside
@@ -901,13 +906,30 @@ export class TaskListComponent implements OnInit {
     this.roleService.getAllRoles().subscribe({
       next: (roles) => {
         this.roles = roles;
+        // If senior counsellor, reload employees now that roles are available to filter junior counsellors
+        if (this.roleConfig.getCurrentUserRole() === 'SENIOR_COUNSELLOR') {
+          this.loadEmployees();
+        }
       },
       error: (err) => console.error('Error loading roles:', err)
     });
   }
 
   loadEmployees() {
-    this.employeeService.getAdminEmployees(this.selectedRoleId, this.selectedBranchId).subscribe({
+    let roleId = this.selectedRoleId;
+    let branchId = this.selectedBranchId;
+    
+    if (this.roleConfig.getCurrentUserRole() === 'SENIOR_COUNSELLOR') {
+      const user = this.authService.currentUserValue;
+      branchId = (user?.branchId || '').toString();
+      
+      const juniorRole = this.roles.find(r => r.name === 'JUNIOR_COUNSELLOR');
+      if (juniorRole) {
+        roleId = juniorRole.id.toString();
+      }
+    }
+
+    this.employeeService.getAdminEmployees(roleId, branchId).subscribe({
       next: (employees) => {
         this.employees = employees;
       },
@@ -947,9 +969,18 @@ export class TaskListComponent implements OnInit {
   }
 
   groupTasksByStatus() {
-    this.inProgressTasks = this.tasks.filter(task => task.status === 'IN_PROGRESS');
-    this.todoTasks = this.tasks.filter(task => task.status === 'TO_DO');
-    this.doneTasks = this.tasks.filter(task => task.status === 'DONE');
+    this.inProgressTasks = this.tasks.filter(task => {
+      const status = task.status as any;
+      return status === 'IN_PROGRESS' || status === 'IN PROGRESS';
+    });
+    this.todoTasks = this.tasks.filter(task => {
+      const status = task.status as any;
+      return status === 'TO_DO' || status === 'TO DO' || status === 'TODO' || status === 'PENDING';
+    });
+    this.doneTasks = this.tasks.filter(task => {
+      const status = task.status as any;
+      return status === 'DONE' || status === 'COMPLETED';
+    });
   }
 
   applyFilters() {
@@ -974,6 +1005,11 @@ export class TaskListComponent implements OnInit {
   }
 
   openCreateModal() {
+    if (this.roleConfig.getCurrentUserRole() === 'SENIOR_COUNSELLOR') {
+      const user = this.authService.currentUserValue;
+      this.selectedBranchId = (user?.branchId || '').toString();
+      this.loadEmployees();
+    }
     this.showCreateModal = true;
   }
 

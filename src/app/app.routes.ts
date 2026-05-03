@@ -38,6 +38,7 @@ export const routes: Routes = [
         children: [
           { path: '', loadComponent: () => import('./features/dashboards/admin/admin-dashboard.component').then(m => m.AdminDashboardComponent) },
           { path: 'approvals', loadComponent: () => import('./features/admin/pending-approvals/pending-approvals.component').then(m => m.PendingApprovalsComponent) },
+          { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
 
           // New Modules
           {
@@ -88,7 +89,12 @@ export const routes: Routes = [
           // Reuse admin components with employee-specific filtering
           { path: 'tasks', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) },
           { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
-          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { 
+            path: 'students', children: [
+              { path: '', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+              { path: ':id', loadComponent: () => import('./features/admin/students/student-detail/student-detail.component').then(m => m.StudentDetailComponent) }
+            ]
+          },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
         ]
       },
@@ -100,13 +106,18 @@ export const routes: Routes = [
           { path: '', loadComponent: () => import('./features/dashboards/manager/manager-dashboard.component').then(m => m.ManagerDashboardComponent) },
           // Reuse admin components with branch-specific filtering
           { path: 'tasks', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) },
-          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
+          { 
+            path: 'students', children: [
+              { path: '', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+              { path: ':id', loadComponent: () => import('./features/admin/students/student-detail/student-detail.component').then(m => m.StudentDetailComponent) }
+            ]
+          },
           { path: 'employees', loadComponent: () => import('./features/admin/employees/employee-list/employee-list.component').then(m => m.EmployeeListComponent) },
           { path: 'hierarchy', loadComponent: () => import('./features/admin/hierarchy/hierarchy-manager/hierarchy-manager.component').then(m => m.HierarchyManagerComponent) },
           { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
           { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
           { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
-          { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
           { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
         ]
@@ -119,7 +130,12 @@ export const routes: Routes = [
           { path: '', loadComponent: () => import('./features/dashboards/company/company-dashboard.component').then(m => m.CompanyDashboardComponent) },
           // Reuse admin components with company-specific filtering
           { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
-          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { 
+            path: 'students', children: [
+              { path: '', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+              { path: ':id', loadComponent: () => import('./features/admin/students/student-detail/student-detail.component').then(m => m.StudentDetailComponent) }
+            ]
+          },
           { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
           { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
         ]
@@ -132,7 +148,12 @@ export const routes: Routes = [
           { path: '', loadComponent: () => import('./features/dashboards/referral/referral-dashboard.component').then(m => m.ReferralDashboardComponent) },
           // Reuse admin components with referral-specific filtering
           { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
-          { path: 'students', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+          { 
+            path: 'students', children: [
+              { path: '', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+              { path: ':id', loadComponent: () => import('./features/admin/students/student-detail/student-detail.component').then(m => m.StudentDetailComponent) }
+            ]
+          },
           { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
           { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
         ]

@@ -90,6 +90,7 @@ export class AuthService {
             role: apiUser.role, // This will be 'STUDENT', 'ADMIN', etc.
             token: apiUser.token,
             isEmployee: apiUser.employee || false, // Flag to identify employee users (API sends 'employee')
+            branchId: (apiUser as any).branchId || (apiUser as any).branch?.id,
             status: 'ACTIVE'
           };
           this.setStoredUser(user);

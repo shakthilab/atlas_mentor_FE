@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Task, TaskComment, Activity, TaskService, ApiError } from '../../../../../core/services/task.service';
+import { RoleConfigService } from '../../../../../core/services/role-config.service';
 
 @Component({
   selector: 'app-task-detail-panel',
@@ -45,10 +46,10 @@ import { Task, TaskComment, Activity, TaskService, ApiError } from '../../../../
             <div class="grid-item">
               <label><span class="material-icons-outlined">flag</span> Priority</label>
               <div class="dropdown-wrapper">
-                <div class="priority-badge-dropdown" [ngClass]="task?.priority?.toLowerCase()" (click)="toggleDropdown('priority')">
+                <div class="priority-badge-dropdown" [ngClass]="task?.priority?.toLowerCase()" (click)="canEditPriority() ? toggleDropdown('priority') : null" [style.cursor]="canEditPriority() ? 'pointer' : 'default'">
                   <span class="priority-dot"></span>
                   {{ task?.priority }}
-                  <span class="material-icons">expand_more</span>
+                  <span class="material-icons" *ngIf="canEditPriority()">expand_more</span>
                 </div>
                 <div class="dropdown-menu" *ngIf="activeDropdown === 'priority'">
                   <div class="dropdown-item" (click)="onUpdateField('priority', 'HIGH')">
@@ -286,6 +287,11 @@ export class TaskDetailPanelComponent {
   newComment: string = '';
   isCommentFocused = false;
   isSubmitting = false;
+  private roleConfig = inject(RoleConfigService);
+
+  canEditPriority(): boolean {
+    return this.roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR';
+  }
 
   onClose() {
     this.close.emit();

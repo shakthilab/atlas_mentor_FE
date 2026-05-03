@@ -44,6 +44,13 @@ declare const lucide: any;
 
           <div class="nav-subtitle" *ngIf="!isCollapsed">MANAGEMENT</div>
 
+          <a [routerLink]="getRoutePath('leads')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="users"></i>
+              <span>Leads</span>
+            </div>
+          </a>
+
           <a [routerLink]="getRoutePath('students')" routerLinkActive="active" class="nav-link">
             <div class="link-content">
               <i data-lucide="graduation-cap"></i>
@@ -83,6 +90,13 @@ declare const lucide: any;
             <div class="link-content">
               <i data-lucide="building-2"></i>
               <span>Branches</span>
+            </div>
+          </a>
+
+          <a [routerLink]="getRoutePath('payments')" routerLinkActive="active" class="nav-link" *ngIf="isAdmin()">
+            <div class="link-content">
+              <i data-lucide="credit-card"></i>
+              <span>Payments</span>
             </div>
           </a>
 
@@ -135,13 +149,6 @@ declare const lucide: any;
             <div class="link-content">
               <i data-lucide="user"></i>
               <span>Profile</span>
-            </div>
-          </a>
-
-          <a [routerLink]="getRoutePath('payments')" routerLinkActive="active" class="nav-link">
-            <div class="link-content">
-              <i data-lucide="credit-card"></i>
-              <span>Payments</span>
             </div>
           </a>
 

@@ -1,15 +1,21 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
+import { StudentService } from '../../../../core/services/student.service';
+import { DatePipe } from '@angular/common';
+import { NotificationService } from '../../../../core/services/notification.service';
+import { StudentFormComponent } from '../../students/student-form/student-form.component';
+import { StudentDetailComponent } from '../../students/student-detail/student-detail.component';
 
 @Component({
   selector: 'app-lead-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent],
+  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent],
+  providers: [DatePipe],
   template: `
     <div class="module-container">
       <div class="module-header">
@@ -28,18 +34,18 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               <span>Grid</span>
             </button>
           </div>
-          <button class="btn btn-primary" (click)="addLead()">
+          <button class="btn btn-primary" (click)="openAddModal()">
             <span class="material-icons">person_add</span>
             <span>Add Lead</span>
           </button>
         </div>
       </div>
 
-      <!-- Stats row for leads -->
+      <!-- Stats row -->
       <div class="stats-grid">
         <div class="stat-mini-card">
           <span class="label">Total Leads</span>
-          <span class="value">{{ leads.length }}</span>
+          <span class="value">{{ totalElements }}</span>
         </div>
         <div class="stat-mini-card">
           <span class="label">New This Week</span>
@@ -55,23 +61,22 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
       <div class="filters-card">
         <div class="search-bar">
           <span class="material-icons">search</span>
-          <input type="text" placeholder="Search by name, email or phone..." [(ngModel)]="searchQuery">
+          <input type="text" placeholder="Search by name, email or phone..." [(ngModel)]="searchQuery" (keyup.enter)="onSearch()">
         </div>
         <div class="filter-actions">
-          <select class="filter-select" [(ngModel)]="filterStatus">
+          <select class="filter-select" [(ngModel)]="filterStatus" (change)="onFilterChange()">
             <option value="">All Status</option>
-            <option value="New">New</option>
-            <option value="Contacted">Contacted</option>
-            <option value="Qualified">Qualified</option>
-            <option value="Converted">Converted</option>
-            <option value="Lost">Lost</option>
+            <option value="LEAD">Lead</option>
+            <option value="PROSPECTIVE">Prospective</option>
+            <option value="REGISTERED">Registered</option>
+            <option value="STUDENT">Student</option>
+            <option value="LOST">Lost</option>
           </select>
-          <select class="filter-select" [(ngModel)]="filterSource">
+          <select class="filter-select" [(ngModel)]="filterSource" (change)="onFilterChange()">
             <option value="">All Sources</option>
             <option value="Website">Website</option>
             <option value="Referral">Referral</option>
             <option value="Social Media">Social Media</option>
-            <option value="Email">Email</option>
           </select>
           <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
             <span class="material-icons">tune</span>
@@ -84,21 +89,20 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
         <div class="filters-grid">
           <div class="filter-group">
             <label>Country</label>
-            <select [(ngModel)]="filterCountry">
+            <select [(ngModel)]="filterCountry" (change)="onFilterChange()">
               <option value="">All Countries</option>
               <option value="Germany">Germany</option>
-              <option value="UK">UK</option>
-              <option value="USA">USA</option>
-              <option value="Canada">Canada</option>
+              <option value="Uzbekistan">Uzbekistan</option>
+              <option value="India">India</option>
             </select>
           </div>
           <div class="filter-group">
-            <label>Lead Date From</label>
-            <input type="date" [(ngModel)]="filterDateFrom">
+            <label>Date From</label>
+            <input type="date" [(ngModel)]="filterDateFrom" (change)="onFilterChange()">
           </div>
           <div class="filter-group">
-            <label>Lead Date To</label>
-            <input type="date" [(ngModel)]="filterDateTo">
+            <label>Date To</label>
+            <input type="date" [(ngModel)]="filterDateTo" (change)="onFilterChange()">
           </div>
           <div class="filter-group">
             <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
@@ -107,32 +111,31 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
       </div>
 
       <app-empty-state 
-        *ngIf="filteredLeads.length === 0"
+        *ngIf="leads.length === 0 && !loading"
         title="No Leads Found"
-        message="There are currently no leads matching your criteria. Try adjusting your filters or add a new lead."
+        message="There are currently no leads matching your criteria."
         [showAction]="true"
-        actionText="Add Lead"
-        (actionClick)="addLead()">
+        actionText="Add New Lead"
+        (actionClick)="openAddModal()">
       </app-empty-state>
 
       <!-- List View -->
-      <div class="table-card" *ngIf="filteredLeads.length > 0 && viewMode === 'list'">
-        <div class="table-responsive">
-          <table class="premium-table">
+      <div class="table-card overflow-visible" *ngIf="leads.length > 0 && viewMode === 'list'">
+        <div class="table-responsive overflow-visible">
+          <table class="premium-table" style="min-width: 1100px;">
             <thead>
               <tr>
                 <th>Lead</th>
                 <th>Contact Info</th>
                 <th>Status</th>
-                <th>Source</th>
-                <th>Country</th>
-                <th>Lead Date</th>
                 <th>Assigned To</th>
+                <th>Country / Source</th>
+                <th>Lead Date</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let lead of filteredLeads" (click)="viewDetail(lead.id)" class="clickable-row">
+              <tr *ngFor="let lead of leads" [class.row-active]="openStatusDropdownId === lead.id">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(lead.name)">
@@ -150,26 +153,36 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                     <span class="entity-subtext">{{ lead.email }}</span>
                   </div>
                 </td>
-                <td>
-                  <span class="badge-status" [ngClass]="getStatusClass(lead.status)">
-                    {{ lead.status }}
-                  </span>
+                <td (click)="$event.stopPropagation()">
+                  <div class="status-dropdown-container">
+                    <span class="badge-status" [ngClass]="[getStatusClass(lead.status), roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? 'clickable' : '']" 
+                          (click)="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? toggleStatusDropdown($event, lead.id) : null">
+                      {{ lead.status }}
+                      <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
+                    </span>
+                    
+                    <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === lead.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                      <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(lead.id, s)">
+                        <span class="dot" [ngClass]="getStatusClass(s)"></span>
+                        {{ s }}
+                      </div>
+                    </div>
+                  </div>
                 </td>
-                <td>
-                  <span class="badge-status gray">{{ lead.source }}</span>
-                </td>
-                <td>{{ lead.country }}</td>
-                <td>{{ lead.leadDate }}</td>
                 <td>{{ lead.assignedTo }}</td>
+                <td>
+                  <div class="entity-info">
+                    <span class="entity-name" style="font-weight: 500;">{{ lead.country }}</span>
+                    <span class="entity-subtext">{{ lead.source }}</span>
+                  </div>
+                </td>
+                <td>{{ lead.date }}</td>
                 <td style="text-align: right;">
                   <div class="action-btns" (click)="$event.stopPropagation()">
-                    <button class="btn-icon" (click)="convertLead(lead.id)" title="Convert to Student">
-                      <span class="material-icons">how_to_reg</span>
-                    </button>
-                    <button class="btn-icon" (click)="editLead(lead.id)" title="Edit Lead">
+                    <button class="btn-icon" (click)="openEditModal(lead.id)" title="Edit">
                       <span class="material-icons">edit</span>
                     </button>
-                    <button class="btn-icon" style="color: var(--color-error);" (click)="deleteLead(lead.id)" title="Delete Lead">
+                    <button class="btn-icon" style="color: var(--color-error);" (click)="openConfirmModal(lead.id)" title="Delete">
                       <span class="material-icons">delete_outline</span>
                     </button>
                   </div>
@@ -181,8 +194,11 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
       </div>
 
       <!-- Grid View -->
-      <div class="grid-container" *ngIf="filteredLeads.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
-        <div class="table-card" *ngFor="let lead of filteredLeads | slice:0:displayedCardsCount" (click)="viewDetail(lead.id)" style="cursor: pointer; padding: 1.25rem; transition: all 0.2s;">
+      <div class="grid-container" *ngIf="leads.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        <div class="table-card" *ngFor="let lead of leads | slice:0:displayedCardsCount" 
+             [class.overflow-visible]="openStatusDropdownId === lead.id"
+             [style.z-index]="openStatusDropdownId === lead.id ? '100' : '1'"
+             style="padding: 1.25rem; transition: all 0.2s; position: relative;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
             <div class="entity-meta">
               <div class="avatar-circle" [style.background]="getAvatarColor(lead.name)">
@@ -193,7 +209,19 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                 <span class="entity-subtext">#{{ lead.id }}</span>
               </div>
             </div>
-            <span class="badge-status" [ngClass]="getStatusClass(lead.status)">{{ lead.status }}</span>
+            <div class="status-dropdown-container" (click)="$event.stopPropagation()">
+              <span class="badge-status" [ngClass]="[getStatusClass(lead.status), roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? 'clickable' : '']" 
+                    (click)="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY' ? toggleStatusDropdown($event, lead.id) : null">
+                {{ lead.status }}
+                <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
+              </span>
+              <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === lead.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(lead.id, s)">
+                  <span class="dot" [ngClass]="getStatusClass(s)"></span>
+                  {{ s }}
+                </div>
+              </div>
+            </div>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
@@ -208,23 +236,87 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
-            <span class="entity-subtext">{{ lead.leadDate }}</span>
+            <span class="entity-subtext">{{ lead.date }}</span>
             <div class="action-btns" (click)="$event.stopPropagation()">
-              <button class="btn-icon" (click)="convertLead(lead.id)" title="Convert to Student">
-                <span class="material-icons">how_to_reg</span>
+              <button class="btn-icon" (click)="openEditModal(lead.id)" title="Edit">
+                <span class="material-icons">edit</span>
               </button>
-              <button class="btn-icon">
-                <span class="material-icons">more_vert</span>
+              <button class="btn-icon" style="color: var(--color-error);" (click)="openConfirmModal(lead.id)" title="Delete">
+                <span class="material-icons">delete_outline</span>
               </button>
             </div>
           </div>
         </div>
 
         <!-- Load More -->
-        <div *ngIf="filteredLeads.length > displayedCardsCount" style="grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 1rem;">
+        <div *ngIf="leads.length > displayedCardsCount" style="grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 1rem;">
           <button class="btn btn-secondary" (click)="loadMoreCards()">
             <span>Load More Leads</span>
             <span class="material-icons">expand_more</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Form Modal -->
+    <div class="modal-overlay" *ngIf="showFormModal" (click)="closeFormModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 1050px; width: 95%; height: 85vh; min-height: 600px;">
+        <app-student-form 
+          [studentId]="selectedStudentId" 
+          (close)="closeFormModal()"
+          (success)="onFormSuccess()">
+        </app-student-form>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" *ngIf="showConfirmModal" (click)="closeConfirmModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 400px; padding: 2rem; text-align: center;">
+        <div style="background: #fee4e2; color: #d92d20; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+          <span class="material-icons">delete_forever</span>
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: #101828; margin-bottom: 0.5rem;">Delete Lead</h2>
+        <p style="color: #667085; margin-bottom: 2rem;">Are you sure you want to delete this lead? This action cannot be undone.</p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <button class="btn btn-secondary" (click)="closeConfirmModal()" [disabled]="deleting">Cancel</button>
+          <button class="btn btn-primary" style="background: #d92d20; border-color: #d92d20;" (click)="confirmDelete()" [disabled]="deleting">
+            {{ deleting ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Comment Modal -->
+    <div class="modal-overlay" *ngIf="showStatusCommentModal" (click)="closeStatusCommentModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()" style="max-width: 450px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Update Status</h2>
+          <button class="btn-icon" (click)="closeStatusCommentModal()" [disabled]="updatingStatus">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="status-preview" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
+            <span class="entity-subtext">New Status:</span>
+            <span class="badge-status" [ngClass]="getStatusClass(pendingStatus)">{{ pendingStatus }}</span>
+          </div>
+          
+          <div class="form-group">
+            <label>Notes / Reason for change</label>
+            <textarea 
+              [(ngModel)]="statusComment" 
+              placeholder="Enter details about this status change..."
+              rows="4"
+              class="form-control"
+              style="resize: vertical;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 1rem; padding: 1.25rem 1.5rem; border-top: 1px solid var(--color-gray-100);">
+          <button class="btn btn-secondary" (click)="closeStatusCommentModal()" [disabled]="updatingStatus">Cancel</button>
+          <button class="btn btn-primary" (click)="confirmStatusChange()" [disabled]="!statusComment || updatingStatus">
+            <span *ngIf="!updatingStatus">Update Status</span>
+            <span *ngIf="updatingStatus">Updating...</span>
           </button>
         </div>
       </div>
@@ -237,11 +329,60 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     .stat-mini-card .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-gray-500); letter-spacing: 0.05em; }
     .stat-mini-card .value { font-size: 1.75rem; font-weight: 700; color: var(--color-gray-900); }
     .stat-mini-card .value.orange { color: #f79009; }
+    
+    .status-dropdown-container { position: relative; display: inline-block; }
+    .status-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 100;
+      min-width: 160px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border: 1px solid var(--color-gray-200);
+      margin-top: 0.5rem;
+      overflow: hidden;
+      animation: dropdownFade 0.2s ease-out;
+    }
+    .dropdown-item {
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-gray-700);
+    }
+    .dropdown-item:hover { background: var(--color-gray-50); color: var(--color-gray-900); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot.info { background: #3b82f6; }
+    .dot.success { background: #10b981; }
+    .dot.error { background: #ef4444; }
+    .dot.gray { background: #8b5cf6; }
+    .clickable { cursor: pointer; }
+    .dot.prospective { background: #f59e0b; }
+    .dot.student { background: #06b6d4; }
+    .dot.registered { background: #10b981; }
+
+    .badge-status.prospective { background: #fffbeb; color: #f59e0b; }
+    .badge-status.student { background: #ecfeff; color: #0891b2; }
+    .badge-status.registered { background: #ecfdf5; color: #10b981; }
+    @keyframes dropdownFade {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   `]
 })
-export class LeadListComponent {
+export class LeadListComponent implements OnInit {
   router = inject(Router);
   roleConfig = inject(RoleConfigService);
+  studentService = inject(StudentService);
+  datePipe = inject(DatePipe);
+  notificationService = inject(NotificationService);
+
   searchQuery = '';
   filterStatus = '';
   filterSource = '';
@@ -251,9 +392,173 @@ export class LeadListComponent {
   showAdvancedFilters = false;
   viewMode: 'list' | 'grid' = 'list';
   displayedCardsCount = 10;
+  
+  allLeads: any[] = [];
+  loading = false;
+  totalElements = 0;
+  currentPage = 0;
+  pageSize = 10;
+
+  // Modal State
+  showFormModal = false;
+  selectedStudentId: string | null = null;
+
+  // Confirm Modal State
+  showConfirmModal = false;
+  studentIdToDelete: string | null = null;
+  deleting = false;
+
+  // Status Dropdown
+  openStatusDropdownId: string | null = null;
+  showStatusCommentModal = false;
+  pendingStatusStudentId: string | null = null;
+  pendingStatus = '';
+  statusComment = '';
+  updatingStatus = false;
+
+  statusOptions = ['LEAD', 'PROSPECTIVE', 'REGISTERED', 'STUDENT', 'LOST'];
+
+  ngOnInit() {
+    this.loadLeads();
+  }
+
+  loadLeads() {
+    this.loading = true;
+    this.studentService.getNonRegisteredStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+      .subscribe({
+        next: (data) => {
+          this.allLeads = data.content.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            phone: s.phone,
+            email: s.email,
+            status: s.status || 'LEAD',
+            source: s.source || 'N/A',
+            country: s.country?.name || 'N/A',
+            date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
+            assignedTo: s.createdBy?.fullName || 'Unassigned'
+          }));
+          this.totalElements = data.totalElements;
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Error fetching leads:', err);
+          this.loading = false;
+        }
+      });
+  }
 
   loadMoreCards() {
-    this.displayedCardsCount += 10;
+    this.currentPage++;
+    this.studentService.getNonRegisteredStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+      .subscribe({
+        next: (data) => {
+          const newLeads = data.content.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            phone: s.phone,
+            email: s.email,
+            status: s.status || 'LEAD',
+            source: s.source || 'N/A',
+            country: s.country?.name || 'N/A',
+            date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
+            assignedTo: s.createdBy?.fullName || 'Unassigned'
+          }));
+          this.allLeads = [...this.allLeads, ...newLeads];
+        }
+      });
+  }
+
+  toggleStatusDropdown(event: Event, id: string) {
+    event.stopPropagation();
+    this.openStatusDropdownId = this.openStatusDropdownId === id ? null : id;
+  }
+
+  selectNewStatus(leadId: string, status: string) {
+    const lead = this.allLeads.find(l => l.id === leadId);
+    if (lead && lead.status === status) {
+      this.openStatusDropdownId = null;
+      return;
+    }
+    this.pendingStatusStudentId = leadId;
+    this.pendingStatus = status;
+    this.openStatusDropdownId = null;
+    this.statusComment = '';
+    this.showStatusCommentModal = true;
+  }
+
+  closeStatusCommentModal() {
+    if (this.updatingStatus) return;
+    this.showStatusCommentModal = false;
+  }
+
+  confirmStatusChange() {
+    if (!this.statusComment || this.updatingStatus || !this.pendingStatusStudentId) return;
+    this.updatingStatus = true;
+
+    this.studentService.updateStudentStatus(this.pendingStatusStudentId, this.pendingStatus, this.statusComment).subscribe({
+      next: () => {
+        this.updatingStatus = false;
+        this.showStatusCommentModal = false;
+        this.notificationService.success('Status updated successfully');
+        this.loadLeads();
+      },
+      error: (err) => {
+        this.updatingStatus = false;
+        this.notificationService.error('Failed to update status');
+        console.error(err);
+      }
+    });
+  }
+
+  openAddModal() {
+    this.selectedStudentId = null;
+    this.showFormModal = true;
+  }
+
+  openEditModal(id: string) {
+    this.selectedStudentId = id;
+    this.showFormModal = true;
+  }
+
+  closeFormModal() {
+    this.showFormModal = false;
+    this.selectedStudentId = null;
+  }
+
+  onFormSuccess() {
+    this.closeFormModal();
+    this.loadLeads();
+  }
+
+  openConfirmModal(id: string) {
+    this.studentIdToDelete = id;
+    this.showConfirmModal = true;
+  }
+
+  closeConfirmModal() {
+    if (this.deleting) return;
+    this.showConfirmModal = false;
+    this.studentIdToDelete = null;
+  }
+
+  confirmDelete() {
+    if (!this.studentIdToDelete || this.deleting) return;
+    this.deleting = true;
+    this.studentService.deleteStudent(this.studentIdToDelete).subscribe({
+      next: () => {
+        this.deleting = false;
+        this.showConfirmModal = false;
+        this.studentIdToDelete = null;
+        this.notificationService.success('Lead deleted successfully');
+        this.loadLeads();
+      },
+      error: (err) => {
+        this.deleting = false;
+        this.notificationService.error('Failed to delete lead');
+        console.error(err);
+      }
+    });
   }
 
   getRoleSpecificSubtitle(): string {
@@ -272,58 +577,38 @@ export class LeadListComponent {
     }
   }
 
-  leads = [
-    { id: 'LD1001', name: 'Rohit Kumar', phone: '+91 9876543210', email: 'rohit@example.com', status: 'New', source: 'Website', country: 'Germany', leadDate: '15 Apr 2024', assignedTo: 'Siddharth Patel' },
-    { id: 'LD1002', name: 'Anita Sharma', phone: '+91 8765432109', email: 'anita@example.com', status: 'Contacted', source: 'Referral', country: 'USA', leadDate: '14 Apr 2024', assignedTo: 'Rohan Gupta' },
-    { id: 'LD1003', name: 'Vikram Singh', phone: '+91 7654321098', email: 'vikram@example.com', status: 'Qualified', source: 'Social Media', country: 'UK', leadDate: '13 Apr 2024', assignedTo: 'Siddharth Patel' },
-    { id: 'LD1004', name: 'Priya Nair', phone: '+91 6543210987', email: 'priya@example.com', status: 'Converted', source: 'Email', country: 'Canada', leadDate: '12 Apr 2024', assignedTo: 'Admin' },
-    { id: 'LD1005', name: 'Amit Joshi', phone: '+91 5432109876', email: 'amit@example.com', status: 'New', source: 'Website', leadDate: '11 Apr 2024', country: 'Australia', assignedTo: 'Rohan Gupta' },
-    { id: 'LD1006', name: 'Kavita Reddy', phone: '+91 4321098765', email: 'kavita@example.com', status: 'Lost', source: 'Referral', country: 'Germany', leadDate: '10 Apr 2024', assignedTo: 'Siddharth Patel' }
-  ];
+  get leads() {
+    return this.allLeads;
+  }
+
+  onSearch() {
+    this.currentPage = 0;
+    this.loadLeads();
+  }
+
+  onFilterChange() {
+    this.currentPage = 0;
+    this.loadLeads();
+  }
 
   get newLeadsCount(): number {
-    return this.leads.filter(lead => lead.status === 'New').length;
+    return this.leads.filter(lead => lead.status === 'LEAD').length;
   }
 
   get conversionRate(): number {
-    const converted = this.leads.filter(lead => lead.status === 'Converted').length;
+    if (this.leads.length === 0) return 0;
+    const converted = this.leads.filter(lead => lead.status === 'CONVERTED').length;
     return Math.round((converted / this.leads.length) * 100);
   }
 
-  get filteredLeads() {
-    return this.leads.filter(lead => {
-      const matchesSearch = !this.searchQuery || 
-        lead.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        lead.email.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        lead.phone.includes(this.searchQuery);
-      
-      const matchesStatus = !this.filterStatus || lead.status === this.filterStatus;
-      const matchesSource = !this.filterSource || lead.source === this.filterSource;
-      const matchesCountry = !this.filterCountry || lead.country === this.filterCountry;
-      
-      return matchesSearch && matchesStatus && matchesSource && matchesCountry;
-    });
-  }
-
-  addLead() {
-    // Navigate to add lead form or open modal
-    console.log('Add new lead');
-  }
-
-  viewDetail(id: string) {
-    console.log('View lead details:', id);
-  }
-
-  editLead(id: string) {
-    console.log('Edit lead:', id);
-  }
-
-  convertLead(id: string) {
-    console.log('Convert lead to student:', id);
-  }
-
-  deleteLead(id: string) {
-    console.log('Delete lead:', id);
+  getRoutePath(path: string): string {
+    const role = this.roleConfig.getCurrentUserRole();
+    let prefix = 'admin';
+    if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
+    else if (role === 'COMPANY') prefix = 'company';
+    else if (role === 'REFERRAL') prefix = 'referral';
+    return `/${prefix}/${path}`;
   }
 
   resetFilters() {
@@ -333,15 +618,27 @@ export class LeadListComponent {
     this.filterCountry = '';
     this.filterDateFrom = '';
     this.filterDateTo = '';
+    this.loadLeads();
+  }
+
+  viewDetail(id: string) {
+    const role = this.roleConfig.getCurrentUserRole();
+    let prefix = 'admin';
+    if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
+    else if (role === 'COMPANY') prefix = 'company';
+    else if (role === 'REFERRAL') prefix = 'referral';
+    this.router.navigate([`/${prefix}/students`, id]);
   }
 
   getStatusClass(status: string): string {
-    switch (status.toLowerCase()) {
-      case 'new': return 'info';
-      case 'contacted': return 'warning';
-      case 'qualified': return 'primary';
-      case 'converted': return 'success';
-      case 'lost': return 'error';
+    if (!status) return 'gray';
+    switch (status.toUpperCase()) {
+      case 'LEAD': return 'info';
+      case 'PROSPECTIVE': return 'prospective';
+      case 'REGISTERED': return 'registered';
+      case 'STUDENT': return 'student';
+      case 'LOST': return 'error';
       default: return 'gray';
     }
   }
