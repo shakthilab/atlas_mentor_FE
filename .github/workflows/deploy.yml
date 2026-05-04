@@ -3,7 +3,7 @@ name: Deploy Angular to EC2
 on:
   push:
     branches:
-      - main   # change if you're using another branch
+      - main
 
 jobs:
   deploy:
@@ -24,13 +24,14 @@ jobs:
       - name: 🏗 Build Angular
         run: npm run build -- --configuration production
 
+      # 🔥 FIXED HERE
       - name: 📤 Deploy to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          sourcesource: "dist/atlas-mentor-fe/browser/*"
+          source: "dist/atlas-mentor-fe/browser/*"
           target: "/home/ec2-user/frontend"
 
       - name: 🔄 Move to Nginx & Restart
