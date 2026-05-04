@@ -162,28 +162,26 @@ export class LoginComponent implements OnInit {
             const role = user.role?.toUpperCase();
             const isEmployee = user.isEmployee;
 
-            if (isEmployee || role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') {
+            if (role === 'ADMIN') {
+              this.router.navigate(['/admin']);
+            } else if (role === 'MANAGER') {
+              this.router.navigate(['/manager']);
+            } else if (role === 'REFERRAL') {
+              this.router.navigate(['/referral']);
+            } else if (role === 'COMPANY') {
+              this.router.navigate(['/company']);
+            } else if (role === 'STUDENT') {
+              this.router.navigate(['/student']);
+            } else if (
+              role === 'VIDEO_EDITOR' || 
+              role === 'JUNIOR_COUNSELLOR' || 
+              role === 'SENIOR_COUNSELLOR' || 
+              role === 'EMPLOYEE' || 
+              isEmployee
+            ) {
               this.router.navigate(['/employee']);
             } else {
-              switch(role) {
-                case 'ADMIN':
-                  this.router.navigate(['/admin']);
-                  break;
-                case 'STUDENT':
-                  this.router.navigate(['/student']);
-                  break;
-                case 'MANAGER':
-                  this.router.navigate(['/manager']);
-                  break;
-                case 'COMPANY':
-                  this.router.navigate(['/company']);
-                  break;
-                case 'REFERRAL':
-                  this.router.navigate(['/referral']);
-                  break;
-                default:
-                  this.router.navigate(['/']);
-              }
+              this.router.navigate(['/']);
             }
           }
         }
