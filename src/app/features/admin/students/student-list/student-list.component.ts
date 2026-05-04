@@ -421,12 +421,12 @@ export class StudentListComponent implements OnInit {
   viewStudentDetail(id: string) {
     const role = this.roleConfig.getCurrentUserRole();
     let prefix = 'admin';
-    
+
     if (role === 'MANAGER') prefix = 'manager';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';
-    
+
     this.router.navigate([`/${prefix}/students`, id]);
   }
 

@@ -34,8 +34,8 @@ export class AuthService {
   private sessionExpiredSubject = new BehaviorSubject<boolean>(false);
   public sessionExpired$: Observable<boolean> = this.sessionExpiredSubject.asObservable();
   
-  private apiUrl = 'http://localhost:8080/api/auth';
-  private studentApiUrl = 'http://localhost:8080/api/students';
+  private apiUrl = 'http://65.2.175.37:8080/api/auth';
+  private studentApiUrl = 'http://65.2.175.37:8080/api/students';
   private http = inject(HttpClient);
   private router = inject(Router);
 
@@ -112,7 +112,10 @@ export class AuthService {
   }
 
   handleSessionExpired(): void {
-    this.sessionExpiredSubject.next(true);
+    console.log('AuthService: Setting sessionExpired to true');
+    if (!this.sessionExpiredSubject.value) {
+      this.sessionExpiredSubject.next(true);
+    }
   }
 
   registerStudent(studentData: any): Observable<any> {

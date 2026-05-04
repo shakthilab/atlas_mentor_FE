@@ -7,7 +7,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class PaymentService {
-  private apiUrl = 'http://localhost:8080/api/payments';
+  private apiUrl = 'http://65.2.175.37:8080/api/payments';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -93,19 +93,9 @@ export class PaymentService {
     );
   }
 
-  raiseDispute(payload: { studentId: any, relatedApprovalId?: any, disputeReason: string, priority?: string }): Observable<any> {
-    const url = 'http://localhost:8080/api/disputes';
-    const finalPayload: any = {
-      studentId: payload.studentId,
-      disputeReason: payload.disputeReason,
-      priority: payload.priority || 'HIGH'
-    };
-    
-    if (payload.relatedApprovalId) {
-      finalPayload.relatedApprovalId = payload.relatedApprovalId;
-    }
-
-    return this.http.post<any>(url, finalPayload, { headers: this.getHeaders() }).pipe(
+  raiseDispute(paymentId: number | string, disputeReason: string): Observable<any> {
+    const url = `http://65.2.175.37:8080/api/payments/${paymentId}/dispute`;
+    return this.http.post<any>(url, { disputeReason }, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
@@ -123,15 +113,29 @@ export class PaymentService {
   }
 
   updatePaymentAmount(paymentId: number | string, assignedAmount: number, notes: string): Observable<any> {
-    const url = 'http://localhost:8080/api/students/payment/amount';
+    const url = 'http://65.2.175.37:8080/api/students/payment/amount';
     return this.http.put<any>(url, { paymentId, assignedAmount, notes }, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
 
   updatePaymentStatus(paymentId: number | string, paymentStatus: string, notes: string): Observable<any> {
-    const url = 'http://localhost:8080/api/students/payment/status';
+    const url = 'http://65.2.175.37:8080/api/students/payment/status';
     return this.http.put<any>(url, { paymentId, paymentStatus, notes }, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  acceptDispute(paymentId: number | string, response: string): Observable<any> {
+    const url = `http://65.2.175.37:8080/api/payments/${paymentId}/dispute/accept`;
+    return this.http.post<any>(url, { response, acceptDispute: true }, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  rejectDispute(paymentId: number | string, response: string): Observable<any> {
+    const url = `http://65.2.175.37:8080/api/payments/${paymentId}/dispute/reject`;
+    return this.http.post<any>(url, { response, acceptDispute: false }, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }

@@ -38,7 +38,7 @@ export interface ReferralResponse {
   providedIn: 'root'
 })
 export class ReferralService {
-  private apiUrl = 'http://localhost:8080/api/referral';
+  private apiUrl = 'http://65.2.175.37:8080/api/referral';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 

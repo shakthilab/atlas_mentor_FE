@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class BranchService {
-  private apiUrl = 'http://localhost:8080/api/branches';
+  private apiUrl = 'http://65.2.175.37:8080/api/branches';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 

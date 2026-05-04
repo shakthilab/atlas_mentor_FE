@@ -95,7 +95,7 @@ export interface ApiError {
   providedIn: 'root'
 })
 export class TaskService {
-  private readonly baseUrl = 'http://localhost:8080/api';
+  private readonly baseUrl = 'http://65.2.175.37:8080/api';
 
   constructor(private http: HttpClient) {}
 

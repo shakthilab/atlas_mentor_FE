@@ -37,22 +37,10 @@ export interface PaginatedResponse<T> {
   providedIn: 'root'
 })
 export class EmployeeService {
-  private apiUrl = 'http://localhost:8080/api/employees';
+  private apiUrl = 'http://65.2.175.37:8080/api/employees';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
-  private getHeaders(): HttpHeaders {
-    const token = this.authService.currentUserValue?.token;
-    console.log('Token available:', !!token);
-    if (!token) {
-      console.warn('No authentication token found');
-    }
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-  }
 
   createEmployee(employee: Partial<Employee>): Observable<Employee> {
     const payload = {
@@ -65,7 +53,7 @@ export class EmployeeService {
       branchId: Number(employee.branchId),
       roleId: Number(employee.roleId)
     };
-    return this.http.post<any>(this.apiUrl, payload, { headers: this.getHeaders() }).pipe(
+    return this.http.post<any>(this.apiUrl, payload).pipe(
       map(response => response.data || response)
     );
   }
@@ -80,7 +68,7 @@ export class EmployeeService {
       branchId: Number(employee.branchId),
       roleId: Number(employee.roleId)
     };
-    return this.http.put<any>(`${this.apiUrl}/${id}`, payload, { headers: this.getHeaders() }).pipe(
+    return this.http.put<any>(`${this.apiUrl}/${id}`, payload).pipe(
       map(response => response.data || response)
     );
   }
@@ -94,7 +82,7 @@ export class EmployeeService {
     if (roleId) params = params.set('roleId', roleId.toString());
     if (branchId) params = params.set('branchId', branchId.toString());
 
-    return this.http.get<any>(this.apiUrl, { headers: this.getHeaders(), params }).pipe(
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(response => {
         console.log('Raw API response:', response);
         if (response.data && response.data.content !== undefined) {
@@ -107,15 +95,15 @@ export class EmployeeService {
   }
 
   deactivateEmployee(id: string | number): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}/status`, { status: 'INACTIVE' }, { headers: this.getHeaders() });
+    return this.http.put(`${this.apiUrl}/${id}/status`, { status: 'INACTIVE' });
   }
 
   reactivateEmployee(id: string | number): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}/status`, { status: 'ACTIVE' }, { headers: this.getHeaders() });
+    return this.http.put(`${this.apiUrl}/${id}/status`, { status: 'ACTIVE' });
   }
 
   deleteEmployee(id: string | number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
+    return this.http.delete(`${this.apiUrl}/${id}`);
   }
 
   getAdminEmployees(roleId?: number | string, branchId?: number | string): Observable<Employee[]> {
@@ -126,10 +114,7 @@ export class EmployeeService {
     if (branchId) {
       params = params.set('branchId', branchId.toString());
     }
-    return this.http.get<any>(`http://localhost:8080/api/admin/get-all-employee`, {
-      headers: this.getHeaders(),
-      params
-    }).pipe(
+    return this.http.get<any>(`http://65.2.175.37:8080/api/admin/get-all-employee`, { params }).pipe(
       map(response => response.data || response)
     );
   }

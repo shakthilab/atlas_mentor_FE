@@ -90,6 +90,37 @@ import { NotificationService } from '../../../../core/services/notification.serv
             </div>
           </div>
 
+          <!-- Referral/Company Verification Section -->
+          <div class="panel-section admin-actions mt-4" *ngIf="isReferralOrCompany() && payment.disputeStatus?.toUpperCase() === 'OPEN'">
+            <label class="section-label">PAYMENT VERIFICATION</label>
+            
+            <div class="admin-action-grid">
+              <!-- Action 1: Accept Record -->
+              <div class="admin-action-card highlight">
+                <div class="action-icon-box">
+                  <span class="material-icons">check_circle</span>
+                </div>
+                <div class="action-info">
+                  <span class="action-name">Accept Payment Record</span>
+                  <p class="action-desc">Verify and confirm this payment details</p>
+                </div>
+                <button class="btn-action-trigger primary" (click)="openModal('ACCEPT_DISPUTE')">Accept</button>
+              </div>
+
+              <!-- Action 2: Raise Dispute / Reject -->
+              <div class="admin-action-card highlight-error full-width">
+                <div class="action-icon-box danger">
+                  <span class="material-icons">block</span>
+                </div>
+                <div class="action-info">
+                  <span class="action-name">Reject / Dispute Record</span>
+                  <p class="action-desc">Raise a dispute if details are incorrect</p>
+                </div>
+                <button class="btn-action-trigger danger" (click)="openModal('REJECT_DISPUTE')">Reject / Dispute</button>
+              </div>
+            </div>
+          </div>
+
           <div class="panel-section mt-4">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
               <label class="section-label">TRANSACTION HISTORY</label>
@@ -122,12 +153,12 @@ import { NotificationService } from '../../../../core/services/notification.serv
           </div>
 
           <!-- Rejection / Dispute Section -->
-          <div class="panel-section" *ngIf="payment.status === 'REJECTED_PENDING' || payment.status === 'DISPUTED' || payment.rejectionReason">
-            <label class="section-label">{{ payment.status === 'DISPUTED' ? 'DISPUTE DETAILS' : 'REJECTION DETAILS' }}</label>
-            <div class="status-box" [ngClass]="payment.status === 'DISPUTED' ? 'disputed' : 'rejected'">
+          <div class="panel-section" *ngIf="payment.status?.toUpperCase() === 'REJECTED_PENDING' || payment.status?.toUpperCase() === 'DISPUTED' || payment.rejectionReason">
+            <label class="section-label">{{ payment.status?.toUpperCase() === 'DISPUTED' ? 'DISPUTE DETAILS' : 'REJECTION DETAILS' }}</label>
+            <div class="status-box" [ngClass]="payment.status?.toUpperCase() === 'DISPUTED' ? 'disputed' : 'rejected'">
               <div class="status-header">
-                <span class="material-icons">{{ payment.status === 'DISPUTED' ? 'report' : 'cancel' }}</span>
-                <strong>{{ payment.status === 'DISPUTED' ? 'Dispute Raised' : 'Rejection Requested' }}</strong>
+                <span class="material-icons">{{ payment.status?.toUpperCase() === 'DISPUTED' ? 'report' : 'cancel' }}</span>
+                <strong>{{ payment.status?.toUpperCase() === 'DISPUTED' ? 'Dispute Raised' : 'Rejection Requested' }}</strong>
               </div>
               <p class="status-reason">{{ payment.rejectionReason || payment.disputeReason }}</p>
               <div class="status-proof" *ngIf="payment.proofUrl">
@@ -149,6 +180,18 @@ import { NotificationService } from '../../../../core/services/notification.serv
                 Raise Dispute
               </button>
             </div>
+
+            <!-- Dispute Resolution Actions (Referral/Company) -->
+            <div class="action-footer mt-4" *ngIf="canProcessDispute()">
+              <button class="btn btn-primary" (click)="openModal('ACCEPT_DISPUTE')">
+                <span class="material-icons">check_circle</span>
+                Accept Dispute
+              </button>
+              <button class="btn btn-outline" style="color: var(--color-error); border-color: var(--color-error);" (click)="openModal('REJECT_DISPUTE')">
+                <span class="material-icons">block</span>
+                Reject Dispute
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -165,7 +208,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           
           <div class="modal-body">
             <!-- Amount field (Not for Dispute) -->
-            <div class="form-group-premium" *ngIf="modalType !== 'DISPUTE'">
+            <div class="form-group-premium" *ngIf="modalType !== 'DISPUTE' && modalType !== 'REJECT_DISPUTE' && modalType !== 'ACCEPT_DISPUTE'">
               <label>{{ modalType === 'ASSIGN' ? 'Total Assigned Amount' : 'Payment Amount' }}</label>
               <div class="input-icon-premium">
                 <span class="currency-symbol">₹</span>
@@ -184,15 +227,21 @@ import { NotificationService } from '../../../../core/services/notification.serv
             </div>
 
             <!-- Notes / Reason -->
-            <div class="form-group-premium">
+            <div class="form-group-premium" *ngIf="modalType !== 'REJECT_DISPUTE' && modalType !== 'ACCEPT_DISPUTE'">
               <label>{{ modalType === 'DISPUTE' ? 'Dispute Reason' : 'Reference Note' }}</label>
               <textarea [(ngModel)]="modalData.notes" [placeholder]="modalType === 'DISPUTE' ? 'Provide a clear reason for the dispute...' : 'e.g. Revised based on discount or Transaction ID'" rows="3"></textarea>
+            </div>
+
+            <!-- Dispute Resolution Fields (Accept/Reject/Dispute) -->
+            <div class="form-group-premium" *ngIf="modalType === 'ACCEPT_DISPUTE' || modalType === 'REJECT_DISPUTE' || modalType === 'DISPUTE'">
+              <label>{{ modalType === 'DISPUTE' ? 'Dispute Reason' : 'Response Message' }}</label>
+              <textarea [(ngModel)]="modalData.notes" [placeholder]="modalType === 'DISPUTE' ? 'Provide a clear reason for the dispute...' : 'Provide a response message...'" rows="3"></textarea>
             </div>
           </div>
 
           <div class="modal-footer">
             <button class="btn-cancel" (click)="showActionModal = false">Cancel</button>
-            <button class="btn-submit-premium" [class.danger]="modalType === 'DISPUTE'" [disabled]="submitting" (click)="submitAction()">
+            <button class="btn-submit-premium" [class.danger]="modalType === 'DISPUTE' || modalType === 'REJECT_DISPUTE'" [disabled]="submitting" (click)="submitAction()">
               {{ submitting ? 'Processing...' : getSubmitButtonText() }}
             </button>
           </div>
@@ -329,11 +378,15 @@ export class PaymentDetailPanelComponent implements OnInit {
 
   // Modal logic
   showActionModal = false;
-  modalType: 'ASSIGN' | 'PAY' | 'DISPUTE' = 'ASSIGN';
-  modalData = {
+  modalType: 'ASSIGN' | 'PAY' | 'DISPUTE' | 'ACCEPT_DISPUTE' | 'REJECT_DISPUTE' = 'ASSIGN';
+  modalData: any = {
     amount: 0,
     method: 'UPI',
-    notes: ''
+    notes: '',
+    reference: '',
+    reason: '',
+    category: 'Documentation Issue',
+    requiresFurtherAction: true
   };
 
   ngOnInit() {
@@ -365,12 +418,16 @@ export class PaymentDetailPanelComponent implements OnInit {
     return role === 'ADMIN' || role === 'MANAGER';
   }
 
-  openModal(type: 'ASSIGN' | 'PAY' | 'DISPUTE') {
+  openModal(type: 'ASSIGN' | 'PAY' | 'DISPUTE' | 'ACCEPT_DISPUTE' | 'REJECT_DISPUTE') {
     this.modalType = type;
     this.modalData = {
-      amount: type === 'ASSIGN' ? this.payment.assignedAmount : this.payment.balanceAmount,
+      amount: (type === 'ASSIGN') ? this.payment.assignedAmount : (type === 'ACCEPT_DISPUTE' ? this.payment.balanceAmount : this.payment.balanceAmount),
       method: 'UPI',
-      notes: ''
+      notes: '',
+      reference: '',
+      reason: '',
+      category: 'Documentation Issue',
+      requiresFurtherAction: true
     };
     this.showActionModal = true;
   }
@@ -380,6 +437,8 @@ export class PaymentDetailPanelComponent implements OnInit {
       case 'ASSIGN': return 'Adjust Assigned Fee';
       case 'PAY': return 'Record New Payment';
       case 'DISPUTE': return 'Raise Transaction Dispute';
+      case 'ACCEPT_DISPUTE': return 'Accept Payment Dispute';
+      case 'REJECT_DISPUTE': return 'Reject Payment Dispute';
       default: return 'Action';
     }
   }
@@ -389,12 +448,14 @@ export class PaymentDetailPanelComponent implements OnInit {
       case 'ASSIGN': return 'Update Fee';
       case 'PAY': return 'Confirm Payment';
       case 'DISPUTE': return 'Submit Dispute';
+      case 'ACCEPT_DISPUTE': return 'Accept Dispute';
+      case 'REJECT_DISPUTE': return 'Reject Dispute';
       default: return 'Submit';
     }
   }
 
   submitAction() {
-    if (this.modalType !== 'DISPUTE' && this.modalData.amount <= 0) {
+    if (this.modalType !== 'DISPUTE' && this.modalType !== 'ACCEPT_DISPUTE' && this.modalType !== 'REJECT_DISPUTE' && this.modalData.amount <= 0) {
       this.notification.error('Please enter a valid amount');
       return;
     }
@@ -432,15 +493,29 @@ export class PaymentDetailPanelComponent implements OnInit {
         error: (err) => this.handleError(err)
       });
     } else if (this.modalType === 'DISPUTE') {
-      const disputePayload = {
-        studentId: this.payment.studentId,
-        disputeReason: this.modalData.notes,
-        priority: 'HIGH'
-      };
-      this.paymentService.raiseDispute(disputePayload).subscribe({
+      this.paymentService.raiseDispute(this.payment.id, this.modalData.notes).subscribe({
         next: () => {
           this.payment.status = 'DISPUTED';
+          this.payment.disputeStatus = 'OPEN';
           this.finalizeAction('Dispute raised successfully');
+        },
+        error: (err) => this.handleError(err)
+      });
+    } else if (this.modalType === 'ACCEPT_DISPUTE') {
+      this.paymentService.acceptDispute(this.payment.id, this.modalData.notes).subscribe({
+        next: () => {
+          this.payment.status = 'REJECTED'; // As per user requirement: REFERRAL accepts dispute (becomes REJECTED)
+          this.payment.disputeStatus = 'CLOSED';
+          this.finalizeAction('Dispute accepted successfully');
+        },
+        error: (err) => this.handleError(err)
+      });
+    } else if (this.modalType === 'REJECT_DISPUTE') {
+      this.paymentService.rejectDispute(this.payment.id, this.modalData.notes).subscribe({
+        next: () => {
+          // As per user requirement: stays DISPUTE with comments
+          this.payment.disputeStatus = 'OPEN'; 
+          this.finalizeAction('Dispute rejection submitted');
         },
         error: (err) => this.handleError(err)
       });
@@ -462,7 +537,18 @@ export class PaymentDetailPanelComponent implements OnInit {
 
   canProcessRejection(): boolean {
     const role = this.roleConfig.getCurrentUserRole();
-    return (role === 'REFERRAL' || role === 'COMPANY') && this.payment?.status === 'REJECTED_PENDING';
+    return (role === 'REFERRAL' || role === 'COMPANY') && this.payment?.status?.toUpperCase() === 'REJECTED_PENDING';
+  }
+
+  canProcessDispute(): boolean {
+    const role = this.roleConfig.getCurrentUserRole();
+    const isPartner = role === 'REFERRAL' || role === 'COMPANY';
+    return isPartner && this.payment?.disputeStatus?.toUpperCase() === 'OPEN';
+  }
+
+  isReferralOrCompany(): boolean {
+    const role = this.roleConfig.getCurrentUserRole();
+    return role === 'REFERRAL' || role === 'COMPANY';
   }
 
   onApproveRejection() {

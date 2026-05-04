@@ -25,6 +25,12 @@ export class AppComponent {
   title = 'Atlas-Mentor-FE';
   authService = inject(AuthService);
 
+  constructor() {
+    this.authService.sessionExpired$.subscribe(expired => {
+      console.log('AppComponent: sessionExpired state changed to:', expired);
+    });
+  }
+
   handleLogout() {
     this.authService.logout();
   }

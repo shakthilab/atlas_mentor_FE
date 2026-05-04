@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class HierarchyService {
-  private apiUrl = 'http://localhost:8080/api/hierarchy';
+  private apiUrl = 'http://65.2.175.37:8080/api/hierarchy';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 

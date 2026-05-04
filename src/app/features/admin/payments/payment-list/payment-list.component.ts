@@ -445,6 +445,8 @@ export class PaymentListComponent implements OnInit {
           date: this.datePipe.transform(item.paymentCreatedAt || item.createdAt, 'dd MMM yyyy'),
           rejectionReason: item.rejectionReason,
           disputeReason: item.disputeReason,
+          disputeStatus: item.disputeStatus,
+          disputeId: item.disputeId || item.id,
           proofUrl: item.proofUrl
         }));
         this.loading = false;
@@ -506,11 +508,7 @@ export class PaymentListComponent implements OnInit {
 
     const reason = prompt('Please enter the reason for dispute:');
     if (reason) {
-      this.paymentService.raiseDispute({
-        studentId: payment.studentId,
-        disputeReason: reason,
-        priority: 'HIGH'
-      }).subscribe({
+      this.paymentService.raiseDispute(payment.id, reason).subscribe({
         next: () => {
           this.loadPayments();
           this.closeDetailPanel();

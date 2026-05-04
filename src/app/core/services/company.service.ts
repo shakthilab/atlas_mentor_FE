@@ -50,21 +50,13 @@ export interface CompanyResponse {
   providedIn: 'root'
 })
 export class CompanyService {
-  private apiUrl = 'http://localhost:8080/api/company';
+  private apiUrl = 'http://65.2.175.37:8080/api/company';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
-  private getHeaders(): HttpHeaders {
-    const token = this.authService.currentUserValue?.token;
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
-  }
 
   createCompany(company: Partial<Company>): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/create`, company, { headers: this.getHeaders() }).pipe(
+    return this.http.post<any>(`${this.apiUrl}/create`, company).pipe(
       map(response => response.data || response)
     );
   }
@@ -76,7 +68,7 @@ export class CompanyService {
 
     if (search) params = params.set('search', search);
 
-    return this.http.get<any>(`${this.apiUrl}/list`, { headers: this.getHeaders(), params }).pipe(
+    return this.http.get<any>(`${this.apiUrl}/list`, { params }).pipe(
       map(response => {
         // If data is directly the paginated response
         if (response.content !== undefined) {
@@ -88,15 +80,15 @@ export class CompanyService {
   }
 
   deleteCompany(id: number | string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/delete/${id}`, { headers: this.getHeaders() });
+    return this.http.delete<any>(`${this.apiUrl}/delete/${id}`);
   }
 
   updateCompanyStatus(id: number | string): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/toggle-status/${id}`, {}, { headers: this.getHeaders() });
+    return this.http.put<any>(`${this.apiUrl}/toggle-status/${id}`, {});
   }
 
   updateCompany(id: number | string, company: Partial<Company>): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/edit/${id}`, company, { headers: this.getHeaders() }).pipe(
+    return this.http.put<any>(`${this.apiUrl}/edit/${id}`, company).pipe(
       map(response => response.data || response)
     );
   }

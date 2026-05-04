@@ -14,7 +14,7 @@ export interface Role {
   providedIn: 'root'
 })
 export class RoleService {
-  private apiUrl = 'http://localhost:8080/api/roles';
+  private apiUrl = 'http://65.2.175.37:8080/api/roles';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
