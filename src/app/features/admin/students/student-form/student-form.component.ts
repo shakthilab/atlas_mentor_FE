@@ -105,19 +105,25 @@ import { Observable, forkJoin, map } from 'rxjs';
                   <label>First Name <span class="required">*</span></label>
                   <div class="input-with-icon">
                     <span class="material-icons">person</span>
-                    <input type="text" name="firstName" [(ngModel)]="student.firstName" required placeholder="First name">
+                    <input type="text" name="firstName" [(ngModel)]="student.firstName" #firstNameModel="ngModel" required maxlength="50" placeholder="First name">
+                  </div>
+                  <div class="error-message" *ngIf="firstNameModel.invalid && (firstNameModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    First name is required.
                   </div>
                 </div>
                 <div class="form-group">
                   <label>Last Name <span class="required">*</span></label>
                   <div class="input-with-icon">
                     <span class="material-icons">person_outline</span>
-                    <input type="text" name="lastName" [(ngModel)]="student.lastName" required placeholder="Last name">
+                    <input type="text" name="lastName" [(ngModel)]="student.lastName" #lastNameModel="ngModel" required maxlength="50" placeholder="Last name">
+                  </div>
+                  <div class="error-message" *ngIf="lastNameModel.invalid && (lastNameModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    Last name is required.
                   </div>
                 </div>
                 <div class="form-group full-width" *ngIf="isAdmin">
-                  <label>Assign to Branch <span class="required">*</span></label>
-                  <select name="branchId" [(ngModel)]="student.branchId" required class="form-control">
+                  <label>Assign to Branch</label>
+                  <select name="branchId" [(ngModel)]="student.branchId" class="form-control">
                     <option value="" disabled>Select Branch</option>
                     <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
                   </select>
@@ -126,7 +132,10 @@ import { Observable, forkJoin, map } from 'rxjs';
                   <label>Email Address <span class="required">*</span></label>
                   <div class="input-with-icon">
                     <span class="material-icons">email</span>
-                    <input type="email" name="email" [(ngModel)]="student.email" required placeholder="example@mail.com" (blur)="checkEmail()">
+                    <input type="email" name="email" [(ngModel)]="student.email" #emailModel="ngModel" required maxlength="150" placeholder="example@mail.com" (blur)="checkEmail()">
+                  </div>
+                  <div class="error-message" *ngIf="emailModel.invalid && (emailModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    Please enter a valid email address.
                   </div>
                 </div>
                 <div class="form-group full-width phone-group">
@@ -147,12 +156,11 @@ import { Observable, forkJoin, map } from 'rxjs';
                         </div>
                       </div>
                     </div>
-                    <input type="tel" name="phone" [(ngModel)]="student.phone" #phoneModel="ngModel" required [maxlength]="selectedCountry?.mobileNumberLength || 20" pattern="[0-9]*" placeholder="00000 00000" class="form-control">
+                    <input type="tel" name="phone" [(ngModel)]="student.phone" #phoneModel="ngModel" required [maxlength]="selectedCountry?.mobileNumberLength || 20" [minlength]="selectedCountry?.mobileNumberLength || 10" pattern="[0-9]*" placeholder="00000 00000" class="form-control">
                   </div>
-                  <div *ngIf="phoneModel.touched && student.phone" class="validation-error">
-                    <span *ngIf="selectedCountry?.mobileNumberLength && student.phone.length !== selectedCountry?.mobileNumberLength">
-                      Phone number must be exactly {{ selectedCountry?.mobileNumberLength }} digits for {{ selectedCountry?.countryName }}.
-                    </span>
+                  <div class="error-message" *ngIf="phoneModel.invalid && (phoneModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    <span *ngIf="phoneModel.errors?.['required']">Phone number is required.</span>
+                    <span *ngIf="phoneModel.errors?.['minlength'] || phoneModel.errors?.['maxlength']">Phone number must be {{ selectedCountry?.mobileNumberLength }} digits.</span>
                   </div>
                 </div>
               </div>
@@ -163,21 +171,27 @@ import { Observable, forkJoin, map } from 'rxjs';
               <div class="form-grid">
                 <div class="form-group">
                   <label>Destination Country <span class="required">*</span></label>
-                  <select name="countryId" [(ngModel)]="student.countryId" (change)="onCountryChange()" required class="form-control">
+                  <select name="countryId" [(ngModel)]="student.countryId" #countryIdModel="ngModel" required (change)="onCountryChange()" class="form-control">
                     <option value="" disabled selected>Select a country</option>
                     <option *ngFor="let country of countries" [value]="country.id">{{ country.name }}</option>
                   </select>
+                  <div class="error-message" *ngIf="countryIdModel.invalid && (countryIdModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    Destination country is required.
+                  </div>
                 </div>
                 <div class="form-group">
                   <label>Target University <span class="required">*</span></label>
-                  <select name="universityId" [(ngModel)]="student.universityId" required class="form-control" [disabled]="!student.countryId">
+                  <select name="universityId" [(ngModel)]="student.universityId" #universityIdModel="ngModel" required class="form-control" [disabled]="!student.countryId">
                     <option value="" disabled selected>{{ student.countryId ? 'Select a university' : 'First select a country' }}</option>
                     <option *ngFor="let uni of universities" [value]="uni.id">{{ uni.name }}</option>
                   </select>
+                  <div class="error-message" *ngIf="universityIdModel.invalid && (universityIdModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    Target university is required.
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label>Course Name <span class="required">*</span></label>
-                  <select name="course" [(ngModel)]="student.course" required class="form-control">
+                  <label>Course Name</label>
+                  <select name="course" [(ngModel)]="student.course" class="form-control">
                     <option value="" disabled selected>Select course</option>
                     <option value="MBBS">MBBS</option>
                     <option value="MD">MD</option>
@@ -185,10 +199,10 @@ import { Observable, forkJoin, map } from 'rxjs';
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Intake Period <span class="required">*</span></label>
+                  <label>Intake Period</label>
                   <div class="input-with-icon">
                     <span class="material-icons">event</span>
-                    <input type="text" name="intake" [(ngModel)]="student.intake" required placeholder="e.g. Fall 2026">
+                    <input type="text" name="intake" [(ngModel)]="student.intake" placeholder="e.g. Fall 2026">
                   </div>
                 </div>
               </div>
@@ -331,10 +345,10 @@ import { Observable, forkJoin, map } from 'rxjs';
           </button>
           
           <div class="footer-right">
-            <button type="button" class="btn-next" *ngIf="currentStep < 4" (click)="nextStep()" [disabled]="!isStepValid()">
+            <button type="button" class="btn-next" *ngIf="currentStep < 4" (click)="nextStep()">
               Next <span class="material-icons">arrow_forward</span>
             </button>
-            <button type="button" class="btn-submit" *ngIf="currentStep === 4" (click)="onSubmit()" [disabled]="!isDocumentsValid() || submitting">
+            <button type="button" class="btn-submit" *ngIf="currentStep === 4" (click)="onSubmit()" [disabled]="submitting">
               <span *ngIf="!submitting">{{ isEdit ? 'Update Student' : 'Create Student' }}</span>
               <span *ngIf="submitting">{{ isEdit ? 'Updating...' : 'Creating...' }}</span>
               <span class="material-icons" *ngIf="!submitting">done</span>
@@ -961,6 +975,7 @@ export class StudentFormComponent implements OnInit {
   universities: University[] = [];
   passingYears: number[] = [];
   submitting = false;
+  submitted = false;
   deletedSlots = new Set<string>();
 
   currentUser: any;
@@ -1060,6 +1075,12 @@ export class StudentFormComponent implements OnInit {
   }
 
   nextStep() {
+    this.submitted = true;
+    if (!this.isStepValid()) {
+      this.notificationService.error('Please fill all required fields correctly.');
+      return;
+    }
+    this.submitted = false;
     if (this.currentStep < 4) this.currentStep++;
   }
 
@@ -1220,36 +1241,27 @@ export class StudentFormComponent implements OnInit {
   }
 
   isPersonalValid(): boolean {
-    const isPhoneValid = this.student.phone &&
-      (!this.selectedCountry?.mobileNumberLength || this.student.phone.length === this.selectedCountry.mobileNumberLength);
-    const isBranchValid = !this.isAdmin || this.isEdit || !!this.student.branchId;
-    return !!(this.student.firstName && this.student.lastName && this.student.email && isPhoneValid && isBranchValid);
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return !!(
+      this.student.firstName &&
+      this.student.lastName &&
+      this.student.email &&
+      emailRegex.test(this.student.email) &&
+      this.student.phone &&
+      this.student.phone.length === this.selectedCountry?.mobileNumberLength
+    );
   }
 
   isDestinationValid(): boolean {
-    return !!(this.student.countryId && this.student.universityId && this.student.course && this.student.intake);
+    return !!(this.student.countryId && this.student.universityId);
   }
 
   isAcademicValid(): boolean {
-    const records = this.student.academicHistory;
-    const tenth = records.find((r: any) => r.level === '10th');
-    const twelfth = records.find((r: any) => r.level === '12th');
-
-    if (!tenth || !twelfth) return false;
-
-    const isRecordFilled = (r: any) => !!(r.institutionName && r.passingYear && r.scoreCgpa);
-
-    let isValid = isRecordFilled(tenth) && isRecordFilled(twelfth);
-
-    if (this.isAdmin && !this.isEdit) {
-      isValid = isValid && !!this.student.branchId;
-    }
-
-    return isValid;
+    return true;
   }
 
   isDocumentsValid(): boolean {
-    return !!this.student.documents['10th_marksheet'];
+    return true;
   }
 
   private mapAcademicHistory(histories: any[]): any[] {
@@ -1587,6 +1599,11 @@ export class StudentFormComponent implements OnInit {
   }
 
   onSubmit() {
+    this.submitted = true;
+    if (!this.isStepValid()) {
+      this.notificationService.error('Please fill all required fields correctly.');
+      return;
+    }
     if (this.submitting) return;
     this.submitting = true;
 

@@ -242,16 +242,25 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">First Name</label>
                   <input type="text" class="form-control" formControlName="firstName" placeholder="John">
+                  <div *ngIf="referralForm.get('firstName')?.touched && referralForm.get('firstName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    First name is required.
+                  </div>
                 </div>
                 <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Last Name</label>
                   <input type="text" class="form-control" formControlName="lastName" placeholder="Doe">
+                  <div *ngIf="referralForm.get('lastName')?.touched && referralForm.get('lastName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    Last name is required.
+                  </div>
                 </div>
               </div>
 
               <div class="form-group" style="margin-bottom: 1rem;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Email Address</label>
                 <input type="email" class="form-control" formControlName="email" placeholder="john.doe@example.com" [readonly]="isEditMode">
+                <div *ngIf="referralForm.get('email')?.touched && referralForm.get('email')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Please enter a valid email address.
+                </div>
               </div>
 
               <div class="form-group" style="margin-bottom: 1rem;">
@@ -261,7 +270,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" style="width: 20px; height: 14px; margin-right: 6px;">
                     <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
                   </div>
-                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [maxlength]="selectedCountry?.mobileNumberLength || 20">
                 </div>
                 <div *ngIf="referralForm.get('phone')?.touched && referralForm.get('phone')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
                   <span *ngIf="referralForm.get('phone')?.hasError('required')">Phone number is required.</span>
@@ -279,6 +288,9 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <option value="" disabled>Select Branch</option>
                     <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
                   </select>
+                  <div *ngIf="referralForm.get('branchId')?.touched && referralForm.get('branchId')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    Branch selection is required.
+                  </div>
                 </div>
                 <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Referral Type</label>
@@ -286,12 +298,15 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <option value="" disabled>Select Type</option>
                     <option *ngFor="let type of referralTypes" [value]="type">{{ type }}</option>
                   </select>
+                  <div *ngIf="referralForm.get('referralType')?.touched && referralForm.get('referralType')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    Referral type is required.
+                  </div>
                 </div>
               </div>
 
               <div class="modal-footer" style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="referralForm.invalid || submitting">
+                <button type="submit" class="btn btn-primary" [disabled]="submitting">
                   {{ isEditMode ? 'Save Changes' : 'Create Referral' }}
                 </button>
               </div>
@@ -751,6 +766,7 @@ export class ReferralListComponent implements OnInit {
   onSubmitReferral() {
     if (this.referralForm.invalid) {
       this.referralForm.markAllAsTouched();
+      this.notificationService.error('Please fill all required fields correctly.');
       return;
     }
 

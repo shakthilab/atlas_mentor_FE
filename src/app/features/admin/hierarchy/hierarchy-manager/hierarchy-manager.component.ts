@@ -8,6 +8,7 @@ import { BranchService } from '../../../../core/services/branch.service';
 import { EmployeeService, Employee } from '../../../../core/services/employee.service';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
 
 @Component({
   selector: 'app-hierarchy-manager',
@@ -405,33 +406,67 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             <form #managerForm="ngForm" (ngSubmit)="onSubmitManager()">
               <div class="form-group">
                 <label for="mgrName">Full Name</label>
-                <input type="text" id="mgrName" name="name" class="form-control" [(ngModel)]="newManager.name" placeholder="e.g., John Manager" required>
+                <input type="text" id="mgrName" name="name" class="form-control" [(ngModel)]="newManager.name" #mgrNameModel="ngModel" placeholder="e.g., John Smith" required>
+                <div *ngIf="mgrNameModel.invalid && mgrNameModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                  Name is required.
+                </div>
               </div>
 
               <div class="form-group">
                 <label for="mgrEmail">Email Address</label>
-                <input type="email" id="mgrEmail" name="email" class="form-control" [(ngModel)]="newManager.email" placeholder="e.g., manager@company.com" required>
+                <input type="email" id="mgrEmail" name="email" class="form-control" [(ngModel)]="newManager.email" #mgrEmailModel="ngModel" placeholder="e.g., manager@company.com" required>
+                <div *ngIf="mgrEmailModel.invalid && mgrEmailModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                  Please enter a valid email address.
+                </div>
               </div>
 
               <div class="form-group">
                 <label for="mgrPhone">Phone Number</label>
-                <input type="text" id="mgrPhone" name="phone" class="form-control" [(ngModel)]="newManager.phone" placeholder="e.g., +1234567890" required>
+                <div style="display: flex; gap: 8px;">
+                  <div class="custom-dropdown" style="position: relative; width: 100px; flex-shrink: 0;" tabindex="0" (click)="toggleCountryDropdown()">
+                    <div class="form-control d-flex align-items-center justify-content-between" style="cursor: pointer; height: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d0d5dd; border-radius: 8px; background: white;">
+                      <div class="d-flex align-items-center" style="gap: 4px;">
+                        <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" alt="flag" style="width: 18px; height: 12px; object-fit: cover;">
+                        <span style="font-size: 0.8125rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
+                      </div>
+                      <span class="material-icons" style="font-size: 14px; color: #667085;">expand_more</span>
+                    </div>
+                    <div class="dropdown-menu shadow-premium" *ngIf="isCountryDropdownOpen" style="display: block; position: absolute; top: calc(100% + 4px); left: 0; width: 220px; z-index: 1000; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #eaecf0; border-radius: 8px; padding: 4px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+                      <div class="dropdown-item d-flex align-items-center" *ngFor="let c of countryCodes" (click)="selectCountry(c, $event)" style="gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.2s; border-radius: 4px;">
+                        <img *ngIf="c.flagUrl" [src]="c.flagUrl" alt="flag" style="width: 18px; height: 12px; object-fit: cover;">
+                        <span style="font-size: 0.8125rem; font-weight: 500; width: 35px;">{{ c.mobileCode }}</span>
+                        <span style="font-size: 0.8125rem; color: #475467; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.countryName }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <input type="text" id="mgrPhone" name="phone" class="form-control" [(ngModel)]="newManager.phone" #mgrPhoneModel="ngModel" placeholder="Phone number" required [maxlength]="selectedCountry?.mobileNumberLength || 20" [minlength]="selectedCountry?.mobileNumberLength || 10">
+                </div>
+                <div *ngIf="mgrPhoneModel.invalid && mgrPhoneModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                  <span *ngIf="mgrPhoneModel.errors?.['required']">Phone number is required.</span>
+                  <span *ngIf="mgrPhoneModel.errors?.['minlength'] || mgrPhoneModel.errors?.['maxlength']">Phone number must be exactly {{ selectedCountry?.mobileNumberLength || 10 }} digits.</span>
+                </div>
               </div>
 
               <div class="form-group">
                 <label for="mgrRole">Role</label>
-                <select id="mgrRole" name="roleId" class="form-control" [(ngModel)]="newManager.roleId" required disabled>
+                <select id="mgrRole" name="roleId" class="form-control" [(ngModel)]="newManager.roleId" #mgrRoleModel="ngModel" required>
                   <option value="" disabled selected>Select Role</option>
                   <option *ngFor="let role of managerRoles" [value]="role.id">{{ role.displayName || role.name }}</option>
                 </select>
+                <div *ngIf="mgrRoleModel.invalid && mgrRoleModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                  Role selection is required.
+                </div>
               </div>
 
               <div class="form-group">
                 <label for="mgrBranch">Branch</label>
-                <select id="mgrBranch" name="branchId" class="form-control" [(ngModel)]="newManager.branchId" required>
+                <select id="mgrBranch" name="branchId" class="form-control" [(ngModel)]="newManager.branchId" #mgrBranchModel="ngModel" required>
                   <option value="" disabled selected>Select Branch</option>
                   <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
                 </select>
+                <div *ngIf="mgrBranchModel.invalid && mgrBranchModel.touched" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                  Branch selection is required.
+                </div>
               </div>
 
               <div class="modal-footer">
@@ -583,6 +618,7 @@ export class HierarchyManagerComponent implements OnInit {
   private notificationService = inject(NotificationService);
   private branchService = inject(BranchService);
   private employeeService = inject(EmployeeService);
+  private countryService = inject(CountryService);
 
   // Add Manager State
   showAddManagerModal = false;
@@ -592,9 +628,14 @@ export class HierarchyManagerComponent implements OnInit {
     name: '',
     email: '',
     phone: '',
+    dialCode: '',
     branchId: undefined as unknown as number,
     roleId: undefined as unknown as number
   };
+
+  countryCodes: CountryMobileCode[] = [];
+  isCountryDropdownOpen = false;
+  selectedCountry: CountryMobileCode | null = null;
 
 
   counsellorHierarchy: any[] = [];
@@ -635,6 +676,32 @@ export class HierarchyManagerComponent implements OnInit {
 
   ngOnInit() {
     this.loadInitialData();
+    this.loadCountryCodes();
+  }
+
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => {
+        this.countryCodes = data;
+        if (this.countryCodes.length > 0) {
+          this.selectedCountry = this.countryCodes.find(c => c.mobileCode === '+91') || this.countryCodes[0];
+          this.newManager.dialCode = this.selectedCountry.mobileCode;
+          this.newManager.mobileCountryCodeId = this.selectedCountry.id;
+        }
+      }
+    });
+  }
+
+  toggleCountryDropdown() {
+    this.isCountryDropdownOpen = !this.isCountryDropdownOpen;
+  }
+
+  selectCountry(country: CountryMobileCode, event: Event) {
+    event.stopPropagation();
+    this.selectedCountry = country;
+    this.newManager.dialCode = country.mobileCode;
+    this.newManager.mobileCountryCodeId = country.id;
+    this.isCountryDropdownOpen = false;
   }
 
   loadInitialData() {
@@ -1150,7 +1217,11 @@ export class HierarchyManagerComponent implements OnInit {
   }
 
   onSubmitManager() {
-    if (!this.newManager.name || !this.newManager.email || !this.newManager.branchId || !this.newManager.roleId) return;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!this.newManager.name || !this.newManager.email || !emailRegex.test(this.newManager.email) || !this.newManager.branchId || !this.newManager.roleId) {
+      this.notificationService.error('Please fill all required fields correctly.');
+      return;
+    }
 
     this.submittingManager = true;
     this.employeeService.createEmployee(this.newManager).subscribe({

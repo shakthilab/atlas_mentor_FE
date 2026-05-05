@@ -17,6 +17,7 @@ export interface Employee {
   roles?: { id: number; name: string; description?: string }[];
   branch?: string;
   status?: string;
+  dialCode?: string;
   taskCount?: {
     pending: number;
     inProgress: number;

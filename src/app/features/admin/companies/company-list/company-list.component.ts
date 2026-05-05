@@ -244,10 +244,16 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Company Name</label>
                 <input type="text" class="form-control" formControlName="name" placeholder="Tech Company Inc">
+                <div *ngIf="companyForm.get('name')?.touched && companyForm.get('name')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Company name is required.
+                </div>
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Industry</label>
                 <input type="text" class="form-control" formControlName="industry" placeholder="Technology">
+                <div *ngIf="companyForm.get('industry')?.touched && companyForm.get('industry')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Industry is required.
+                </div>
               </div>
             </div>
 
@@ -255,6 +261,9 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Email Address</label>
                 <input type="email" class="form-control" formControlName="email" placeholder="contact@company.com" [readonly]="isEditMode">
+                <div *ngIf="companyForm.get('email')?.touched && companyForm.get('email')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Please enter a valid email address.
+                </div>
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Phone Number</label>
@@ -263,7 +272,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" style="width: 20px; height: 14px; margin-right: 6px;">
                     <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
                   </div>
-                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [maxlength]="selectedCountry?.mobileNumberLength || 20">
                 </div>
                 <div *ngIf="companyForm.get('phone')?.touched && companyForm.get('phone')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
                   <span *ngIf="companyForm.get('phone')?.hasError('required')">Phone number is required.</span>
@@ -279,21 +288,33 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Contact First Name</label>
                 <input type="text" class="form-control" formControlName="firstName" placeholder="John">
+                <div *ngIf="companyForm.get('firstName')?.touched && companyForm.get('firstName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  First name is required.
+                </div>
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Contact Last Name</label>
                 <input type="text" class="form-control" formControlName="lastName" placeholder="Doe">
+                <div *ngIf="companyForm.get('lastName')?.touched && companyForm.get('lastName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Last name is required.
+                </div>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;">
               <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Website</label>
               <input type="text" class="form-control" formControlName="website" placeholder="https://example.com">
+              <div *ngIf="companyForm.get('website')?.touched && companyForm.get('website')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                Website is required.
+              </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;">
               <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Address</label>
               <textarea class="form-control" formControlName="address" placeholder="123 Business St, City, State" rows="2"></textarea>
+              <div *ngIf="companyForm.get('address')?.touched && companyForm.get('address')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                Address is required.
+              </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;">
@@ -306,7 +327,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 
             <div class="modal-footer" style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 12px;">
               <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary" [disabled]="companyForm.invalid || submitting">
+              <button type="submit" class="btn btn-primary" [disabled]="submitting">
                 {{ isEditMode ? 'Save Changes' : 'Create Company' }}
               </button>
             </div>
@@ -743,6 +764,7 @@ export class CompanyListComponent implements OnInit {
   onSubmitCompany() {
     if (this.companyForm.invalid) {
       this.companyForm.markAllAsTouched();
+      this.notificationService.error('Please fill all required fields correctly.');
       return;
     }
 
