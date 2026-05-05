@@ -142,7 +142,7 @@ import { Observable, forkJoin, map } from 'rxjs';
                   <label>Phone Number <span class="required">*</span></label>
                   <div class="phone-input-wrapper">
                     <!-- MCC Dropdown -->
-                    <div class="mcc-dropdown" (click)="toggleCountryDropdown($event)">
+                    <div class="mcc-dropdown" (click)="isEdit ? null : toggleCountryDropdown($event)" [class.disabled]="isEdit">
                       <div class="mcc-selected">
                         <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" alt="flag">
                         <span>{{ student.dialCode }}</span>
@@ -156,7 +156,7 @@ import { Observable, forkJoin, map } from 'rxjs';
                         </div>
                       </div>
                     </div>
-                    <input type="tel" name="phone" [(ngModel)]="student.phone" #phoneModel="ngModel" required [maxlength]="selectedCountry?.mobileNumberLength || 20" [minlength]="selectedCountry?.mobileNumberLength || 10" pattern="[0-9]*" placeholder="00000 00000" class="form-control">
+                    <input type="tel" name="phone" [(ngModel)]="student.phone" #phoneModel="ngModel" required [maxlength]="selectedCountry?.mobileNumberLength || 20" [minlength]="selectedCountry?.mobileNumberLength || 10" pattern="[0-9]*" placeholder="00000 00000" class="form-control" [disabled]="isEdit">
                   </div>
                   <div class="error-message" *ngIf="phoneModel.invalid && (phoneModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
                     <span *ngIf="phoneModel.errors?.['required']">Phone number is required.</span>
@@ -608,6 +608,14 @@ import { Observable, forkJoin, map } from 'rxjs';
       position: relative;
       width: 90px;
       flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .mcc-dropdown.disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+      pointer-events: none;
+      background: #f2f4f7;
     }
 
     .mcc-selected {
