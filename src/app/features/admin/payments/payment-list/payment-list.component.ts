@@ -534,7 +534,7 @@ export class PaymentListComponent implements OnInit {
 
   isAdminOrManager(): boolean {
     const role = this.roleConfig.getCurrentUserRole();
-    return role === 'ADMIN' || role === 'MANAGER';
+    return role === 'ADMIN' || role === 'MANAGER' || role === 'BRANCH_PARTNER';
   }
 
   openRecordPaymentModal(id: string | number | null = null) {
@@ -576,6 +576,8 @@ export class PaymentListComponent implements OnInit {
       case 'ADMIN':
         return 'Manage student fees, referral commissions, and approvals.';
       case 'MANAGER':
+        return 'Manage payments for your branch.';
+      case 'BRANCH_PARTNER':
         return 'Manage payments for your branch.';
       case 'COMPANY':
         return 'Manage payments for your company referrals.';

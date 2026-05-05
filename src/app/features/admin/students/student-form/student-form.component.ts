@@ -129,12 +129,12 @@ import { Observable, forkJoin, map } from 'rxjs';
                   </select>
                 </div>
                 <div class="form-group full-width">
-                  <label>Email Address <span class="required">*</span></label>
+                  <label>Email Address</label>
                   <div class="input-with-icon">
                     <span class="material-icons">email</span>
-                    <input type="email" name="email" [(ngModel)]="student.email" #emailModel="ngModel" required maxlength="150" placeholder="example@mail.com" (blur)="checkEmail()">
+                    <input type="email" name="email" [(ngModel)]="student.email" #emailModel="ngModel" maxlength="150" placeholder="example@mail.com" (blur)="checkEmail()">
                   </div>
-                  <div class="error-message" *ngIf="emailModel.invalid && (emailModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                  <div class="error-message" *ngIf="emailModel.invalid && student.email && (emailModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
                     Please enter a valid email address.
                   </div>
                 </div>
@@ -1242,11 +1242,11 @@ export class StudentFormComponent implements OnInit {
 
   isPersonalValid(): boolean {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const isEmailValid = !this.student.email || emailRegex.test(this.student.email);
     return !!(
       this.student.firstName &&
       this.student.lastName &&
-      this.student.email &&
-      emailRegex.test(this.student.email) &&
+      isEmailValid &&
       this.student.phone &&
       this.student.phone.length === this.selectedCountry?.mobileNumberLength
     );
@@ -1395,7 +1395,16 @@ export class StudentFormComponent implements OnInit {
           }
 
           // Extract dial code
-          if (this.student.phone?.startsWith('+')) {
+          if (res.mobileCountryCodeId) {
+            const matched = this.countryCodes.find(c => c.id === res.mobileCountryCodeId);
+            if (matched) {
+              this.selectedCountry = matched;
+              this.student.dialCode = matched.mobileCode;
+              if (this.student.phone?.startsWith(matched.mobileCode)) {
+                this.student.phone = this.student.phone.substring(matched.mobileCode.length);
+              }
+            }
+          } else if (this.student.phone?.startsWith('+')) {
             const matched = this.countryCodes.find(c => this.student.phone.startsWith(c.mobileCode));
             if (matched) {
               this.selectedCountry = matched;
@@ -1441,7 +1450,17 @@ export class StudentFormComponent implements OnInit {
             }
 
             // Handle dial code extraction
-            if (this.student.phone?.startsWith('+')) {
+            if (resData.mobileCountryCodeId || userData.mobileCountryCodeId) {
+              const mId = resData.mobileCountryCodeId || userData.mobileCountryCodeId;
+              const matched = this.countryCodes.find(c => c.id === mId);
+              if (matched) {
+                this.selectedCountry = matched;
+                this.student.dialCode = matched.mobileCode;
+                if (this.student.phone?.startsWith(matched.mobileCode)) {
+                  this.student.phone = this.student.phone.substring(matched.mobileCode.length);
+                }
+              }
+            } else if (this.student.phone?.startsWith('+')) {
               const matched = this.countryCodes.find(c => this.student.phone.startsWith(c.mobileCode));
               if (matched) {
                 this.selectedCountry = matched;
@@ -1609,10 +1628,11 @@ export class StudentFormComponent implements OnInit {
 
     const payload = {
       ...this.student,
+      email: this.student.email || null,
       destinationCountryId: Number(this.student.countryId),
       targetUniversityId: this.student.universityId ? Number(this.student.universityId) : null,
       courseName: this.student.course,
-      phone: `${this.student.dialCode}${this.student.phone}`,
+      phone: this.student.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       branchId: this.student.branchId ? Number(this.student.branchId) : (this.currentUser?.branchId || this.currentUser?.branch),
     };

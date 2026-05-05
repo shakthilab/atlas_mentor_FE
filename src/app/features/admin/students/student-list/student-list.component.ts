@@ -11,6 +11,8 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 import { StudentFormComponent } from '../student-form/student-form.component';
 import { StudentDetailComponent } from '../student-detail/student-detail.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-student-list',
@@ -128,7 +130,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
                 </td>
                 <td>
                   <div class="entity-info">
-                    <span class="entity-name" style="font-weight: 500;">{{ student.phone }}</span>
+                    <span class="entity-name" style="font-weight: 500;">{{ getFormattedPhone(student) }}</span>
                     <span class="entity-subtext">{{ student.email }}</span>
                   </div>
                 </td>
@@ -206,7 +208,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
             <div class="entity-info">
               <span class="entity-subtext">Phone</span>
-              <span class="entity-name" style="font-size: 0.8125rem;">{{ student.phone }}</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ getFormattedPhone(student) }}</span>
             </div>
             <div class="entity-info">
               <span class="entity-subtext">Country</span>
@@ -398,6 +400,9 @@ export class StudentListComponent implements OnInit {
   updatingStatus = false;
   statusOptions = ['LEAD', 'PROSPECTIVE', 'REGISTERED', 'STUDENT', 'LOST'];
 
+  private countryService = inject(CountryService);
+  countryCodes: CountryMobileCode[] = [];
+
   allStudents: any[] = [];
   loading = false;
   totalElements = 0;
@@ -406,6 +411,32 @@ export class StudentListComponent implements OnInit {
 
   ngOnInit() {
     this.loadStudents();
+    this.loadCountryCodes();
+  }
+
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => this.countryCodes = data,
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  getFormattedPhone(student: any): string {
+    if (!student) return 'N/A';
+    const phone = student.phone || student.user?.phone;
+    if (!phone) return 'N/A';
+
+    if (phone.startsWith('+')) return phone;
+
+    let dialCode = student.dialCode || student.user?.dialCode;
+    const mccId = student.mobileCountryCodeId || student.user?.mobileCountryCodeId;
+
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+
+    return dialCode ? `${dialCode} ${phone}` : phone;
   }
 
   openAddModal() {
@@ -423,6 +454,7 @@ export class StudentListComponent implements OnInit {
     let prefix = 'admin';
 
     if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'BRANCH_PARTNER') prefix = 'branch-partner';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';
@@ -532,12 +564,14 @@ export class StudentListComponent implements OnInit {
         next: (data) => {
           this.allStudents = data.content.map((s: any) => ({
             id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
+            name: s.name || s.user?.fullName || 'N/A',
+            phone: s.phone || s.user?.phone,
+            email: s.email || s.user?.email,
+            mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
+            dialCode: s.dialCode || s.user?.dialCode,
             status: s.status,
             counsellor: s.createdBy?.fullName || 'Unassigned',
-            country: s.country?.name || 'N/A',
+            country: s.country?.name || s.user?.country?.name || 'N/A',
             university: s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
           }));
@@ -595,6 +629,8 @@ export class StudentListComponent implements OnInit {
       case 'ADMIN':
         return 'Manage all student leads and registered accounts.';
       case 'MANAGER':
+        return 'Manage students for your branch.';
+      case 'BRANCH_PARTNER':
         return 'Manage students for your branch.';
       case 'COMPANY':
         return 'Manage students referred by your company.';

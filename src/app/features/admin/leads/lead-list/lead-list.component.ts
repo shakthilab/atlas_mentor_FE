@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
 import { StudentService } from '../../../../core/services/student.service';
+import { finalize } from 'rxjs/operators';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
 import { DatePipe } from '@angular/common';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { StudentFormComponent } from '../../students/student-form/student-form.component';
@@ -149,7 +151,7 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                 </td>
                 <td>
                   <div class="entity-info">
-                    <span class="entity-name" style="font-weight: 500;">{{ lead.phone }}</span>
+                    <span class="entity-name" style="font-weight: 500;">{{ getFormattedPhone(lead) }}</span>
                     <span class="entity-subtext">{{ lead.email }}</span>
                   </div>
                 </td>
@@ -227,7 +229,7 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
             <div class="entity-info">
               <span class="entity-subtext">Phone</span>
-              <span class="entity-name" style="font-size: 0.8125rem;">{{ lead.phone }}</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ getFormattedPhone(lead) }}</span>
             </div>
             <div class="entity-info">
               <span class="entity-subtext">Source</span>
@@ -378,7 +380,9 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
 })
 export class LeadListComponent implements OnInit {
   router = inject(Router);
-  roleConfig = inject(RoleConfigService);
+  public roleConfig = inject(RoleConfigService);
+  private countryService = inject(CountryService);
+  countryCodes: CountryMobileCode[] = [];
   studentService = inject(StudentService);
   datePipe = inject(DatePipe);
   notificationService = inject(NotificationService);
@@ -420,6 +424,32 @@ export class LeadListComponent implements OnInit {
 
   ngOnInit() {
     this.loadLeads();
+    this.loadCountryCodes();
+  }
+
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => this.countryCodes = data,
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  getFormattedPhone(lead: any): string {
+    if (!lead) return 'N/A';
+    const phone = lead.phone || lead.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = lead.dialCode || lead.user?.dialCode;
+    const mccId = lead.mobileCountryCodeId || lead.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
   }
 
   loadLeads() {
@@ -429,12 +459,14 @@ export class LeadListComponent implements OnInit {
         next: (data) => {
           this.allLeads = data.content.map((s: any) => ({
             id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
+            name: s.name || s.user?.fullName || 'N/A',
+            phone: s.phone || s.user?.phone,
+            email: s.email || s.user?.email,
+            mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
+            dialCode: s.dialCode || s.user?.dialCode,
             status: s.status || 'LEAD',
             source: s.source || 'N/A',
-            country: s.country?.name || 'N/A',
+            country: s.country?.name || s.user?.country?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
             assignedTo: s.createdBy?.fullName || 'Unassigned'
           }));
@@ -605,6 +637,7 @@ export class LeadListComponent implements OnInit {
     const role = this.roleConfig.getCurrentUserRole();
     let prefix = 'admin';
     if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'BRANCH_PARTNER') prefix = 'branch-partner';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';
@@ -625,6 +658,7 @@ export class LeadListComponent implements OnInit {
     const role = this.roleConfig.getCurrentUserRole();
     let prefix = 'admin';
     if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'BRANCH_PARTNER') prefix = 'branch-partner';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';

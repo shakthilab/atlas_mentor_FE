@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 // Task interfaces for type safety
 export interface Task {
@@ -95,7 +97,7 @@ export interface ApiError {
   providedIn: 'root'
 })
 export class TaskService {
-  private readonly baseUrl = 'http://65.2.175.37:8080/api';
+  private readonly baseUrl = environment.serviceUrl + ApiEndpoint.TASKS.BASE;
 
   constructor(private http: HttpClient) {}
 
@@ -155,7 +157,7 @@ export class TaskService {
       if (filter.overdue !== undefined) params = params.set('overdue', filter.overdue.toString());
     }
     
-    return this.http.get<any>(`${this.baseUrl}/tasks`, {
+    return this.http.get<any>(`${this.baseUrl}`, {
       headers: this.getAuthHeaders(),
       params
     }).pipe(
@@ -176,7 +178,7 @@ export class TaskService {
   }
 
   getTask(taskId: number): Observable<Task> {
-    return this.http.get<any>(`${this.baseUrl}/tasks/${taskId}`, {
+    return this.http.get<any>(`${this.baseUrl}/${taskId}`, {
       headers: this.getAuthHeaders()
     }).pipe(
       map((response: any) => response && response.data ? response.data : response),
@@ -185,7 +187,7 @@ export class TaskService {
   }
 
   getTaskDetails(taskId: number): Observable<TaskDetails> {
-    return this.http.get<TaskDetails>(`${this.baseUrl}/tasks/${taskId}/details`, {
+    return this.http.get<TaskDetails>(`${this.baseUrl}/${taskId}/details`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -193,7 +195,7 @@ export class TaskService {
   }
 
   createTask(taskData: CreateTaskRequest): Observable<Task> {
-    return this.http.post<any>(`${this.baseUrl}/tasks`, taskData, {
+    return this.http.post<any>(`${this.baseUrl}`, taskData, {
       headers: this.getAuthHeaders()
     }).pipe(
       map((response: any) => response && response.data ? response.data : response),
@@ -202,7 +204,7 @@ export class TaskService {
   }
 
   softDeleteTask(taskId: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`, {
+    return this.http.delete<void>(`${this.baseUrl}/${taskId}`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -211,7 +213,7 @@ export class TaskService {
 
   // Task Updates (PUT)
   updateStatus(taskId: number, status: Task['status']): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/status`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/status`, 
       { status }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -220,7 +222,7 @@ export class TaskService {
   }
 
   assignUser(taskId: number, userId: number): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/assignee`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/assignee`, 
       { assignedToId: userId }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -229,7 +231,7 @@ export class TaskService {
   }
 
   updatePriority(taskId: number, priority: Task['priority']): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/priority`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/priority`, 
       { priority }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -238,7 +240,7 @@ export class TaskService {
   }
 
   updateDueDate(taskId: number, dueDate: string): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/due-date`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/due-date`, 
       { dueDate }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -248,7 +250,7 @@ export class TaskService {
 
   // Comments & Activities
   getComments(taskId: number): Observable<Comment[]> {
-    return this.http.get<Comment[]>(`${this.baseUrl}/tasks/${taskId}/comments`, {
+    return this.http.get<Comment[]>(`${this.baseUrl}/${taskId}/comments`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -256,7 +258,7 @@ export class TaskService {
   }
 
   addComment(taskId: number, comment: string): Observable<Comment> {
-    return this.http.post<Comment>(`${this.baseUrl}/tasks/${taskId}/comments`, 
+    return this.http.post<Comment>(`${this.baseUrl}/${taskId}/comments`, 
       { comment }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -265,7 +267,7 @@ export class TaskService {
   }
 
   getActivity(taskId: number): Observable<Activity[]> {
-    return this.http.get<Activity[]>(`${this.baseUrl}/tasks/${taskId}/activity`, {
+    return this.http.get<Activity[]>(`${this.baseUrl}/${taskId}/activity`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)

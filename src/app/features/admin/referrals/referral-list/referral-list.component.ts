@@ -344,7 +344,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </div>
               <div class="entity-info">
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Phone</span>
-                <span class="entity-name" style="margin-top: 4px;">{{ selectedReferral?.phone || 'N/A' }}</span>
+                <span class="entity-name" style="margin-top: 4px;">{{ getFormattedPhone(selectedReferral) }}</span>
               </div>
               <div class="entity-info">
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Total Leads</span>
@@ -427,6 +427,24 @@ export class ReferralListComponent implements OnInit {
   openDropdownId: string | null = null;
   selectedReferral: Referral | null = null;
   showDetailModal = false;
+
+  getFormattedPhone(ref: any): string {
+    if (!ref) return 'N/A';
+    const phone = ref.phone || ref.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = ref.dialCode || ref.user?.dialCode;
+    const mccId = ref.mobileCountryCodeId || ref.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
+  }
 
   // Pagination
   currentPage = 0;
@@ -729,7 +747,16 @@ export class ReferralListComponent implements OnInit {
     let dialCode = '+91';
     let phone = ref.phone || '';
     
-    if (phone.startsWith('+')) {
+    if (ref.mobileCountryCodeId) {
+      const matched = this.countryCodes.find(c => c.id === ref.mobileCountryCodeId);
+      if (matched) {
+        dialCode = matched.mobileCode;
+        this.selectedCountry = matched;
+        if (phone.startsWith(dialCode)) {
+          phone = phone.substring(dialCode.length);
+        }
+      }
+    } else if (phone.startsWith('+')) {
       const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
       if (matchedCountry) {
         dialCode = matchedCountry.mobileCode;
@@ -778,7 +805,7 @@ export class ReferralListComponent implements OnInit {
       lastName: formValue.lastName,
       name: `${formValue.firstName} ${formValue.lastName}`,
       email: formValue.email,
-      phone: `${formValue.dialCode}${formValue.phone}`,
+      phone: formValue.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       referralType: formValue.referralType,
       branchId: Number(formValue.branchId)

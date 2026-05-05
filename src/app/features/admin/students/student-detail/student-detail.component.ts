@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { StudentService } from '../../../../core/services/student.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
 
 @Component({
   selector: 'app-student-detail',
@@ -99,7 +100,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               <div class="meta-row-modern">
                 <span class="meta-item-modern"><span class="material-icons">location_on</span> {{ student.country?.name || student.destinationCountry || 'N/A' }}</span>
                 <span class="meta-item-modern"><span class="material-icons">mail</span> {{ student.email }}</span>
-                <span class="meta-item-modern"><span class="material-icons">call</span> {{ student.phone }}</span>
+                <span class="meta-item-modern"><span class="material-icons">call</span> {{ getFormattedPhone(student) }}</span>
               </div>
             </div>
           </div>
@@ -123,7 +124,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               </div>
               <div class="info-group-modern">
                 <label>Phone Number</label>
-                <div class="value-box">{{ student.phone }}</div>
+                <div class="value-box">{{ getFormattedPhone(student) }}</div>
               </div>
               <div class="info-group-modern">
                 <label>Target Country</label>
@@ -566,6 +567,8 @@ export class StudentDetailComponent implements OnInit {
   studentService = inject(StudentService);
   notificationService = inject(NotificationService);
   roleConfig = inject(RoleConfigService);
+  countryService = inject(CountryService);
+  countryCodes: CountryMobileCode[] = [];
 
   student: any = null;
   
@@ -587,18 +590,49 @@ export class StudentDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadCountryCodes();
     if (this.studentId) {
       this.loadStudentDetail();
     }
   }
 
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => this.countryCodes = data,
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  getFormattedPhone(student: any): string {
+    if (!student) return 'N/A';
+    const phone = student.phone || student.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = student.dialCode || student.user?.dialCode;
+    const mccId = student.mobileCountryCodeId || student.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
+  }
+
   loadStudentDetail() {
     this.studentService.getStudentById(this.studentId!).subscribe({
       next: (res) => {
-        // Handle both { user: {...} } and direct {...} structures
         const studentData = res.user || res;
         this.student = {
-          ...studentData,
+          ...res,
+          phone: res.phone || res.user?.phone,
+          email: res.email || res.user?.email,
+          firstName: res.firstName || res.user?.firstName,
+          lastName: res.lastName || res.user?.lastName,
+          mobileCountryCodeId: res.mobileCountryCodeId || res.user?.mobileCountryCodeId,
+          dialCode: res.dialCode || res.user?.dialCode,
           academicHistory: this.mapAcademicHistory(studentData.academicHistories || studentData.academicHistory),
           documents: this.mapDocuments(studentData.documents),
           fileMetadata: this.mapFileMetadata(studentData.documents)

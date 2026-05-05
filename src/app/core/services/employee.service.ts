@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 export interface Employee {
   id?: number | string;
@@ -38,7 +40,7 @@ export interface PaginatedResponse<T> {
   providedIn: 'root'
 })
 export class EmployeeService {
-  private apiUrl = 'http://65.2.175.37:8080/api/employees';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.EMPLOYEES.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -115,7 +117,7 @@ export class EmployeeService {
     if (branchId) {
       params = params.set('branchId', branchId.toString());
     }
-    return this.http.get<any>(`http://65.2.175.37:8080/api/admin/get-all-employee`, { params }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.ADMIN.GET_ALL_EMPLOYEE, { params }).pipe(
       map(response => response.data || response)
     );
   }

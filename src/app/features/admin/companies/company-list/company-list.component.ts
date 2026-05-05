@@ -369,7 +369,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             </div>
             <div class="entity-info">
               <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Phone</span>
-              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.phone }}</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ getFormattedPhone(selectedCompany) }}</span>
             </div>
             <div class="entity-info">
               <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Branch</span>
@@ -440,6 +440,24 @@ export class CompanyListComponent implements OnInit {
   isEditMode = false;
   selectedCompany: Company | null = null;
   openDropdownId: string | null = null;
+
+  getFormattedPhone(comp: any): string {
+    if (!comp) return 'N/A';
+    const phone = comp.phone || comp.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = comp.dialCode || comp.user?.dialCode;
+    const mccId = comp.mobileCountryCodeId || comp.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
+  }
   showAdvancedFilters = false;
   filterBranch = '';
 
@@ -721,11 +739,22 @@ export class CompanyListComponent implements OnInit {
     let dialCode = '+91';
     let phone = comp.phone || '';
     
-    const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
-    if (matchedCountry) {
-      dialCode = matchedCountry.mobileCode;
-      phone = phone.substring(dialCode.length);
-      this.selectedCountry = matchedCountry;
+    if (comp.mobileCountryCodeId) {
+      const matched = this.countryCodes.find(c => c.id === comp.mobileCountryCodeId);
+      if (matched) {
+        dialCode = matched.mobileCode;
+        this.selectedCountry = matched;
+        if (phone.startsWith(dialCode)) {
+          phone = phone.substring(dialCode.length);
+        }
+      }
+    } else if (phone.startsWith('+')) {
+      const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
+      if (matchedCountry) {
+        dialCode = matchedCountry.mobileCode;
+        phone = phone.substring(dialCode.length);
+        this.selectedCountry = matchedCountry;
+      }
     }
 
     this.companyForm.patchValue({
@@ -775,7 +804,7 @@ export class CompanyListComponent implements OnInit {
       name: formValue.name,
       industry: formValue.industry,
       email: formValue.email,
-      phone: `${formValue.dialCode}${formValue.phone}`,
+      phone: formValue.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       firstName: formValue.firstName,
       lastName: formValue.lastName,

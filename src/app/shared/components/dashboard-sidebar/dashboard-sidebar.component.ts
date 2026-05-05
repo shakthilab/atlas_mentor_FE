@@ -571,6 +571,8 @@ export class DashboardSidebarComponent implements AfterViewInit {
     
     if (userRole === 'MANAGER') {
       baseRoute = '/manager';
+    } else if (userRole === 'BRANCH_PARTNER') {
+      baseRoute = '/branch-partner';
     } else if (userRole === 'STUDENT') {
       baseRoute = '/student';
     } else if (isEmployee || userRole === 'EMPLOYEE' || userRole === 'SENIOR_COUNSELLOR' || userRole === 'JUNIOR_COUNSELLOR') {
@@ -601,7 +603,7 @@ export class DashboardSidebarComponent implements AfterViewInit {
   isAdminOrManager(): boolean {
     const currentUser = this.authService.currentUserValue;
     const userRole = currentUser?.role?.toUpperCase();
-    return userRole === 'ADMIN' || userRole === 'MANAGER';
+    return userRole === 'ADMIN' || userRole === 'MANAGER' || userRole === 'BRANCH_PARTNER';
   }
 
   /**

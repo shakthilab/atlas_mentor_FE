@@ -3,12 +3,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { Branch } from '../models/branch.model';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BranchService {
-  private apiUrl = 'http://65.2.175.37:8080/api/branches';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.BRANCHES.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -35,7 +37,7 @@ export class BranchService {
   }
 
   getManagers(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/managers`, { headers: this.getHeaders() }).pipe(
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.BRANCHES.BASE}/managers`, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
@@ -75,7 +77,7 @@ export class BranchService {
   }
 
   getUnassignedEmployees(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/unassigned-employees`, { headers: this.getHeaders() }).pipe(
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.BRANCHES.UNASSIGNED_EMPLOYEES}`, { headers: this.getHeaders() }).pipe(
       map(response => {
         if (response.data && Array.isArray(response.data)) {
           return response.data;

@@ -273,6 +273,8 @@ export class MediaListComponent {
         return 'Manage documents, images, videos, and other media files.';
       case 'MANAGER':
         return 'Manage media files for your branch.';
+      case 'BRANCH_PARTNER':
+        return 'Manage media files for your branch.';
       case 'COMPANY':
         return 'Manage media files for your company.';
       case 'REFERRAL':

@@ -415,7 +415,7 @@ export class PaymentDetailPanelComponent implements OnInit {
 
   isAdminOrManager(): boolean {
     const role = this.roleConfig.getCurrentUserRole();
-    return role === 'ADMIN' || role === 'MANAGER';
+    return role === 'ADMIN' || role === 'MANAGER' || role === 'BRANCH_PARTNER';
   }
 
   openModal(type: 'ASSIGN' | 'PAY' | 'DISPUTE' | 'ACCEPT_DISPUTE' | 'REJECT_DISPUTE') {

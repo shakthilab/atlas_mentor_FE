@@ -209,9 +209,9 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Email <span class="text-error">*</span></label>
+          <label class="form-label">Email</label>
           <input type="email" class="form-control" formControlName="email" placeholder="olivia@untitledui.com">
-          <div *ngIf="personalGroup.get('email')?.touched && personalGroup.get('email')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+          <div *ngIf="personalGroup.get('email')?.touched && personalGroup.get('email')?.invalid && personalGroup.get('email')?.value" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
             Please enter a valid email address.
           </div>
         </div>
@@ -371,7 +371,7 @@ export class RegisterStudentComponent implements OnInit {
     personal: this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.email]],
       dialCode: ['+91', Validators.required],
       phone: ['', Validators.required],
       password: ['', [Validators.required, Validators.minLength(6)]],
@@ -500,8 +500,8 @@ export class RegisterStudentComponent implements OnInit {
     const payload = {
       firstName: personal.firstName,
       lastName: personal.lastName,
-      email: personal.email,
-      phone: (personal.dialCode || '') + (personal.phone || ''),
+      email: personal.email || null,
+      phone: personal.phone,
       mobileCountryCodeId: this.selectedCountry?.id || null,
       password: personal.password,
       countryId: Number(preferences.countryId),

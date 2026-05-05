@@ -9,6 +9,7 @@ import { RoleService } from '../../../core/services/role.service';
 import { Role } from '../../../core/services/role.service';
 
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { CountryService, CountryMobileCode } from '../../../core/services/country.service';
 
 @Component({
   selector: 'app-pending-approvals',
@@ -62,7 +63,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
                     </div>
                     <div class="entity-info">
                       <span class="entity-name">{{ user.name }}</span>
-                      <span class="entity-subtext">{{ user.email }} • {{ user.phone }}</span>
+                       <span class="entity-subtext">{{ user.email }} • {{ getFormattedPhone(user) }}</span>
                     </div>
                   </div>
                 </td>
@@ -110,6 +111,8 @@ export class PendingApprovalsComponent implements OnInit {
   private authService = inject(AuthService);
   private notificationService = inject(NotificationService);
   private roleService = inject(RoleService);
+  private countryService = inject(CountryService);
+  countryCodes: CountryMobileCode[] = [];
 
   pendingUsers: User[] = [];
   assignmentMap: Record<string, { role: User['role'], isSenior: boolean, branch: string }> = {};
@@ -119,6 +122,32 @@ export class PendingApprovalsComponent implements OnInit {
   ngOnInit() {
     this.loadUsers();
     this.loadRoles();
+    this.loadCountryCodes();
+  }
+
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => this.countryCodes = data,
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  getFormattedPhone(user: any): string {
+    if (!user) return 'N/A';
+    const phone = user.phone || user.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return user.phone;
+    
+    let dialCode = user.dialCode || user.user?.dialCode;
+    const mccId = user.mobileCountryCodeId || user.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
   }
 
   loadUsers() {

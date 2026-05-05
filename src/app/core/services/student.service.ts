@@ -2,12 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StudentService {
-  private apiUrl = 'http://65.2.175.37:8080/api/students';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.STUDENTS.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -23,7 +25,7 @@ export class StudentService {
   }
 
   getRegisteredStudents(page: number = 0, size: number = 10, search: string = '', status: string = ''): Observable<any> {
-    let url = `${this.apiUrl}/registered?page=${page}&size=${size}`;
+    let url = `${environment.serviceUrl}${ApiEndpoint.STUDENTS.REGISTERED}?page=${page}&size=${size}`;
     if (search) url += `&keyword=${search}`;
     if (status) url += `&status=${status}`;
 
@@ -33,7 +35,7 @@ export class StudentService {
   }
 
   getNonRegisteredStudents(page: number = 0, size: number = 10, search: string = '', status: string = ''): Observable<any> {
-    let url = `${this.apiUrl}/non-registered?page=${page}&size=${size}`;
+    let url = `${environment.serviceUrl}${ApiEndpoint.STUDENTS.NON_REGISTERED}?page=${page}&size=${size}`;
     if (search) url += `&keyword=${search}`;
     if (status) url += `&status=${status}`;
 
@@ -61,19 +63,19 @@ export class StudentService {
   }
 
   getRequiredDocuments(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/required-documents`).pipe(
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.STUDENTS.REQUIRED_DOCUMENTS}`).pipe(
       map(response => response.data || response)
     );
   }
 
   onboardStudent(student: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/onboarding`, student).pipe(
+    return this.http.post<any>(`${environment.serviceUrl}${ApiEndpoint.STUDENTS.ONBOARDING}`, student).pipe(
       map(response => response.data || response)
     );
   }
 
   getStudentByEmail(email: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/by-email/${email}`).pipe(
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.STUDENTS.BY_EMAIL}/${email}`).pipe(
       map(response => response.data || response)
     );
   }
@@ -85,13 +87,13 @@ export class StudentService {
   }
 
   updateStudentStatus(id: string | number, status: string, notes: string): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}/status`, { status, notes }).pipe(
+    return this.http.put<any>(`${environment.serviceUrl}${ApiEndpoint.STUDENTS.UPDATE_STATUS}/${id}/status`, { status, notes }).pipe(
       map(response => response.data || response)
     );
   }
 
   getStudentsWithPayments(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/with-payment-by-referral-company`).pipe(
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.STUDENTS.WITH_PAYMENTS}`).pipe(
       map(response => response.data || response)
     );
   }

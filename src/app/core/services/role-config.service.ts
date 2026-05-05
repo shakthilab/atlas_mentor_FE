@@ -22,6 +22,13 @@ export class RoleConfigService {
       defaultFilters: { branchId: 'current' },
       dataScope: 'branch'
     },
+    BRANCH_PARTNER: {
+      canViewAllData: false,
+      canEditAllData: false,
+      canDeleteAllData: false,
+      defaultFilters: { branchId: 'current' },
+      dataScope: 'branch'
+    },
     COMPANY: {
       canViewAllData: false,
       canEditAllData: false,
@@ -93,6 +100,8 @@ export class RoleConfigService {
     switch (currentRole) {
       case 'MANAGER':
         return `${baseTitle} - Branch View`;
+      case 'BRANCH_PARTNER':
+        return `${baseTitle} - Partner View`;
       case 'COMPANY':
         return `${baseTitle} - Company View`;
       case 'REFERRAL':

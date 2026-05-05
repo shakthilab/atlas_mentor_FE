@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, HostListener } from '@angular/core';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { BranchService } from '../../../../core/services/branch.service';
 import { Branch } from '../../../../core/models/branch.model';
@@ -11,6 +11,7 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LoadingService } from '../../../../core/services/loading.service';
 import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
+import { RoleConfigService } from '../../../../core/services/role-config.service';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 
@@ -358,7 +359,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </div>
               <div class="entity-info">
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Phone</span>
-                <span class="entity-name" style="margin-top: 4px;">{{ selectedEmployee?.phone || 'N/A' }}</span>
+                <span class="entity-name" style="margin-top: 4px;">{{ getFormattedPhone(selectedEmployee) }}</span>
               </div>
               <div class="entity-info">
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Branch</span>
@@ -418,6 +419,8 @@ export class EmployeeListComponent implements OnInit {
   private roleService = inject(RoleService);
   private employeeService = inject(EmployeeService);
   private notificationService = inject(NotificationService);
+  router = inject(Router);
+  public roleConfig = inject(RoleConfigService);
   public loadingService = inject(LoadingService);
   private countryService = inject(CountryService);
   private fb = inject(FormBuilder);
@@ -433,6 +436,24 @@ export class EmployeeListComponent implements OnInit {
   isEditMode = false;
   editingEmployeeId: string | number | null = null;
   selectedEmployee: Employee | null = null;
+
+  getFormattedPhone(emp: any): string {
+    if (!emp) return 'N/A';
+    const phone = emp.phone || emp.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = emp.dialCode || emp.user?.dialCode;
+    const mccId = emp.mobileCountryCodeId || emp.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
+  }
   showDetailModal = false;
   constructor() {
     this.employeeForm = this.fb.group({
@@ -689,8 +710,17 @@ export class EmployeeListComponent implements OnInit {
     let dialCode = '+91';
     let phone = employee.phone || '';
 
-    // Try to match dial code from the phone string
-    if (phone.startsWith('+')) {
+    // Try to match dial code
+    if (employee.mobileCountryCodeId) {
+      const matched = this.countryCodes.find(c => c.id === employee.mobileCountryCodeId);
+      if (matched) {
+        dialCode = matched.mobileCode;
+        this.selectedCountry = matched;
+        if (phone.startsWith(dialCode)) {
+          phone = phone.substring(dialCode.length);
+        }
+      }
+    } else if (phone.startsWith('+')) {
       const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
       if (matchedCountry) {
         dialCode = matchedCountry.mobileCode;
@@ -735,7 +765,7 @@ export class EmployeeListComponent implements OnInit {
       lastName: formValue.lastName,
       name: `${formValue.firstName} ${formValue.lastName}`,
       email: formValue.email,
-      phone: `${formValue.dialCode}${formValue.phone}`,
+      phone: formValue.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       branchId: Number(formValue.branchId),
       roleId: Number(formValue.roleId)

@@ -280,12 +280,19 @@ export class RegisterEmployeeComponent implements OnInit {
 
     this.isLoading = true;
 
-    const personalData = this.employeeForm.value.personal || {};
+    const professionalData = this.employeeForm.value.professional || {};
 
     const payload = {
-      ...personalData,
-      ...this.employeeForm.value.professional
-    } as Partial<User>;
+      firstName: personalData.firstName,
+      lastName: personalData.lastName,
+      email: personalData.email,
+      phone: personalData.phone,
+      mobileCountryCodeId: this.selectedCountry?.id,
+      password: personalData.password,
+      employeeType: personalData.employeeType,
+      experience: professionalData.experience,
+      notes: professionalData.notes
+    };
 
     this.authService.registerEmployee(payload).subscribe({
       next: () => {

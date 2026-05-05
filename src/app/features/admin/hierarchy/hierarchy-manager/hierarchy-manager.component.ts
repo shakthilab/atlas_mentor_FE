@@ -815,10 +815,10 @@ export class HierarchyManagerComponent implements OnInit {
 
       if (selectedManager) {
         const leaderRole = (selectedManager.leader.primaryRole || (selectedManager.leader.roles && selectedManager.leader.roles[0]) || '').toUpperCase();
-        if (leaderRole.includes('MANAGER') || leaderRole === 'ADMIN') {
+        if (leaderRole.includes('MANAGER') || leaderRole === 'ADMIN' || leaderRole === 'BRANCH_PARTNER') {
           filtered = filtered.filter(emp => {
             const role = (emp.primaryRole || (emp.roles && emp.roles[0]) || '').toUpperCase();
-            return role !== 'JUNIOR_COUNSELLOR' && role !== 'STUDENT' && !role.includes('MANAGER');
+            return role !== 'JUNIOR_COUNSELLOR' && role !== 'STUDENT' && !role.includes('MANAGER') && role !== 'BRANCH_PARTNER';
           });
         } else if (leaderRole.includes('SENIOR')) {
           filtered = filtered.filter(emp => {
@@ -861,11 +861,11 @@ export class HierarchyManagerComponent implements OnInit {
   }
 
   getDisplayRole(member: any, level?: string): string {
-    if (level === 'MANAGER') return 'Manager';
+    if (level === 'MANAGER') return 'Manager / Partner';
     if (level === 'SENIOR') return 'Senior Counsellor';
 
     const role = this.getRoleName(member);
-    if (role.includes('MANAGER') || role === 'ADMIN') return 'Manager';
+    if (role.includes('MANAGER') || role === 'ADMIN' || role === 'BRANCH_PARTNER') return 'Manager / Partner';
     if (role.includes('SENIOR')) return 'Senior Counsellor';
     if (role.includes('JUNIOR')) return 'Junior Counsellor';
 
@@ -903,7 +903,7 @@ export class HierarchyManagerComponent implements OnInit {
 
   isManager(member: any): boolean {
     const role = this.getRoleName(member);
-    return role.includes('MANAGER') || role === 'ADMIN';
+    return role.includes('MANAGER') || role === 'ADMIN' || role === 'BRANCH_PARTNER';
   }
 
   isSenior(member: any): boolean {
@@ -931,7 +931,7 @@ export class HierarchyManagerComponent implements OnInit {
     if (!selectedManager) return '';
 
     const leaderRole = (selectedManager.leader.primaryRole || (selectedManager.leader.roles && selectedManager.leader.roles[0]) || '').toUpperCase();
-    if (leaderRole.includes('MANAGER') || leaderRole === 'ADMIN') return 'Managers can assign Seniors, Editors, and other staff.';
+    if (leaderRole.includes('MANAGER') || leaderRole === 'ADMIN' || leaderRole === 'BRANCH_PARTNER') return 'Managers and Partners can assign Seniors, Editors, and other staff.';
     if (leaderRole.includes('SENIOR')) return 'Senior Counsellors can only assign Junior Counsellors.';
     return '';
   }
@@ -1003,7 +1003,7 @@ export class HierarchyManagerComponent implements OnInit {
   // Modal Logic
   getModalConstraintText() {
     if (!this.currentTeam) return '';
-    if (this.currentLevel === 'MANAGER') return 'Managers can map Senior Counsellors and other staff, but not other Managers or Junior Counsellors.';
+    if (this.currentLevel === 'MANAGER') return 'Managers and Partners can map Senior Counsellors and other staff, but not other Managers, Partners or Junior Counsellors.';
     if (this.currentLevel === 'SENIOR') return 'As a Senior Counsellor, you can only map Junior Counsellors under you.';
     return '';
   }
@@ -1023,7 +1023,8 @@ export class HierarchyManagerComponent implements OnInit {
             role.name !== 'ADMIN' &&
             role.name !== 'JUNIOR_COUNSELLOR' &&
             role.name !== 'STUDENT' &&
-            !role.name.includes('MANAGER')
+            !role.name.includes('MANAGER') &&
+            role.name !== 'BRANCH_PARTNER'
           );
         } else if (level === 'SENIOR') {
           this.rolesList = roles.filter(role => role.name === 'JUNIOR_COUNSELLOR');
@@ -1196,7 +1197,7 @@ export class HierarchyManagerComponent implements OnInit {
     if (this.managerRoles.length === 0) {
       this.roleService.getAllRoles().subscribe({
         next: (roles) => {
-          this.managerRoles = roles.filter(r => r.name.toUpperCase().includes('MANAGER') || r.name.toUpperCase() === 'ADMIN');
+          this.managerRoles = roles.filter(r => r.name.toUpperCase().includes('MANAGER') || r.name.toUpperCase() === 'ADMIN' || r.name.toUpperCase() === 'BRANCH_PARTNER');
           const defaultRole = this.managerRoles.find(r => r.name.toUpperCase() === 'MANAGER');
           if (defaultRole) {
             this.newManager.roleId = defaultRole.id;
