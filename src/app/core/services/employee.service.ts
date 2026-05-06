@@ -109,10 +109,10 @@ export class EmployeeService {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
 
-  getAdminEmployees(roleId?: number | string, branchId?: number | string): Observable<Employee[]> {
+  getAdminEmployees(roleIds?: string, branchId?: number | string): Observable<Employee[]> {
     let params = new HttpParams();
-    if (roleId) {
-      params = params.set('roleId', roleId.toString());
+    if (roleIds) {
+      params = params.set('roleIds', roleIds);
     }
     if (branchId) {
       params = params.set('branchId', branchId.toString());

@@ -26,6 +26,7 @@ export interface Referral {
   payout?: number;
   status?: string;
   assignedToUsername?: string;
+  assignedToIds?: number[];
 }
 
 export interface ReferralResponse {

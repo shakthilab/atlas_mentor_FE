@@ -110,13 +110,14 @@ import { finalize } from 'rxjs/operators';
                 <th>Contact Info</th>
                 <th>Status</th>
                 <th>Counsellor</th>
+                <th>Added by</th>
                 <th>Country / University</th>
                 <th>Joined Date</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let student of students" [class.row-active]="openStatusDropdownId === student.id">
+              <tr *ngFor="let student of students; let i = index" [class.row-active]="openStatusDropdownId === student.id">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(student.name)">
@@ -142,7 +143,7 @@ import { finalize } from 'rxjs/operators';
                       <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
                     </span>
                     
-                    <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === student.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                    <div class="status-dropdown shadow-premium" [class.open-up]="i >= students.length - 2" *ngIf="openStatusDropdownId === student.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
                       <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(student.id, s)">
                         <span class="dot" [ngClass]="getStatusClass(s)"></span>
                         {{ s }}
@@ -151,6 +152,7 @@ import { finalize } from 'rxjs/operators';
                   </div>
                 </td>
                 <td>{{ student.counsellor }}</td>
+                <td>{{ student.createdBy }}</td>
                 <td>
                   <div class="entity-info">
                     <span class="entity-name" style="font-weight: 500;">{{ student.country }}</span>
@@ -213,6 +215,10 @@ import { finalize } from 'rxjs/operators';
             <div class="entity-info">
               <span class="entity-subtext">Country</span>
               <span class="entity-name" style="font-size: 0.8125rem;">{{ student.country }}</span>
+            </div>
+            <div class="entity-info" style="grid-column: span 2;">
+              <span class="entity-subtext">Added by</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ student.createdBy }}</span>
             </div>
           </div>
 
@@ -307,8 +313,6 @@ import { finalize } from 'rxjs/operators';
     .table-responsive.overflow-visible { 
       overflow-x: auto; 
       overflow-y: visible !important; 
-      padding-bottom: 180px !important;
-      margin-bottom: -180px !important;
     }
     .table-card.overflow-visible { overflow: visible !important; }
 
@@ -332,6 +336,17 @@ import { finalize } from 'rxjs/operators';
       text-align: left;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.05);
       animation: dropdownIn 0.2s ease-out;
+    }
+
+    .status-dropdown.open-up {
+      top: auto;
+      bottom: calc(100% + 8px);
+      animation: dropdownUpIn 0.2s ease-out;
+    }
+
+    @keyframes dropdownUpIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes dropdownIn {
@@ -570,7 +585,8 @@ export class StudentListComponent implements OnInit {
             mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
             dialCode: s.dialCode || s.user?.dialCode,
             status: s.status,
-            counsellor: s.createdBy?.fullName || 'Unassigned',
+            counsellor: s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A',
             country: s.country?.name || s.user?.country?.name || 'N/A',
             university: s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
@@ -607,6 +623,7 @@ export class StudentListComponent implements OnInit {
             email: s.email,
             status: s.status,
             counsellor: s.createdBy?.fullName || 'Unassigned',
+            createdBy: s.createdByName ? `${s.createdByName} (${s.createdByUserRole})` : 'N/A',
             country: s.country?.name || 'N/A',
             university: s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')

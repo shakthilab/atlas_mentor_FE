@@ -76,5 +76,8 @@ export const ApiEndpoint = {
     DELETE: '/api/company/delete',
     TOGGLE_STATUS: '/api/company/toggle-status',
     EDIT: '/api/company/edit',
+  },
+  USERS: {
+    ACTIVE_COUNSELLORS: '/api/users/counsellors/active',
   }
 };

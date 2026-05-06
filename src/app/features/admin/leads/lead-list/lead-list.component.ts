@@ -131,13 +131,14 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                 <th>Contact Info</th>
                 <th>Status</th>
                 <th>Assigned To</th>
-                <th>Country / Source</th>
+                <th>Added by</th>
+                <th>Country / University</th>
                 <th>Lead Date</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let lead of leads" [class.row-active]="openStatusDropdownId === lead.id">
+              <tr *ngFor="let lead of leads; let i = index" [class.row-active]="openStatusDropdownId === lead.id">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(lead.name)">
@@ -163,7 +164,7 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                       <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
                     </span>
                     
-                    <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === lead.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                    <div class="status-dropdown shadow-premium" [class.open-up]="i >= leads.length - 2" *ngIf="openStatusDropdownId === lead.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
                       <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(lead.id, s)">
                         <span class="dot" [ngClass]="getStatusClass(s)"></span>
                         {{ s }}
@@ -172,10 +173,11 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                   </div>
                 </td>
                 <td>{{ lead.assignedTo }}</td>
+                <td>{{ lead.createdBy }}</td>
                 <td>
                   <div class="entity-info">
                     <span class="entity-name" style="font-weight: 500;">{{ lead.country }}</span>
-                    <span class="entity-subtext">{{ lead.source }}</span>
+                    <span class="entity-subtext">{{ lead.university }}</span>
                   </div>
                 </td>
                 <td>{{ lead.date }}</td>
@@ -232,8 +234,12 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
               <span class="entity-name" style="font-size: 0.8125rem;">{{ getFormattedPhone(lead) }}</span>
             </div>
             <div class="entity-info">
-              <span class="entity-subtext">Source</span>
-              <span class="badge-status gray" style="align-self: flex-start; margin-top: 2px;">{{ lead.source }}</span>
+              <span class="entity-subtext">University</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ lead.university }}</span>
+            </div>
+            <div class="entity-info" style="grid-column: span 2;">
+              <span class="entity-subtext">Added by</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ lead.createdBy }}</span>
             </div>
           </div>
 
@@ -347,6 +353,21 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
       overflow: hidden;
       animation: dropdownFade 0.2s ease-out;
     }
+    
+    .status-dropdown.open-up {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      animation: dropdownUpFade 0.2s ease-out;
+    }
+
+    @keyframes dropdownUpFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .row-active { position: relative; z-index: 10 !important; }
     .dropdown-item {
       padding: 0.75rem 1rem;
       display: flex;
@@ -465,10 +486,11 @@ export class LeadListComponent implements OnInit {
             mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
             dialCode: s.dialCode || s.user?.dialCode,
             status: s.status || 'LEAD',
-            source: s.source || 'N/A',
-            country: s.country?.name || s.user?.country?.name || 'N/A',
+            country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+            university: s.universityName || s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
-            assignedTo: s.createdBy?.fullName || 'Unassigned'
+            assignedTo: s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A'
           }));
           this.totalElements = data.totalElements;
           this.loading = false;
@@ -491,10 +513,11 @@ export class LeadListComponent implements OnInit {
             phone: s.phone,
             email: s.email,
             status: s.status || 'LEAD',
-            source: s.source || 'N/A',
-            country: s.country?.name || 'N/A',
+            country: s.countryName || s.country?.name || 'N/A',
+            university: s.universityName || s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
-            assignedTo: s.createdBy?.fullName || 'Unassigned'
+            assignedTo: s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A'
           }));
           this.allLeads = [...this.allLeads, ...newLeads];
         }

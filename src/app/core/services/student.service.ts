@@ -97,4 +97,10 @@ export class StudentService {
       map(response => response.data || response)
     );
   }
+  
+  getActiveCounsellors(branchId: string | number): Observable<any> {
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.USERS.ACTIVE_COUNSELLORS}?branchId=${branchId}`).pipe(
+      map(response => response.data || response)
+    );
+  }
 }

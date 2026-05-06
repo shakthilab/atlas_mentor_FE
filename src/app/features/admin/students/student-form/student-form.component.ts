@@ -121,23 +121,6 @@ import { Observable, forkJoin, map } from 'rxjs';
                     Last name is required.
                   </div>
                 </div>
-                <div class="form-group full-width" *ngIf="isAdmin">
-                  <label>Assign to Branch</label>
-                  <select name="branchId" [(ngModel)]="student.branchId" class="form-control">
-                    <option value="" disabled>Select Branch</option>
-                    <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
-                  </select>
-                </div>
-                <div class="form-group full-width">
-                  <label>Email Address</label>
-                  <div class="input-with-icon">
-                    <span class="material-icons">email</span>
-                    <input type="email" name="email" [(ngModel)]="student.email" #emailModel="ngModel" maxlength="150" placeholder="example@mail.com" (blur)="checkEmail()">
-                  </div>
-                  <div class="error-message" *ngIf="emailModel.invalid && student.email && (emailModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
-                    Please enter a valid email address.
-                  </div>
-                </div>
                 <div class="form-group full-width phone-group">
                   <label>Phone Number <span class="required">*</span></label>
                   <div class="phone-input-wrapper">
@@ -163,6 +146,38 @@ import { Observable, forkJoin, map } from 'rxjs';
                     <span *ngIf="phoneModel.errors?.['minlength'] || phoneModel.errors?.['maxlength']">Phone number must be {{ selectedCountry?.mobileNumberLength }} digits.</span>
                   </div>
                 </div>
+
+                <div class="form-group full-width">
+                  <label>Email Address</label>
+                  <div class="input-with-icon">
+                    <span class="material-icons">email</span>
+                    <input type="email" name="email" [(ngModel)]="student.email" #emailModel="ngModel" maxlength="150" placeholder="example@mail.com" (blur)="checkEmail()">
+                  </div>
+                  <div class="error-message" *ngIf="emailModel.invalid && student.email && (emailModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    Please enter a valid email address.
+                  </div>
+                </div>
+
+                <!-- Branch Dropdown -->
+                <div class="form-group full-width">
+                  <label>Assign to Branch <span class="required" *ngIf="isBranchMandatory">*</span></label>
+                  <select name="branchId" [(ngModel)]="student.branchId" #branchIdModel="ngModel" [required]="isBranchMandatory" (change)="onBranchChange()" class="form-control">
+                    <option value="" disabled selected>Select Branch</option>
+                    <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
+                  </select>
+                  <div class="error-message" *ngIf="isBranchMandatory && branchIdModel.invalid && (branchIdModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
+                    Branch assignment is required.
+                  </div>
+                </div>
+
+                <!-- Assign To (Counsellor) - Staff Only -->
+                <div class="form-group full-width" *ngIf="showAssignTo">
+                  <label>Assign To (Counsellor)</label>
+                  <select name="assignedToId" [(ngModel)]="student.assignedToId" class="form-control" [disabled]="!student.branchId">
+                    <option value="" selected>{{ !student.branchId ? 'First select a branch' : 'Select Counsellor (Optional)' }}</option>
+                    <option *ngFor="let counsellor of counsellors" [value]="counsellor.id">{{ counsellor.fullName }}</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -170,24 +185,18 @@ import { Observable, forkJoin, map } from 'rxjs';
             <div class="step-animation" *ngIf="currentStep === 2">
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Destination Country <span class="required">*</span></label>
-                  <select name="countryId" [(ngModel)]="student.countryId" #countryIdModel="ngModel" required (change)="onCountryChange()" class="form-control">
+                  <label>Destination Country</label>
+                  <select name="countryId" [(ngModel)]="student.countryId" #countryIdModel="ngModel" (change)="onCountryChange()" class="form-control">
                     <option value="" disabled selected>Select a country</option>
                     <option *ngFor="let country of countries" [value]="country.id">{{ country.name }}</option>
                   </select>
-                  <div class="error-message" *ngIf="countryIdModel.invalid && (countryIdModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
-                    Destination country is required.
-                  </div>
                 </div>
                 <div class="form-group">
-                  <label>Target University <span class="required">*</span></label>
-                  <select name="universityId" [(ngModel)]="student.universityId" #universityIdModel="ngModel" required class="form-control" [disabled]="!student.countryId">
+                  <label>Target University</label>
+                  <select name="universityId" [(ngModel)]="student.universityId" #universityIdModel="ngModel" class="form-control" [disabled]="!student.countryId">
                     <option value="" disabled selected>{{ student.countryId ? 'Select a university' : 'First select a country' }}</option>
                     <option *ngFor="let uni of universities" [value]="uni.id">{{ uni.name }}</option>
                   </select>
-                  <div class="error-message" *ngIf="universityIdModel.invalid && (universityIdModel.touched || submitted)" style="color: #d92d20; font-size: 0.75rem; margin-top: 4px;">
-                    Target university is required.
-                  </div>
                 </div>
                 <div class="form-group">
                   <label>Course Name</label>
@@ -989,6 +998,25 @@ export class StudentFormComponent implements OnInit {
   currentUser: any;
   isAdmin = false;
   branches: any[] = [];
+  counsellors: any[] = [];
+
+  get isStaff(): boolean {
+    const role = this.currentUser?.role?.toUpperCase();
+    return ['ADMIN', 'MANAGER', 'EMPLOYEE', 'BRANCH_PARTNER'].includes(role);
+  }
+
+  get isPartner(): boolean {
+    const role = this.currentUser?.role?.toUpperCase();
+    return ['REFERRAL', 'COMPANY'].includes(role);
+  }
+
+  get isBranchMandatory(): boolean {
+    return this.isStaff;
+  }
+
+  get showAssignTo(): boolean {
+    return this.isStaff;
+  }
 
   documentList = [
     { key: 'passport', label: 'Passport (Full Copy)' },
@@ -1009,6 +1037,7 @@ export class StudentFormComponent implements OnInit {
     dialCode: '+91',
     status: 'Lead',
     branchId: '',
+    assignedToId: '',
     countryId: '',
     universityId: '',
     course: '',
@@ -1256,12 +1285,13 @@ export class StudentFormComponent implements OnInit {
       this.student.lastName &&
       isEmailValid &&
       this.student.phone &&
-      this.student.phone.length === this.selectedCountry?.mobileNumberLength
+      this.student.phone.length === this.selectedCountry?.mobileNumberLength &&
+      (!this.isBranchMandatory || !!this.student.branchId)
     );
   }
 
   isDestinationValid(): boolean {
-    return !!(this.student.countryId && this.student.universityId);
+    return true;
   }
 
   isAcademicValid(): boolean {
@@ -1446,6 +1476,7 @@ export class StudentFormComponent implements OnInit {
               countryId: resData.destinationCountryId || resData.countryId || resData.country?.id || userData.destinationCountryId || userData.countryId || userData.country?.id || '',
               universityId: resData.targetUniversityId || resData.universityId || resData.university?.id || userData.targetUniversityId || userData.universityId || userData.university?.id || '',
               branchId: resData.branchId || resData.branch?.id || userData.branchId || userData.branch?.id || '',
+              assignedToId: resData.assignedToId || resData.assignedTo?.id || userData.assignedToId || userData.assignedTo?.id || '',
               course: resData.courseName || resData.course || userData.courseName || userData.course || '',
               intake: resData.intakePeriod || resData.intake || userData.intakePeriod || userData.intake || '',
               academicHistory: this.mapAcademicHistory(resData.academicHistories || resData.academicHistory || userData.academicHistories || userData.academicHistory)
@@ -1455,6 +1486,10 @@ export class StudentFormComponent implements OnInit {
 
             if (this.student.countryId) {
               this.loadUniversities(this.student.countryId);
+            }
+
+            if (this.student.branchId) {
+              this.loadCounsellors(this.student.branchId);
             }
 
             // Handle dial code extraction
@@ -1515,15 +1550,22 @@ export class StudentFormComponent implements OnInit {
       )
     ];
 
-    if (this.isAdmin) {
-      requests.push(
-        this.branchService.getAllBranches().pipe(
-          map(data => {
-            this.branches = data;
-            return data;
-          })
-        )
-      );
+    // Load branches for everyone as they might need to select it
+    requests.push(
+      this.branchService.getAllBranches().pipe(
+        map(data => {
+          this.branches = data;
+          return data;
+        })
+      )
+    );
+
+    if (!this.isAdmin) {
+      // For non-admin staff, load counsellors for their branch initially
+      const branchId = this.currentUser?.branchId || this.currentUser?.branch;
+      if (branchId && this.isStaff) {
+        this.loadCounsellors(branchId);
+      }
     }
 
     // Load required documents too
@@ -1575,6 +1617,21 @@ export class StudentFormComponent implements OnInit {
   loadUniversities(countryId: number | string) {
     this.countryService.getUniversitiesByCountryId(countryId).subscribe({
       next: (data) => this.universities = data
+    });
+  }
+
+  onBranchChange() {
+    this.student.assignedToId = '';
+    this.counsellors = [];
+    if (this.student.branchId) {
+      this.loadCounsellors(this.student.branchId);
+    }
+  }
+
+  loadCounsellors(branchId: string | number) {
+    this.studentService.getActiveCounsellors(branchId).subscribe({
+      next: (data) => this.counsellors = data,
+      error: (err) => console.error('Error loading counsellors:', err)
     });
   }
 
@@ -1637,12 +1694,13 @@ export class StudentFormComponent implements OnInit {
     const payload = {
       ...this.student,
       email: this.student.email || null,
-      destinationCountryId: Number(this.student.countryId),
+      destinationCountryId: this.student.countryId ? Number(this.student.countryId) : null,
       targetUniversityId: this.student.universityId ? Number(this.student.universityId) : null,
       courseName: this.student.course,
       phone: this.student.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       branchId: this.student.branchId ? Number(this.student.branchId) : (this.currentUser?.branchId || this.currentUser?.branch),
+      assignedToId: this.student.assignedToId ? Number(this.student.assignedToId) : null,
     };
 
     // Remove UI-only fields
