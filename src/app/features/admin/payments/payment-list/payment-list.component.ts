@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
@@ -20,7 +20,7 @@ import { BranchService } from '../../../../core/services/branch.service';
   template: `
     <div class="module-container">
       <div class="module-header">
-        <div>
+        <div class="header-left">
           <h1 class="page-title">{{ roleConfig.getRoleSpecificTitle('Payment Tracking') }}</h1>
           <p class="page-subtitle">{{ getRoleSpecificSubtitle() }}</p>
         </div>
@@ -55,16 +55,20 @@ import { BranchService } from '../../../../core/services/branch.service';
             <span class="value success">{{ dashboardStats.totalPaid | currency }}</span>
           </div>
           <div class="stat-mini-card">
+            <span class="label">Rejected</span>
+            <span class="value red">{{ dashboardStats.totalRejectedAmount | currency }}</span>
+          </div>
+          <div class="stat-mini-card">
             <span class="label">Total Pending</span>
             <span class="value orange">{{ dashboardStats.totalPending | currency }}</span>
           </div>
           <div class="stat-mini-card">
-            <span class="label">Pending Approvals</span>
-            <span class="value yellow">{{ dashboardStats.pendingApprovals }}</span>
+            <span class="label">Disputed Amount</span>
+            <span class="value red">{{ dashboardStats.totalDisputedAmount | currency }}</span>
           </div>
           <div class="stat-mini-card">
-            <span class="label">Disputes</span>
-            <span class="value red">{{ dashboardStats.disputes }}</span>
+            <span class="label">Pending Approvals</span>
+            <span class="value yellow">{{ dashboardStats.pendingApprovals }}</span>
           </div>
         </ng-container>
 
@@ -83,6 +87,10 @@ import { BranchService } from '../../../../core/services/branch.service';
             <span class="value success">{{ dashboardStats.totalPaid | currency }}</span>
           </div>
           <div class="stat-mini-card">
+            <span class="label">Rejected</span>
+            <span class="value red">{{ dashboardStats.totalRejectedAmount | currency }}</span>
+          </div>
+          <div class="stat-mini-card">
             <span class="label">Pending Amount</span>
             <span class="value orange">{{ dashboardStats.totalPending | currency }}</span>
           </div>
@@ -97,24 +105,24 @@ import { BranchService } from '../../../../core/services/branch.service';
       <div class="filters-card">
         <div class="search-bar">
           <span class="material-icons">search</span>
-          <input type="text" placeholder="Search by student, source or ID..." [(ngModel)]="searchQuery">
+          <input type="text" placeholder="Search by student, source or ID..." [(ngModel)]="searchQuery" (keyup.enter)="onFilterChange()">
         </div>
         <div class="filter-actions">
           <!-- Admin/Manager Only Filters -->
           <ng-container *ngIf="isAdminOrManager()">
-            <select class="filter-select" [(ngModel)]="filterSourceType" *ngIf="roleConfig.getCurrentUserRole() === 'ADMIN'">
+            <select class="filter-select" [(ngModel)]="filterSourceType" (change)="onFilterChange()" *ngIf="roleConfig.getCurrentUserRole() === 'ADMIN'">
               <option value="">All Source Types</option>
               <option value="Referral">Referral</option>
               <option value="Company">Company</option>
               <option value="Direct">Direct</option>
             </select>
-            <select class="filter-select" [(ngModel)]="filterBranch" *ngIf="roleConfig.getCurrentUserRole() === 'ADMIN'">
+            <select class="filter-select" [(ngModel)]="filterBranch" (change)="onFilterChange()" *ngIf="roleConfig.getCurrentUserRole() === 'ADMIN'">
               <option value="">All Branches</option>
               <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
             </select>
           </ng-container>
 
-          <select class="filter-select" [(ngModel)]="filterStatus">
+          <select class="filter-select" [(ngModel)]="filterStatus" (change)="onFilterChange()">
             <option value="">Payment Status</option>
             <option value="PAID">Paid</option>
             <option value="PARTIAL">Partial</option>
@@ -122,7 +130,7 @@ import { BranchService } from '../../../../core/services/branch.service';
             <option value="DISPUTED">Disputed</option>
           </select>
 
-          <select class="filter-select" [(ngModel)]="filterApprovalStatus">
+          <select class="filter-select" [(ngModel)]="filterApprovalStatus" (change)="onFilterChange()">
             <option value="">Approval Status</option>
             <option value="APPROVED">Approved</option>
             <option value="PENDING">Pending</option>
@@ -237,21 +245,25 @@ import { BranchService } from '../../../../core/services/branch.service';
         </div>
 
         <!-- Pagination Footer -->
-        <div class="table-card-footer">
-          <button class="pagination-btn" disabled>
+        <div class="table-card-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-gray-200);">
+          <button class="pagination-btn" [disabled]="currentPage === 0" (click)="changePage(currentPage - 1)">
             <span class="material-icons">arrow_back</span>
             Previous
           </button>
           
-          <div class="pagination-pages">
-            <button class="page-num active">1</button>
-            <button class="page-num">2</button>
-            <button class="page-num">3</button>
-            <span class="page-dots">...</span>
-            <button class="page-num">5</button>
+          <div class="pagination-pages" style="display: flex; gap: 4px;">
+            <ng-container *ngFor="let p of [].constructor(totalPages); let idx = index">
+              <button 
+                class="page-num" 
+                [class.active]="currentPage === idx" 
+                (click)="changePage(idx)"
+                *ngIf="idx < 5 || idx > totalPages - 2 || (idx >= currentPage - 1 && idx <= currentPage + 1)">
+                {{ idx + 1 }}
+              </button>
+            </ng-container>
           </div>
 
-          <button class="pagination-btn">
+          <button class="pagination-btn" [disabled]="currentPage >= totalPages - 1" (click)="changePage(currentPage + 1)">
             Next
             <span class="material-icons">arrow_forward</span>
           </button>
@@ -372,6 +384,7 @@ import { BranchService } from '../../../../core/services/branch.service';
   `]
 })
 export class PaymentListComponent implements OnInit {
+  router = inject(Router);
   roleConfig = inject(RoleConfigService);
   studentService = inject(StudentService);
   paymentService = inject(PaymentService);
@@ -382,6 +395,10 @@ export class PaymentListComponent implements OnInit {
   viewMode: 'list' | 'grid' = 'list';
   displayedCardsCount = 10;
   loading = false;
+  totalElements = 0;
+  totalPages = 0;
+  currentPage = 0;
+  pageSize = 10;
   payments: any[] = [];
   
   showPaymentModal = false;
@@ -389,6 +406,7 @@ export class PaymentListComponent implements OnInit {
 
   showDetailPanel = false;
   selectedPayment: any = null;
+  apiSummary: any = null;
 
   // Role-based stats
 
@@ -410,45 +428,61 @@ export class PaymentListComponent implements OnInit {
   }
 
   get filteredPayments() {
-    return this.payments.filter(p => {
-      const matchesSearch = !this.searchQuery || 
-        p.user.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
-        p.id.toString().toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        p.sourceName.toLowerCase().includes(this.searchQuery.toLowerCase());
-      
-      const matchesStatus = !this.filterStatus || p.status === this.filterStatus;
-      const matchesApproval = !this.filterApprovalStatus || p.approvalStatus === this.filterApprovalStatus;
-      const matchesSourceType = !this.filterSourceType || p.sourceType === this.filterSourceType;
-      const matchesBranch = !this.filterBranch || p.branchId === this.filterBranch;
-      
-      return matchesSearch && matchesStatus && matchesApproval && matchesSourceType && matchesBranch;
-    });
+    return this.payments;
+  }
+
+  onFilterChange() {
+    this.currentPage = 0;
+    this.loadPayments();
+  }
+
+  private buildFilters(): any {
+    return {
+      search: this.searchQuery,
+      source: this.filterSourceType ? this.filterSourceType.toUpperCase() : '',
+      branch: this.filterBranch,
+      paymentStatus: this.filterStatus ? this.filterStatus.toUpperCase() : ''
+    };
   }
 
   loadPayments() {
     this.loading = true;
-    this.studentService.getStudentsWithPayments().subscribe({
-      next: (data: any[]) => {
-        this.payments = data.map(item => ({
-          id: item.paymentId,
+    const filters = this.buildFilters();
+    this.studentService.getStudentsWithPayments(this.currentPage, this.pageSize, filters).subscribe({
+      next: (data: any) => {
+        const rawPayments = data.payouts || data.content || (Array.isArray(data) ? data : []);
+        if (data.summary) {
+          this.apiSummary = data.summary;
+        }
+        
+        this.payments = rawPayments.map((item: any) => ({
+          id: item.paymentId || item.id,
           studentId: item.studentId,
-          user: `${item.firstName} ${item.lastName}`,
-          category: item.courseName,
-          assignedAmount: item.assignedAmount,
-          paidAmount: item.paidAmount,
-          balanceAmount: (item.assignedAmount || 0) - (item.paidAmount || 0),
-          studentStatus: item.status,
-          status: item.paymentStatus,
+          user: item.studentName || `${item.firstName || ''} ${item.lastName || ''}`.trim() || 'Unknown',
+          category: item.courseName || '',
+          assignedAmount: item.assignedAmount || 0,
+          paidAmount: item.paidAmount || 0,
+          balanceAmount: item.balanceAmount !== undefined ? item.balanceAmount : ((item.assignedAmount || 0) - (item.paidAmount || 0)),
+          studentStatus: item.studentStatus || item.status || 'Active',
+          status: item.payoutStatus || item.paymentStatus || 'PENDING',
           approvalStatus: item.approvalStatus || 'PENDING',
-          sourceType: item.sourceType,
-          sourceName: item.referralName || item.companyName || 'Direct',
-          date: this.datePipe.transform(item.paymentCreatedAt || item.createdAt, 'dd MMM yyyy'),
+          sourceType: item.sourceType || 'Direct',
+          sourceName: item.user?.username || item.referralName || item.companyName || 'Direct',
+          date: this.datePipe.transform(item.paymentCreatedAt || item.createdAt || item.updatedAt || new Date(), 'dd MMM yyyy'),
           rejectionReason: item.rejectionReason,
           disputeReason: item.disputeReason,
           disputeStatus: item.disputeStatus,
           disputeId: item.disputeId || item.id,
           proofUrl: item.proofUrl
         }));
+        
+        if (Array.isArray(data)) {
+          this.totalElements = data.length;
+          this.totalPages = 1;
+        } else {
+          this.totalElements = data.totalElements || this.payments.length;
+          this.totalPages = data.totalPages || Math.ceil(this.totalElements / this.pageSize) || 1;
+        }
         this.loading = false;
       },
       error: (err) => {
@@ -459,6 +493,20 @@ export class PaymentListComponent implements OnInit {
   }
 
   get dashboardStats() {
+    if (this.apiSummary) {
+      return {
+        totalAssigned: this.apiSummary.totalAssignedAmount || 0,
+        totalPaid: this.apiSummary.totalPaidAmount || 0,
+        totalPending: this.apiSummary.totalPendingAmount || 0,
+        pendingApprovals: this.apiSummary.pendingApprovals || 0,
+        disputes: this.apiSummary.disputes || 0,
+        totalDisputedAmount: this.apiSummary.totalDisputedAmount || 0,
+        totalEarnings: this.apiSummary.totalAssignedAmount || 0,
+        rejected: this.apiSummary.rejected || 0,
+        totalRejectedAmount: this.apiSummary.totalRejectedAmount || 0
+      };
+    }
+
     const list = this.filteredPayments;
     return {
       totalAssigned: list.reduce((acc, curr) => acc + (curr.assignedAmount || 0), 0),
@@ -466,7 +514,10 @@ export class PaymentListComponent implements OnInit {
       totalPending: list.reduce((acc, curr) => acc + (curr.balanceAmount || 0), 0),
       pendingApprovals: list.filter(p => p.approvalStatus === 'PENDING').length,
       disputes: list.filter(p => p.status === 'DISPUTED').length,
-      totalEarnings: list.reduce((acc, curr) => acc + (curr.assignedAmount || 0), 0)
+      totalDisputedAmount: list.filter(p => p.status === 'DISPUTED').reduce((acc, curr) => acc + (curr.assignedAmount || 0), 0),
+      totalEarnings: list.reduce((acc, curr) => acc + (curr.assignedAmount || 0), 0),
+      rejected: list.filter(p => p.status === 'REJECTED').length,
+      totalRejectedAmount: list.filter(p => p.status === 'REJECTED').reduce((acc, curr) => acc + (curr.assignedAmount || 0), 0)
     };
   }
 
@@ -528,8 +579,46 @@ export class PaymentListComponent implements OnInit {
     }
   }
 
+  changePage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.loadPayments();
+    }
+  }
+
   loadMoreCards() {
-    this.displayedCardsCount += 10;
+    this.currentPage++;
+    const filters = this.buildFilters();
+    this.studentService.getStudentsWithPayments(this.currentPage, this.pageSize, filters).subscribe({
+      next: (data: any) => {
+        const rawPayments = data.payouts || data.content || (Array.isArray(data) ? data : []);
+        if (data.summary) {
+          this.apiSummary = data.summary;
+        }
+        const newPayments = rawPayments.map((item: any) => ({
+          id: item.paymentId || item.id,
+          studentId: item.studentId,
+          user: item.studentName || `${item.firstName || ''} ${item.lastName || ''}`.trim() || 'Unknown',
+          category: item.courseName || '',
+          assignedAmount: item.assignedAmount || 0,
+          paidAmount: item.paidAmount || 0,
+          balanceAmount: item.balanceAmount !== undefined ? item.balanceAmount : ((item.assignedAmount || 0) - (item.paidAmount || 0)),
+          studentStatus: item.studentStatus || item.status || 'Active',
+          status: item.payoutStatus || item.paymentStatus || 'PENDING',
+          approvalStatus: item.approvalStatus || 'PENDING',
+          sourceType: item.sourceType || 'Direct',
+          sourceName: item.user?.username || item.referralName || item.companyName || 'Direct',
+          date: this.datePipe.transform(item.paymentCreatedAt || item.createdAt || item.updatedAt || new Date(), 'dd MMM yyyy'),
+          rejectionReason: item.rejectionReason,
+          disputeReason: item.disputeReason,
+          disputeStatus: item.disputeStatus,
+          disputeId: item.disputeId || item.id,
+          proofUrl: item.proofUrl
+        }));
+        this.payments = [...this.payments, ...newPayments];
+        this.currentPage = data.number !== undefined ? data.number : this.currentPage;
+      }
+    });
   }
 
   isAdminOrManager(): boolean {

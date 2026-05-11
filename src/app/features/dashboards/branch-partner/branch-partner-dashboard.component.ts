@@ -10,12 +10,6 @@ import { Router } from '@angular/router';
   imports: [CommonModule],
   template: `
     <div class="dashboard-wrapper">
-      <!-- Breadcrumbs -->
-      <nav class="breadcrumb-nav">
-        <i data-lucide="home" class="breadcrumb-icon"></i>
-        <i data-lucide="chevron-right" class="breadcrumb-sep"></i>
-        <span>Dashboard</span>
-      </nav>
 
       <div class="welcome-header">
         <h1 class="welcome-title">Branch Partner Dashboard</h1>
@@ -219,126 +213,44 @@ import { Router } from '@angular/router';
     </div>
   `,
   styles: [`
-    .dashboard-wrapper {
-      padding: 1.5rem;
-      background: var(--color-gray-50);
-      min-height: 100vh;
-    }
+   
 
     /* Breadcrumbs */
-    .breadcrumb-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      color: var(--color-gray-500);
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
+   
 
-    .breadcrumb-icon {
-      width: 14px;
-      height: 14px;
-    }
+   
 
-    .breadcrumb-sep {
-      width: 12px;
-      height: 12px;
-      opacity: 0.5;
-    }
+   
 
-    .welcome-header {
-      margin-bottom: 2rem;
-    }
+   
 
-    .welcome-title {
-      font-size: 1.875rem;
-      font-weight: 600;
-      color: var(--color-gray-900);
-      margin: 0;
-    }
+   
 
-    .welcome-subtitle {
-      font-size: 1rem;
-      color: var(--color-gray-600);
-      margin: 0.25rem 0 0;
-    }
+   
 
     /* KPI Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
+   
 
-    .stat-card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      transition: all var(--transition-fast);
-      box-shadow: var(--shadow-sm);
-    }
+   
 
-    .stat-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--color-gray-300);
-    }
+   
 
-    .stat-label {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--color-gray-600);
-    }
+   
 
-    .stat-value {
-      font-size: 1.875rem;
-      font-weight: 600;
-      color: var(--color-gray-900);
-      margin: 0.5rem 0;
-    }
+   
 
-    .stat-trend {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
+   
 
-    .stat-trend i {
-      width: 16px;
-      height: 16px;
-    }
+   
 
-    .stat-trend.up { color: #12b76a; }
-    .stat-trend.down { color: var(--color-error); }
+   
+   
 
-    .trend-label {
-      color: var(--color-gray-500);
-      font-weight: 400;
-      margin-left: 0.25rem;
-    }
+   
 
-    .stat-icon-wrap {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: var(--shadow-xs);
-    }
+   
 
-    .stat-icon-wrap i {
-      width: 24px;
-      height: 24px;
-    }
+   
 
     /* Quick Actions Grid */
     .quick-actions-grid {
@@ -378,7 +290,7 @@ import { Router } from '@angular/router';
       align-items: center;
       gap: 1rem;
       padding: 1rem;
-      background: var(--color-gray-50);
+      
       border: 1px solid var(--color-gray-200);
       border-radius: var(--radius-md);
       cursor: pointer;
@@ -425,42 +337,15 @@ import { Router } from '@angular/router';
     }
 
     /* Table Styles */
-    .table-card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-gray-200);
-      box-shadow: var(--shadow-sm);
-    }
+   
 
-    .table-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
+   
 
-    .table-header-title {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
+   
 
-    .table-header-title h2 {
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: var(--color-gray-900);
-      margin: 0;
-    }
+   
 
-    .count-badge {
-      background: var(--color-primary-light);
-      color: var(--color-primary);
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-    }
+   
 
     .btn-icon {
       width: 32px;
@@ -479,26 +364,11 @@ import { Router } from '@angular/router';
       background: var(--color-gray-100);
     }
 
-    .premium-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+   
 
-    .premium-table th {
-      text-align: left;
-      padding: 0.75rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--color-gray-700);
-      border-bottom: 1px solid var(--color-gray-200);
-    }
+   
 
-    .premium-table td {
-      padding: 0.75rem;
-      font-size: 0.875rem;
-      color: var(--color-gray-600);
-      border-bottom: 1px solid var(--color-gray-100);
-    }
+   
 
     .clickable-row {
       cursor: pointer;
@@ -509,24 +379,15 @@ import { Router } from '@angular/router';
       background-color: var(--color-gray-50);
     }
 
-    .status-badge-tp {
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.125rem 0.5rem;
-      border-radius: 6px;
-    }
+   
 
     .status-badge-tp.update { background: #e0f2fe; color: #0ea5e9; border: 1px solid #bae6fd; }
     .status-badge-tp.payment { background: #ecfdf5; color: #10b981; border: 1px solid #abefc6; }
     .status-badge-tp.task { background: #fef3c7; color: #f59e0b; border: 1px solid #fde68a; }
 
     @media (max-width: 768px) {
-      .dashboard-wrapper {
-        padding: 1rem;
-      }
-      .welcome-title {
-        font-size: 1.5rem;
-      }
+     
+     
       .quick-actions-grid {
         grid-template-columns: 1fr;
       }

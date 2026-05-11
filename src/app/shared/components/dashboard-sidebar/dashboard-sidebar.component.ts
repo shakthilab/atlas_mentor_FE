@@ -86,6 +86,13 @@ declare const lucide: any;
             </div>
           </a>
 
+          <a [routerLink]="getRoutePath('resources')" routerLinkActive="active" class="nav-link">
+            <div class="link-content">
+              <i data-lucide="package"></i>
+              <span>Resources</span>
+            </div>
+          </a>
+
           <a [routerLink]="getRoutePath('branches')" routerLinkActive="active" class="nav-link" *ngIf="isAdmin()">
             <div class="link-content">
               <i data-lucide="building-2"></i>
@@ -133,10 +140,10 @@ declare const lucide: any;
             </div>
           </a>
 
-          <a [routerLink]="getRoutePath('media')" routerLinkActive="active" class="nav-link">
+          <a [routerLink]="getRoutePath('resources')" routerLinkActive="active" class="nav-link">
             <div class="link-content">
-              <i data-lucide="file-text"></i>
-              <span>Media</span>
+              <i data-lucide="package"></i>
+              <span>Resources</span>
             </div>
           </a>
         </ng-container>

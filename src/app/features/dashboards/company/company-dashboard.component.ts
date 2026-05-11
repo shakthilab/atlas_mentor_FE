@@ -11,12 +11,6 @@ declare const lucide: any;
   imports: [CommonModule],
   template: `
     <div class="dashboard-wrapper">
-      <!-- Breadcrumbs -->
-      <nav class="breadcrumb-nav">
-        <i data-lucide="home" class="breadcrumb-icon"></i>
-        <i data-lucide="chevron-right" class="breadcrumb-sep"></i>
-        <span>Company Dashboard</span>
-      </nav>
 
       <div class="welcome-header" *ngIf="authService.currentUser$ | async as user">
         <h1 class="welcome-title">Dashboard</h1>
@@ -139,105 +133,52 @@ declare const lucide: any;
     </div>
   `,
   styles: [`
-    .dashboard-wrapper {
-      padding: 1.5rem;
-      background: var(--color-gray-50);
-      min-height: 100vh;
-    }
+   
 
-    .breadcrumb-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-      color: var(--color-gray-500);
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
+   
 
-    .breadcrumb-icon { width: 14px; height: 14px; }
-    .breadcrumb-sep { width: 12px; height: 12px; opacity: 0.5; }
+   
+   
 
-    .welcome-header { margin-bottom: 2rem; }
-    .welcome-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
-    .welcome-subtitle { font-size: 1rem; color: var(--color-gray-600); margin: 0.25rem 0 0; }
+   
+   
+   
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
+   
 
-    .stat-card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      box-shadow: var(--shadow-sm);
-    }
+   
 
-    .stat-label { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-600); }
-    .stat-value { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0.5rem 0; }
+   
+   
     
-    .stat-trend { display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 600; }
-    .stat-trend i { width: 16px; height: 16px; }
-    .stat-trend.up { color: #12b76a; }
-    .stat-trend.down { color: var(--color-error); }
-    .trend-label { color: var(--color-gray-500); font-weight: 400; margin-left: 0.25rem; }
+   
+   
+   
+   
+   
 
-    .stat-icon-wrap {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+   
 
-    .stat-icon-wrap i { width: 24px; height: 24px; }
+   
 
-    .charts-grid-tp {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
+   
 
-    .chart-card-tp {
-      background: white;
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-gray-200);
-      box-shadow: var(--shadow-sm);
-    }
+   
 
-    .card-tp-header { margin-bottom: 1.5rem; }
-    .card-tp-title { font-size: 1.125rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
-    .chart-container-tp { min-height: 320px; }
+   
+   
+   
 
-    .data-grid-tp {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-    }
+   
 
-    .status-badge-tp {
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.125rem 0.5rem;
-      border-radius: 6px;
-    }
+   
 
     .status-badge-tp.completed { background: #ecfdf3; color: #027a48; border: 1px solid #abefc6; }
     .status-badge-tp.in-progress { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     .status-badge-tp.pending { background: #fff9f2; color: #b54708; border: 1px solid #fedf89; }
 
     @media (max-width: 1280px) {
-      .charts-grid-tp, .data-grid-tp { grid-template-columns: 1fr; }
+      .charts-grid-tp,
     }
   `]
 })

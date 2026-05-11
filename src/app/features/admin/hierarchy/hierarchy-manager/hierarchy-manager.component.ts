@@ -22,17 +22,14 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
           <p class="page-subtitle">Manage reporting structure and team assignments</p>
         </div>
         <div class="header-actions">
-          <div class="filter-dropdown">
-            <span class="material-icons filter-icon">location_on</span>
-            <select class="filter-select" [(ngModel)]="locationFilter" style="padding-left: 3.5rem !important;">
+          <div class="filter-actions" style="margin: 0;">
+            <select class="filter-select" [(ngModel)]="locationFilter" style="min-width: 180px;">
               <option>All locations</option>
               <option *ngFor="let branch of branches">{{ branch.name }}</option>
             </select>
           </div>
-
         </div>
       </div>
-
 
       <!-- KPI Cards Grid -->
       <div class="stats-grid">

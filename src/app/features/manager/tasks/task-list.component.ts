@@ -7,13 +7,14 @@ import { TaskService, Task, TaskFilter, CreateTaskRequest, ApiError, TaskComment
 import { EmployeeService, Employee } from '../../../core/services/employee.service';
 import { RoleService, Role } from '../../../core/services/role.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { DatepickerComponent } from '../../../shared/components/datepicker/datepicker.component';
 
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-manager-task-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, DragDropModule, EmptyStateComponent],
+  imports: [CommonModule, RouterModule, FormsModule, DragDropModule, EmptyStateComponent, DatepickerComponent],
   template: `
     <div class="module-container">
       <div class="module-header">
@@ -75,19 +76,19 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
         <div class="filters-grid">
           <div class="filter-group">
             <label>Due Date From</label>
-            <input type="date" [(ngModel)]="dueDateFrom" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="dueDateFrom" (ngModelChange)="applyFilters()"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Due Date To</label>
-            <input type="date" [(ngModel)]="dueDateTo" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="dueDateTo" (ngModelChange)="applyFilters()"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Assigned From</label>
-            <input type="date" [(ngModel)]="assignedDateFrom" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="assignedDateFrom" (ngModelChange)="applyFilters()"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Assigned To</label>
-            <input type="date" [(ngModel)]="assignedDateTo" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="assignedDateTo" (ngModelChange)="applyFilters()"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>&nbsp;</label>
@@ -263,155 +264,45 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
     </div>
   `,
   styles: [`
-    .module-container {
-      padding: 1.5rem;
-      background: var(--color-gray-50);
-      min-height: 100vh;
-    }
+   
 
-    .module-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 2rem;
-    }
+   
 
-    .header-left h1 {
-      font-size: 1.875rem;
-      font-weight: 700;
-      color: var(--color-gray-900);
-      margin: 0 0 0.5rem;
-    }
+   
 
-    .page-subtitle {
-      color: var(--color-gray-600);
-      margin: 0;
-    }
+   
 
-    .header-actions {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
+   
 
-    .view-switcher {
-      display: flex;
-      background: white;
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-      overflow: hidden;
-    }
+   
 
-    .switcher-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      transition: all var(--transition-fast);
-    }
+   
 
-    .switcher-btn.active {
-      background: var(--color-primary);
-      color: white;
-    }
+   
 
-    .filters-card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-gray-200);
-      margin-bottom: 1.5rem;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
+   
 
-    .search-bar {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex: 1;
-      min-width: 300px;
-      background: var(--color-gray-50);
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--color-gray-200);
-    }
+   
 
-    .search-bar input {
-      border: none;
-      background: transparent;
-      outline: none;
-      flex: 1;
-    }
+   
 
-    .filter-actions {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
+   
 
-    .filter-dropdown {
-      position: relative;
-    }
+   
 
-    .filter-select {
-      appearance: none;
-      padding: 0.75rem 2rem 0.75rem 1rem;
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-      background: white;
-      cursor: pointer;
-      min-width: 150px;
-    }
+   
 
-    .dropdown-chevron {
-      position: absolute;
-      right: 0.5rem;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      font-size: 1rem;
-      color: var(--color-gray-500);
-    }
+   
 
-    .advanced-filters-panel {
-      background: white;
-      padding: 1.5rem;
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-gray-200);
-      margin-bottom: 1.5rem;
-      display: none;
-    }
+   
 
-    .advanced-filters-panel.show {
-      display: block;
-    }
+   
 
-    .filters-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-    }
+   
 
-    .filter-group label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--color-gray-700);
-      margin-bottom: 0.5rem;
-    }
+   
 
-    .filter-group input {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid var(--color-gray-200);
-      border-radius: var(--radius-md);
-    }
+   
 
     .board-view {
       display: grid;
@@ -698,21 +589,7 @@ import { EmptyStateComponent } from '../../../shared/components/empty-state/empt
       }
     }
 
-    @media (max-width: 768px) {
-      .module-header {
-        flex-direction: column;
-        gap: 1rem;
-      }
-
-      .filters-card {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .search-bar {
-        min-width: auto;
-      }
-    }
+    
   `]
 })
 export class ManagerTaskListComponent implements OnInit {

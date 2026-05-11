@@ -98,9 +98,10 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
                 </div>
               </div>
               <div class="meta-row-modern">
-                <span class="meta-item-modern"><span class="material-icons">location_on</span> {{ student.country?.name || student.destinationCountry || 'N/A' }}</span>
+                <span class="meta-item-modern"><span class="material-icons">location_on</span> {{ student.countryName || 'N/A' }}</span>
                 <span class="meta-item-modern"><span class="material-icons">mail</span> {{ student.email }}</span>
                 <span class="meta-item-modern"><span class="material-icons">call</span> {{ getFormattedPhone(student) }}</span>
+                <span class="meta-item-modern"><span class="material-icons">person</span> Added by {{ student.createdByName || 'N/A' }}</span>
               </div>
             </div>
           </div>
@@ -128,11 +129,11 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
               </div>
               <div class="info-group-modern">
                 <label>Target Country</label>
-                <div class="value-box">{{ student.country?.name || student.destinationCountry || 'N/A' }}</div>
+                <div class="value-box">{{ student.countryName || 'N/A' }}</div>
               </div>
               <div class="info-group-modern">
                 <label>Target University</label>
-                <div class="value-box">{{ student.university?.name || student.targetUniversity || 'N/A' }}</div>
+                <div class="value-box">{{ student.universityName || 'N/A' }}</div>
               </div>
               <div class="info-group-modern">
                 <label>Preferred Course</label>
@@ -629,10 +630,13 @@ export class StudentDetailComponent implements OnInit {
           ...res,
           phone: res.phone || res.user?.phone,
           email: res.email || res.user?.email,
-          firstName: res.firstName || res.user?.firstName,
-          lastName: res.lastName || res.user?.lastName,
+          firstName: res.firstName || res.user?.firstName || (res.fullName ? res.fullName.split(' ')[0] : ''),
+          lastName: res.lastName || res.user?.lastName || (res.fullName ? res.fullName.split(' ').slice(1).join(' ') : ''),
           mobileCountryCodeId: res.mobileCountryCodeId || res.user?.mobileCountryCodeId,
           dialCode: res.dialCode || res.user?.dialCode,
+          countryName: res.countryName || res.country?.name || res.user?.country?.name || res.destinationCountry,
+          universityName: res.universityName || res.university?.name || res.targetUniversity,
+          createdByName: res.createdByName || res.createdByUser?.fullName || 'N/A',
           academicHistory: this.mapAcademicHistory(studentData.academicHistories || studentData.academicHistory),
           documents: this.mapDocuments(studentData.documents),
           fileMetadata: this.mapFileMetadata(studentData.documents)
@@ -864,7 +868,8 @@ export class StudentDetailComponent implements OnInit {
       error: (err) => {
         console.error('Error updating status:', err);
         this.updatingStatus = false;
-        this.notificationService.error('Failed to update status');
+        const errorMessage = err.error?.message || 'Failed to update status';
+        this.notificationService.error(errorMessage, 0, 'Update Failed', '', true);
       }
     });
   }

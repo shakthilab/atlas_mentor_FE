@@ -121,4 +121,27 @@ export class EmployeeService {
       map(response => response.data || response)
     );
   }
+
+  getActiveUsersByRoleAndBranch(roleId: number, branchId: number): Observable<any[]> {
+    let params = new HttpParams()
+      .set('roleId', roleId.toString())
+      .set('branchId', branchId.toString());
+
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.USERS.ACTIVE_BY_ROLE_AND_BRANCH, { params }).pipe(
+      map(response => {
+        console.log('Active users response:', response);
+        
+        // Try to find the array in common nested structures
+        let result = response;
+        if (result.data) result = result.data;
+        if (result.data) result = result.data; // Handle double nesting if present
+        
+        if (result && result.content && Array.isArray(result.content)) {
+          return result.content;
+        }
+        
+        return Array.isArray(result) ? result : [];
+      })
+    );
+  }
 }

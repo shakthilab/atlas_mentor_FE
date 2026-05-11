@@ -90,10 +90,10 @@ import { FormsModule } from '@angular/forms';
     </div>
   `,
   styles: [`
-    .module-container { padding-bottom: 2rem; max-width: 900px; margin: 0 auto; }
-    .module-header { margin-bottom: 2rem; }
-    .page-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
-    .page-subtitle { color: var(--color-gray-600); margin: 0.25rem 0 0; font-size: 1rem; }
+   
+   
+   
+   
 
     .export-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--color-gray-200); padding: 2.5rem; box-shadow: var(--shadow-sm); }
     .export-section { margin-bottom: 3rem; }
@@ -108,7 +108,7 @@ import { FormsModule } from '@angular/forms';
     .selector-card .label { font-size: 0.875rem; font-weight: 600; color: var(--color-gray-700); }
     .selector-card.active .label { color: var(--color-primary); }
 
-    .filters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+   
     .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
     .form-group label { font-size: 0.875rem; font-weight: 500; color: var(--color-gray-700); }
     .form-control { padding: 0.625rem 0.875rem; border-radius: var(--radius-md); border: 1px solid var(--color-gray-300); background: white; font-size: 0.95rem; outline: none; transition: all var(--transition-fast); box-shadow: var(--shadow-xs); }
@@ -131,7 +131,7 @@ import { FormsModule } from '@angular/forms';
 
     @media (max-width: 768px) {
       .module-selector { grid-template-columns: repeat(2, 1fr); }
-      .filters-grid { grid-template-columns: 1fr; }
+     
     }
   `]
 })

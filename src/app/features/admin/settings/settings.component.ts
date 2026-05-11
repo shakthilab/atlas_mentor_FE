@@ -101,10 +101,10 @@ import { FormsModule } from '@angular/forms';
     </div>
   `,
   styles: [`
-    .module-container { padding-bottom: 2rem; }
-    .module-header { margin-bottom: 2rem; }
-    .page-title { font-size: 1.875rem; font-weight: 600; color: var(--color-gray-900); margin: 0; }
-    .page-subtitle { color: var(--color-gray-600); margin: 0.25rem 0 0; font-size: 1rem; }
+   
+   
+   
+   
 
     .settings-grid { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; }
     

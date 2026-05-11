@@ -34,10 +34,12 @@ export class StudentService {
     );
   }
 
-  getNonRegisteredStudents(page: number = 0, size: number = 10, search: string = '', status: string = ''): Observable<any> {
+  getNonRegisteredStudents(page: number = 0, size: number = 10, search: string = '', status: string = '', country: string = '', source: string = ''): Observable<any> {
     let url = `${environment.serviceUrl}${ApiEndpoint.STUDENTS.NON_REGISTERED}?page=${page}&size=${size}`;
     if (search) url += `&keyword=${search}`;
     if (status) url += `&status=${status}`;
+    if (country) url += `&countryName=${country}`;
+    if (source) url += `&sourceType=${source}`;
 
     return this.http.get<any>(url).pipe(
       map(response => response.data || response)
@@ -92,8 +94,16 @@ export class StudentService {
     );
   }
 
-  getStudentsWithPayments(): Observable<any> {
-    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.STUDENTS.WITH_PAYMENTS}`).pipe(
+  getStudentsWithPayments(page: number = 0, size: number = 10, filters: any = {}): Observable<any> {
+    let url = `${environment.serviceUrl}${ApiEndpoint.STUDENTS.WITH_PAYMENTS}?page=${page}&size=${size}`;
+    if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
+    if (filters.source) url += `&source=${encodeURIComponent(filters.source)}`;
+    if (filters.branch) url += `&branch=${encodeURIComponent(filters.branch)}`;
+    if (filters.paymentStatus) url += `&paymentStatus=${encodeURIComponent(filters.paymentStatus)}`;
+    if (filters.dateFrom) url += `&dateFrom=${encodeURIComponent(filters.dateFrom)}`;
+    if (filters.dateTo) url += `&dateTo=${encodeURIComponent(filters.dateTo)}`;
+
+    return this.http.get<any>(url).pipe(
       map(response => response.data || response)
     );
   }

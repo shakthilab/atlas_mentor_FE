@@ -36,6 +36,16 @@ export class BranchService {
     );
   }
 
+  getBranchesPaginated(page: number = 0, size: number = 10, search: string = '', status: string = ''): Observable<any> {
+    let url = `${this.apiUrl}?page=${page}&size=${size}&includeInactive=true`;
+    if (search) url += `&keyword=${search}`;
+    if (status) url += `&status=${status}`;
+
+    return this.http.get<any>(url, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
   getManagers(): Observable<any[]> {
     return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.BRANCHES.BASE}/managers`, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)

@@ -36,8 +36,16 @@ import { CountryService, CountryMobileCode } from '../../../core/services/countr
         </div>
       </div>
 
+      <!-- Loading State -->
+      <div class="loading-container shadow-premium" *ngIf="loading">
+        <div class="spinner-container">
+          <div class="loading-spinner"></div>
+        </div>
+        <p style="color: var(--color-gray-500);">Processing request...</p>
+      </div>
+
       <app-empty-state 
-        *ngIf="pendingUsers.length === 0"
+        *ngIf="pendingUsers.length === 0 && !loading"
         title="No Pending Approvals"
         message="There are currently no items pending approval. You're all caught up!">
       </app-empty-state>
@@ -117,6 +125,7 @@ export class PendingApprovalsComponent implements OnInit {
   pendingUsers: User[] = [];
   assignmentMap: Record<string, { role: User['role'], isSenior: boolean, branch: string }> = {};
   loadingId: string | null = null;
+  loading = false;
   roles: Role[] = [];
 
   ngOnInit() {

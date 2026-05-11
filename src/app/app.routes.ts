@@ -69,6 +69,7 @@ export const routes: Routes = [
           { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
           { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
           { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'resources', loadComponent: () => import('./features/admin/media/resource-module/resource-module.component').then(m => m.ResourceModuleComponent) },
           { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
           { path: 'export', loadComponent: () => import('./features/admin/export/export-tool/export-tool.component').then(m => m.ExportToolComponent) },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
@@ -117,6 +118,7 @@ export const routes: Routes = [
           { path: 'hierarchy', loadComponent: () => import('./features/admin/hierarchy/hierarchy-manager/hierarchy-manager.component').then(m => m.HierarchyManagerComponent) },
           { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
           { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'resources', loadComponent: () => import('./features/admin/media/resource-module/resource-module.component').then(m => m.ResourceModuleComponent) },
           { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
           { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
@@ -141,6 +143,7 @@ export const routes: Routes = [
           { path: 'hierarchy', loadComponent: () => import('./features/admin/hierarchy/hierarchy-manager/hierarchy-manager.component').then(m => m.HierarchyManagerComponent) },
           { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
           { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'resources', loadComponent: () => import('./features/admin/media/resource-module/resource-module.component').then(m => m.ResourceModuleComponent) },
           { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
           { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
@@ -162,7 +165,7 @@ export const routes: Routes = [
             ]
           },
           { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
-          { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
+          { path: 'resources', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
         ]
       },
       {
@@ -180,7 +183,7 @@ export const routes: Routes = [
             ]
           },
           { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
-          { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
+          { path: 'resources', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
         ]
       }
     ]

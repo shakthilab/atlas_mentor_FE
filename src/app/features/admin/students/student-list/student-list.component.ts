@@ -13,11 +13,12 @@ import { StudentDetailComponent } from '../student-detail/student-detail.compone
 import { NotificationService } from '../../../../core/services/notification.service';
 import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
 import { finalize } from 'rxjs/operators';
+import { DatepickerComponent } from '../../../../shared/components/datepicker/datepicker.component';
 
 @Component({
   selector: 'app-student-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent],
+  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent, DatepickerComponent],
   providers: [DatePipe],
   template: `
     <div class="module-container" (click)="closeAllDropdowns()">
@@ -79,11 +80,11 @@ import { finalize } from 'rxjs/operators';
           </div>
           <div class="filter-group">
             <label>Joined Date From</label>
-            <input type="date" [(ngModel)]="filterDateFrom">
+            <app-datepicker [(ngModel)]="filterDateFrom"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Joined Date To</label>
-            <input type="date" [(ngModel)]="filterDateTo">
+            <app-datepicker [(ngModel)]="filterDateTo"></app-datepicker>
           </div>
           <div class="filter-group">
             <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
@@ -91,8 +92,16 @@ import { finalize } from 'rxjs/operators';
         </div>
       </div>
 
+      <!-- Loading State -->
+      <div class="loading-container shadow-premium" *ngIf="loading">
+        <div class="spinner-container">
+          <div class="loading-spinner"></div>
+        </div>
+        <p style="color: var(--color-gray-500);">Loading students...</p>
+      </div>
+
       <app-empty-state 
-        *ngIf="students.length === 0"
+        *ngIf="students.length === 0 && !loading"
         title="No Students Found"
         message="There are currently no students registered. Add your first student to get started."
         [showAction]="true"
@@ -101,9 +110,9 @@ import { finalize } from 'rxjs/operators';
       </app-empty-state>
 
       <!-- List View -->
-      <div class="table-card overflow-visible" *ngIf="students.length > 0 && viewMode === 'list'">
-        <div class="table-responsive overflow-visible">
-          <table class="premium-table" style="min-width: 1100px;">
+      <div class="table-card" *ngIf="students.length > 0 && viewMode === 'list' && !loading">
+        <div class="table-responsive">
+          <table class="premium-table">
             <thead>
               <tr>
                 <th>Student</th>
@@ -174,6 +183,31 @@ import { finalize } from 'rxjs/operators';
             </tbody>
           </table>
         </div>
+        
+        <!-- Pagination Footer -->
+        <div class="table-card-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-gray-200);">
+          <button class="pagination-btn" [disabled]="currentPage === 0" (click)="changePage(currentPage - 1)">
+            <span class="material-icons">arrow_back</span>
+            Previous
+          </button>
+          
+          <div class="pagination-pages" style="display: flex; gap: 4px;">
+            <ng-container *ngFor="let p of [].constructor(totalPages); let idx = index">
+              <button 
+                class="page-num" 
+                [class.active]="currentPage === idx" 
+                (click)="changePage(idx)"
+                *ngIf="idx < 5 || idx > totalPages - 2 || (idx >= currentPage - 1 && idx <= currentPage + 1)">
+                {{ idx + 1 }}
+              </button>
+            </ng-container>
+          </div>
+
+          <button class="pagination-btn" [disabled]="currentPage >= totalPages - 1" (click)="changePage(currentPage + 1)">
+            Next
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
       </div>
 
       <!-- Grid View -->
@@ -216,7 +250,11 @@ import { finalize } from 'rxjs/operators';
               <span class="entity-subtext">Country</span>
               <span class="entity-name" style="font-size: 0.8125rem;">{{ student.country }}</span>
             </div>
-            <div class="entity-info" style="grid-column: span 2;">
+            <div class="entity-info">
+              <span class="entity-subtext">University</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ student.university }}</span>
+            </div>
+            <div class="entity-info">
               <span class="entity-subtext">Added by</span>
               <span class="entity-name" style="font-size: 0.8125rem;">{{ student.createdBy }}</span>
             </div>
@@ -228,14 +266,14 @@ import { finalize } from 'rxjs/operators';
               <button class="btn-icon" (click)="toggleActionDropdown($event, student.id)">
                 <span class="material-icons">more_vert</span>
               </button>
-              <div class="status-dropdown shadow-premium" *ngIf="openActionDropdownId === student.id" (click)="$event.stopPropagation()" style="right: 0; left: auto; top: calc(100% + 4px); min-width: 120px;">
+              <div class="action-dropdown shadow-premium" *ngIf="openActionDropdownId === student.id" (click)="$event.stopPropagation()" style="right: 0; left: auto;">
                 <div class="dropdown-item" (click)="openEditModal(student.id); openActionDropdownId = null">
-                  <span class="material-icons" style="font-size: 18px;">edit</span>
-                  <span style="font-weight: 500;">Edit</span>
+                  <span class="material-icons">edit</span>
+                  <span>Edit</span>
                 </div>
                 <div class="dropdown-item" style="color: var(--color-error);" (click)="deleteStudent(student.id); openActionDropdownId = null">
-                  <span class="material-icons" style="font-size: 18px;">delete_outline</span>
-                  <span style="font-weight: 500;">Delete</span>
+                  <span class="material-icons">delete_outline</span>
+                  <span>Delete</span>
                 </div>
               </div>
             </div>
@@ -421,6 +459,7 @@ export class StudentListComponent implements OnInit {
   allStudents: any[] = [];
   loading = false;
   totalElements = 0;
+  totalPages = 0;
   currentPage = 0;
   pageSize = 10;
 
@@ -536,7 +575,8 @@ export class StudentListComponent implements OnInit {
       error: (err) => {
         console.error('Error updating status:', err);
         this.updatingStatus = false;
-        this.notificationService.error('Failed to update status');
+        const errorMessage = err.error?.message || 'Failed to update status';
+        this.notificationService.error(errorMessage, 0, 'Update Failed', '', true);
       }
     });
   }
@@ -550,6 +590,13 @@ export class StudentListComponent implements OnInit {
     if (this.deleting) return;
     this.showConfirmModal = false;
     this.studentIdToDelete = null;
+  }
+
+  changePage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.loadStudents();
+    }
   }
 
   executeDelete() {
@@ -579,19 +626,20 @@ export class StudentListComponent implements OnInit {
         next: (data) => {
           this.allStudents = data.content.map((s: any) => ({
             id: s.id,
-            name: s.name || s.user?.fullName || 'N/A',
+            name: s.fullName || s.name || s.user?.fullName || 'N/A',
             phone: s.phone || s.user?.phone,
             email: s.email || s.user?.email,
             mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
             dialCode: s.dialCode || s.user?.dialCode,
             status: s.status,
-            counsellor: s.assignedBy?.fullName || 'Unassigned',
-            createdBy: s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A',
-            country: s.country?.name || s.user?.country?.name || 'N/A',
-            university: s.university?.name || 'N/A',
+            counsellor: s.assignedByName || s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByName || (s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A'),
+            country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+            university: s.universityName || s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
           }));
-          this.totalElements = data.totalElements;
+          this.totalElements = data.totalElements || 0;
+          this.totalPages = data.totalPages || Math.ceil(this.totalElements / this.pageSize) || 0;
           this.loading = false;
         },
         error: (err) => {
@@ -618,14 +666,14 @@ export class StudentListComponent implements OnInit {
         next: (data) => {
           const newStudents = data.content.map((s: any) => ({
             id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
+            name: s.fullName || s.name || s.user?.fullName || 'N/A',
+            phone: s.phone || s.user?.phone,
+            email: s.email || s.user?.email,
             status: s.status,
-            counsellor: s.createdBy?.fullName || 'Unassigned',
-            createdBy: s.createdByName ? `${s.createdByName} (${s.createdByUserRole})` : 'N/A',
-            country: s.country?.name || 'N/A',
-            university: s.university?.name || 'N/A',
+            counsellor: s.assignedByName || s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByName || (s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A'),
+            country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+            university: s.universityName || s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
           }));
           this.allStudents = [...this.allStudents, ...newStudents];

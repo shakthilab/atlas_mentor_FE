@@ -77,7 +77,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
               </div>
 
               <!-- Action 3: Raise Dispute -->
-              <div class="admin-action-card highlight-error full-width" *ngIf="payment.status !== 'PAID'">
+              <div class="admin-action-card highlight-error full-width" *ngIf="payment.status !== 'PAID' && payment.assignedAmount > 0">
                 <div class="action-icon-box danger">
                   <span class="material-icons">gavel</span>
                 </div>
@@ -91,7 +91,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
           </div>
 
           <!-- Referral/Company Verification Section -->
-          <div class="panel-section admin-actions mt-4" *ngIf="isReferralOrCompany() && payment.disputeStatus?.toUpperCase() === 'OPEN'">
+          <div class="panel-section admin-actions mt-4" *ngIf="isReferralOrCompany() && payment.status?.toUpperCase() === 'DISPUTE'">
             <label class="section-label">PAYMENT VERIFICATION</label>
             
             <div class="admin-action-grid">
@@ -123,32 +123,35 @@ import { NotificationService } from '../../../../core/services/notification.serv
 
           <div class="panel-section mt-4">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <label class="section-label">TRANSACTION HISTORY</label>
+              <label class="section-label">ACTIVITY & TRANSACTIONS</label>
               <span class="badge-status" [ngClass]="getStatusClass(payment.status)">{{ payment.status }}</span>
             </div>
             
             <div class="transaction-list" *ngIf="transactions.length > 0; else noTransactions">
               <div class="transaction-item" *ngFor="let tx of transactions">
-                <div class="tx-icon" [ngClass]="tx.type?.toLowerCase() || 'upi'">
+                <div class="tx-icon" [ngClass]="getTxIconClass(tx)">
                   <span class="material-icons">{{ getTxIcon(tx) }}</span>
                 </div>
                 <div class="tx-details">
                   <div class="tx-main">
-                    <span class="tx-type">{{ tx.transactionType === 'CREDIT' ? 'Payment Received' : (tx.type || 'Transaction') }}</span>
-                    <span class="tx-amount" [class.negative]="tx.transactionType === 'DEBIT' || tx.type === 'REFUND'">
-                      {{ (tx.transactionType === 'DEBIT' || tx.type === 'REFUND') ? '-' : '+' }}{{ tx.amount | currency:'INR' }}
+                    <span class="tx-type" style="text-transform: capitalize;">{{ tx.type | lowercase }} <span style="font-size: 0.75rem; color: #667085; font-weight: normal; margin-left: 4px;" *ngIf="tx.doneBy">by {{ tx.doneBy }}</span></span>
+                    <span class="tx-amount" [class.negative]="tx.isNegative" *ngIf="tx.amount > 0">
+                      {{ tx.isNegative ? '-' : '+' }}{{ tx.amount | currency:'INR' }}
                     </span>
                   </div>
                   <div class="tx-meta">
-                    <span class="tx-date">{{ (tx.createdAt || tx.date) | date:'MMM d, yyyy · h:mm a' }}</span>
-                    <span class="tx-method" *ngIf="tx.paymentMethod || tx.method">{{ tx.paymentMethod || tx.method }}</span>
+                    <span class="tx-date">{{ tx.createdAt | date:'MMM d, yyyy · h:mm a' }}</span>
+                    <span class="tx-method" *ngIf="tx.paymentMethod">{{ tx.paymentMethod }}</span>
                     <span class="tx-ref" *ngIf="tx.transactionReference">Ref: {{ tx.transactionReference }}</span>
+                  </div>
+                  <div class="tx-reason" *ngIf="tx.reason" style="font-size: 0.8125rem; color: #475467; margin-top: 6px; padding: 8px; background: #f9fafb; border-radius: 6px; border: 1px solid #f2f4f7;">
+                    {{ tx.reason }}
                   </div>
                 </div>
               </div>
             </div>
             <ng-template #noTransactions>
-              <div class="description-box empty">No transactions recorded yet.</div>
+              <div class="description-box empty">No activities recorded yet.</div>
             </ng-template>
           </div>
 
@@ -226,10 +229,10 @@ import { NotificationService } from '../../../../core/services/notification.serv
               </select>
             </div>
 
-            <!-- Notes / Reason -->
-            <div class="form-group-premium" *ngIf="modalType !== 'REJECT_DISPUTE' && modalType !== 'ACCEPT_DISPUTE'">
-              <label>{{ modalType === 'DISPUTE' ? 'Dispute Reason' : 'Reference Note' }}</label>
-              <textarea [(ngModel)]="modalData.notes" [placeholder]="modalType === 'DISPUTE' ? 'Provide a clear reason for the dispute...' : 'e.g. Revised based on discount or Transaction ID'" rows="3"></textarea>
+            <!-- Notes / Reference (For Assign/Pay) -->
+            <div class="form-group-premium" *ngIf="modalType !== 'REJECT_DISPUTE' && modalType !== 'ACCEPT_DISPUTE' && modalType !== 'DISPUTE'">
+              <label>Reference Note</label>
+              <textarea [(ngModel)]="modalData.notes" placeholder="e.g. Revised based on discount or Transaction ID" rows="3"></textarea>
             </div>
 
             <!-- Dispute Resolution Fields (Accept/Reject/Dispute) -->
@@ -397,9 +400,31 @@ export class PaymentDetailPanelComponent implements OnInit {
 
   loadTransactions() {
     this.loading = true;
-    this.paymentService.getPaymentTransactions(this.payment.studentId).subscribe({
+    this.paymentService.getClientPayoutActivities(this.payment.id).subscribe({
       next: (data) => {
-        this.transactions = data;
+        this.transactions = data.map((act: any) => {
+          let txType = act.action ? act.action.replace(/_/g, ' ') : 'ACTIVITY';
+          let amount = 0;
+          let isNegative = false;
+          
+          if (act.action === 'PAYMENT_ADDED') {
+            amount = act.newAmount || 0;
+          } else if (act.action === 'AMOUNT_ASSIGNED') {
+            amount = act.newAmount || 0;
+          }
+          
+          return {
+             type: txType,
+             amount: amount,
+             isNegative: isNegative,
+             createdAt: act.doneAt,
+             paymentMethod: act.paymentMethod,
+             transactionReference: act.transactionReference,
+             reason: act.reason,
+             doneBy: act.doneBy?.username,
+             rawAction: act.action
+          };
+        });
         this.loading = false;
       },
       error: () => {
@@ -477,11 +502,11 @@ export class PaymentDetailPanelComponent implements OnInit {
       });
     } else if (this.modalType === 'PAY') {
       const payload = {
-        studentId: this.payment.studentId,
+        clientPayoutId: this.payment.id,
         amount: this.modalData.amount,
         paymentMethod: this.modalData.method,
-        notes: this.modalData.notes,
-        transactionReference: 'TXN' + Math.floor(Math.random() * 1000000)
+        transactionReference: 'TXN' + Math.floor(Math.random() * 1000000),
+        notes: this.modalData.notes
       };
       
       this.paymentService.createPayment(payload).subscribe({
@@ -543,7 +568,7 @@ export class PaymentDetailPanelComponent implements OnInit {
   canProcessDispute(): boolean {
     const role = this.roleConfig.getCurrentUserRole();
     const isPartner = role === 'REFERRAL' || role === 'COMPANY';
-    return isPartner && this.payment?.disputeStatus?.toUpperCase() === 'OPEN';
+    return isPartner && this.payment?.status?.toUpperCase() === 'DISPUTE';
   }
 
   isReferralOrCompany(): boolean {
@@ -572,14 +597,20 @@ export class PaymentDetailPanelComponent implements OnInit {
   }
 
   getTxIcon(tx: any): string {
-    if (!tx) return 'receipt_long';
-    const method = (tx.paymentMethod || tx.method || '').toUpperCase();
-    const type = (tx.type || '').toUpperCase();
-    
-    if (type === 'REFUND') return 'history';
-    if (method.includes('UPI')) return 'account_balance_wallet';
-    if (method.includes('BANK')) return 'account_balance';
-    if (method.includes('CASH')) return 'payments';
+    const action = tx.rawAction || '';
+    if (action.includes('DISPUTE')) return 'gavel';
+    if (action.includes('ASSIGNED')) return 'edit_note';
+    if (action.includes('PAYMENT')) return 'payments';
+    if (action.includes('CREATED')) return 'add_circle_outline';
     return 'receipt_long';
+  }
+
+  getTxIconClass(tx: any): string {
+    const action = tx.rawAction || '';
+    if (action.includes('DISPUTE')) return 'refund';
+    if (action.includes('ASSIGNED')) return 'upi';
+    if (action.includes('PAYMENT')) return 'cash';
+    if (action.includes('CREATED')) return 'bank';
+    return 'upi';
   }
 }

@@ -1421,6 +1421,8 @@ export class StudentFormComponent implements OnInit {
             email: user.email || res.email || '',
             countryId: res.destinationCountryId || res.countryId || res.country?.id || user.destinationCountryId || user.countryId || user.country?.id || '',
             universityId: res.targetUniversityId || res.universityId || res.university?.id || user.targetUniversityId || user.universityId || user.university?.id || '',
+            branchId: res.branchId || res.branch?.id || user.branchId || user.branch?.id || '',
+            assignedToId: res.assignedToId || res.assignedTo?.id || res.assignedBy?.id || user.assignedToId || user.assignedTo?.id || user.assignedBy?.id || '',
             course: res.courseName || res.course || user.courseName || user.course || '',
             intake: res.intakePeriod || res.intake || user.intakePeriod || user.intake || '',
             academicHistory: this.mapAcademicHistory(res.academicHistories || res.academicHistory || user.academicHistories || user.academicHistory)
@@ -1476,7 +1478,7 @@ export class StudentFormComponent implements OnInit {
               countryId: resData.destinationCountryId || resData.countryId || resData.country?.id || userData.destinationCountryId || userData.countryId || userData.country?.id || '',
               universityId: resData.targetUniversityId || resData.universityId || resData.university?.id || userData.targetUniversityId || userData.universityId || userData.university?.id || '',
               branchId: resData.branchId || resData.branch?.id || userData.branchId || userData.branch?.id || '',
-              assignedToId: resData.assignedToId || resData.assignedTo?.id || userData.assignedToId || userData.assignedTo?.id || '',
+              assignedToId: resData.assignedToId || resData.assignedTo?.id || resData.assignedBy?.id || userData.assignedToId || userData.assignedTo?.id || userData.assignedBy?.id || '',
               course: resData.courseName || resData.course || userData.courseName || userData.course || '',
               intake: resData.intakePeriod || resData.intake || userData.intakePeriod || userData.intake || '',
               academicHistory: this.mapAcademicHistory(resData.academicHistories || resData.academicHistory || userData.academicHistories || userData.academicHistory)

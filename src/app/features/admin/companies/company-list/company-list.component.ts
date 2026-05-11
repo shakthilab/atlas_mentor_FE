@@ -70,8 +70,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </div>
 
       <!-- Loading State -->
-      <div class="loading-container shadow-premium" *ngIf="isLoading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
-        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+      <div class="loading-container shadow-premium" *ngIf="isLoading">
+        <div class="spinner-container">
           <div class="loading-spinner"></div>
         </div>
         <p style="color: var(--color-gray-500);">Loading companies...</p>
@@ -101,7 +101,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let company of companies" class="clickable-row" (click)="viewDetails(company)">
+              <tr *ngFor="let company of companies; let i = index" class="clickable-row" (click)="viewDetails(company)">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(company.companyDetails?.companyName || company.name || company.firstName)">
@@ -137,15 +137,18 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <button class="btn-icon" (click)="openEditModal(company)"><span class="material-icons">edit</span></button>
                     <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + company.id)"><span class="material-icons">more_vert</span></button>
                     
-                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + company.id" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
-                      <button class="dropdown-item" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
+                    <div class="action-dropdown shadow-premium" 
+                         *ngIf="openDropdownId === 'row-' + company.id" 
+                         (click)="$event.stopPropagation()"
+                         [ngClass]="{'open-up': i >= companies.length - 2 && companies.length > 3}">
+                      <button class="dropdown-item" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'" style="color: #b54708;">
+                        <span class="material-icons">block</span> Deactivate
                       </button>
-                      <button class="dropdown-item" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
+                      <button class="dropdown-item" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'" style="color: #027a48;">
+                        <span class="material-icons">check_circle</span> Reactivate
                       </button>
-                      <button class="dropdown-item" (click)="confirmDelete(company); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">delete</span> Delete
+                      <button class="dropdown-item" (click)="confirmDelete(company); openDropdownId = null" style="color: #b42318;">
+                        <span class="material-icons">delete</span> Delete
                       </button>
                     </div>
                   </div>

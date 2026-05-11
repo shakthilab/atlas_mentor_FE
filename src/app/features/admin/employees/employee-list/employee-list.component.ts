@@ -75,8 +75,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </div>
 
       <!-- Loading State -->
-      <div class="loading-container shadow-premium" *ngIf="isLoading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
-        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+      <div class="loading-container shadow-premium" *ngIf="isLoading">
+        <div class="spinner-container">
           <div class="loading-spinner"></div>
         </div>
         <p style="color: var(--color-gray-500);">Loading employees...</p>
@@ -109,7 +109,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let emp of employees" class="clickable-row" (click)="viewDetails(emp)">
+                <tr *ngFor="let emp of employees; let i = index" class="clickable-row" (click)="viewDetails(emp)">
                   <td>
                     <div class="entity-meta">
                       <div class="avatar-circle" [style.background]="getAvatarColor(emp.name || (emp.firstName + ' ' + emp.lastName))">
@@ -143,15 +143,18 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                         <button class="btn-icon" (click)="toggleDropdown($event, emp.id || emp.email)"><span class="material-icons">more_vert</span></button>
                         
                         <!-- Dropdown Menu -->
-                        <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === (emp.id || emp.email)" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
-                          <button class="dropdown-item" (click)="confirmDeactivate(emp); openDropdownId = null" *ngIf="emp.status !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                            <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
+                        <div class="action-dropdown shadow-premium" 
+                             *ngIf="openDropdownId === (emp.id || emp.email)" 
+                             (click)="$event.stopPropagation()"
+                             [ngClass]="{'open-up': i >= employees.length - 2 && employees.length > 3}">
+                          <button class="dropdown-item" (click)="confirmDeactivate(emp); openDropdownId = null" *ngIf="emp.status !== 'INACTIVE'" style="color: #b54708;">
+                            <span class="material-icons">block</span> Deactivate
                           </button>
-                          <button class="dropdown-item" (click)="confirmReactivate(emp); openDropdownId = null" *ngIf="emp.status === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                            <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
+                          <button class="dropdown-item" (click)="confirmReactivate(emp); openDropdownId = null" *ngIf="emp.status === 'INACTIVE'" style="color: #027a48;">
+                            <span class="material-icons">check_circle</span> Reactivate
                           </button>
-                          <button class="dropdown-item" (click)="confirmDelete(emp); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                            <span class="material-icons" style="font-size: 18px;">delete_outline</span> Delete
+                          <button class="dropdown-item" (click)="confirmDelete(emp); openDropdownId = null" style="color: #b42318;">
+                            <span class="material-icons">delete_outline</span> Delete
                           </button>
                         </div>
                       </ng-container>
@@ -636,9 +639,13 @@ export class EmployeeListComponent implements OnInit {
       console.log('Employees paginated response received:', data);
       this.isLoading = false;
 
-      let fetchedEmployees = data?.content || [];
+      let fetchedEmployees = (data?.content || []).map((e: any) => ({
+        ...e,
+        name: e.name || `${e.firstName || ''} ${e.lastName || ''}`.trim() || 'N/A'
+      }));
+
       // Client-side sort to ensure ADMIN roles always appear at the top of the current page
-      fetchedEmployees.sort((a: Employee, b: Employee) => {
+      fetchedEmployees.sort((a: any, b: any) => {
         const aIsAdmin = this.isAdmin(a) ? 1 : 0;
         const bIsAdmin = this.isAdmin(b) ? 1 : 0;
         return bIsAdmin - aIsAdmin;

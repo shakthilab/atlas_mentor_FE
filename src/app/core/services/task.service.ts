@@ -10,7 +10,7 @@ export interface Task {
   id: number;
   title: string;
   description: string;
-  status: 'TO_DO' | 'IN_PROGRESS' | 'DONE';
+  status: 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'OVERDUE' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   assigneeName?: string;
   assignerName?: string;
@@ -67,6 +67,18 @@ export interface TaskFilter {
   createdBy?: number;
   keyword?: string;
   overdue?: boolean;
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDir?: string;
+}
+
+export interface PaginatedTasks {
+  tasks: Task[];
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
 }
 
 export interface CreateTaskRequest {
@@ -139,7 +151,7 @@ export class TaskService {
   }
 
   // Core Task Operations
-  getTasks(filter?: TaskFilter): Observable<Task[]> {
+  getTasks(filter?: TaskFilter): Observable<PaginatedTasks> {
     let params = new HttpParams();
     
     if (filter) {
@@ -155,6 +167,10 @@ export class TaskService {
       if (filter.createdBy) params = params.set('createdBy', filter.createdBy.toString());
       if (filter.keyword) params = params.set('keyword', filter.keyword);
       if (filter.overdue !== undefined) params = params.set('overdue', filter.overdue.toString());
+      if (filter.page !== undefined) params = params.set('page', filter.page.toString());
+      if (filter.size !== undefined) params = params.set('size', filter.size.toString());
+      if (filter.sortBy) params = params.set('sortBy', filter.sortBy);
+      if (filter.sortDir) params = params.set('sortDir', filter.sortDir);
     }
     
     return this.http.get<any>(`${this.baseUrl}`, {
@@ -162,16 +178,48 @@ export class TaskService {
       params
     }).pipe(
       map((response: any) => {
-        // Handle paginated response: { data: { content: [...] } }
-        if (response && response.data && response.data.content && Array.isArray(response.data.content)) {
-          return response.data.content;
+        let content: Task[] = [];
+        let totalElements = 0;
+        let totalPages = 0;
+        let currentPage = 0;
+        let pageSize = 20;
+
+        // Case 1: Wrapped in 'data' and paginated
+        if (response && response.data && response.data.content) {
+          content = response.data.content;
+          totalElements = response.data.totalElements || content.length;
+          totalPages = response.data.totalPages || 1;
+          currentPage = response.data.number || 0;
+          pageSize = response.data.size || 20;
+        } 
+        // Case 2: Directly paginated (not wrapped in 'data')
+        else if (response && response.content && Array.isArray(response.content)) {
+          content = response.content;
+          totalElements = response.totalElements !== undefined ? response.totalElements : content.length;
+          totalPages = response.totalPages || 1;
+          currentPage = response.number || 0;
+          pageSize = response.size || 20;
         }
-        // Handle wrapped non-paginated: { data: [...] }
-        if (response && response.data && Array.isArray(response.data)) {
-          return response.data;
+        // Case 3: Wrapped in 'data' but not paginated (direct array)
+        else if (response && response.data && Array.isArray(response.data)) {
+          content = response.data;
+          totalElements = content.length;
+          totalPages = 1;
+        } 
+        // Case 4: Direct array
+        else if (Array.isArray(response)) {
+          content = response;
+          totalElements = content.length;
+          totalPages = 1;
         }
-        // Handle direct array or other
-        return Array.isArray(response) ? response : [];
+
+        return {
+          tasks: content,
+          totalElements,
+          totalPages,
+          currentPage,
+          pageSize
+        };
       }),
       catchError(this.handleError)
     );
@@ -270,6 +318,24 @@ export class TaskService {
     return this.http.get<Activity[]>(`${this.baseUrl}/${taskId}/activity`, {
       headers: this.getAuthHeaders()
     }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getStatuses(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/statuses`, {
+      headers: this.getAuthHeaders()
+    }).pipe(
+      map(response => response && response.data ? response.data : response),
+      catchError(this.handleError)
+    );
+  }
+
+  getPriorities(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/priorities`, {
+      headers: this.getAuthHeaders()
+    }).pipe(
+      map(response => response && response.data ? response.data : response),
       catchError(this.handleError)
     );
   }

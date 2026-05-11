@@ -41,10 +41,10 @@ export const ApiEndpoint = {
     BASE: '/api/payments',
     APPROVE: '/api/payments/approve',
     REJECT: '/api/payments/reject',
-    RAISE_DISPUTE: '/api/payments/raise-dispute',
-    ACCEPT_DISPUTE: '/api/payments/accept-dispute',
-    REJECT_DISPUTE: '/api/payments/reject-dispute',
-    UPDATE_AMOUNT: '/api/students/payment/amount',
+    RAISE_DISPUTE: '/dispute',
+    ACCEPT_DISPUTE: '/dispute/accept',
+    REJECT_DISPUTE: '/dispute/reject',
+    UPDATE_AMOUNT: '/api/students/client-payout/amount',
     UPDATE_STATUS: '/api/students/payment/status',
   },
   TASKS: {
@@ -79,5 +79,14 @@ export const ApiEndpoint = {
   },
   USERS: {
     ACTIVE_COUNSELLORS: '/api/users/counsellors/active',
+    ACTIVE_BY_ROLE_AND_BRANCH: '/api/users/active-by-role-and-branch',
+  },
+  TASK_BUNDLES: {
+    BASE: '/api/task-bundles',
+  },
+  REFERRAL_RESOURCES: {
+    BASE: '/api/referral-resources',
+    OWNER: '/api/referral-resources/owner',
+    MY_RESOURCES: '/api/referral-resources/my-resources',
   }
 };

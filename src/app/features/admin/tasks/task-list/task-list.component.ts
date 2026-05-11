@@ -14,11 +14,25 @@ import { TaskDetailPanelComponent } from '../components/task-detail-panel/task-d
 import { AuthService } from '../../../../core/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
+import { TaskBundleModalComponent } from '../task-bundles/task-bundle-modal.component';
+import { TaskBundleManageModalComponent } from '../task-bundles/task-bundle-manage-modal.component';
+import { TaskBundle } from '../../../../core/services/task-bundle.service';
+import { DatepickerComponent } from '../../../../shared/components/datepicker/datepicker.component';
 
 @Component({
   selector: 'app-task-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, DragDropModule, EmptyStateComponent, TaskDetailPanelComponent],
+  imports: [
+    CommonModule, 
+    RouterModule, 
+    FormsModule, 
+    DragDropModule, 
+    EmptyStateComponent, 
+    TaskDetailPanelComponent,
+    TaskBundleModalComponent,
+    TaskBundleManageModalComponent,
+    DatepickerComponent
+  ],
   template: `
     <div class="module-container">
       <div class="module-header">
@@ -37,6 +51,17 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               <span>Board</span>
             </button>
           </div>
+          
+          <button class="btn btn-secondary" (click)="openManageBundlesModal()" *ngIf="['ADMIN', 'MANAGER', 'BRANCH_PARTNER'].includes(roleConfig.getCurrentUserRole())">
+            <span class="material-icons">settings</span>
+            <span>Manage Bundles</span>
+          </button>
+          
+          <button class="btn btn-primary" (click)="openCreateBundleModal()" *ngIf="['ADMIN', 'MANAGER', 'BRANCH_PARTNER'].includes(roleConfig.getCurrentUserRole())">
+            <span class="material-icons">copy_all</span>
+            <span>Create Bundle</span>
+          </button>
+
           <button class="btn btn-primary" (click)="openCreateModal()" *ngIf="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'">
             <span class="material-icons">add</span>
             <span>Create Task</span>
@@ -51,25 +76,15 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
           <input type="text" placeholder="Search tasks..." [(ngModel)]="searchQuery" (input)="applyFilters()">
         </div>
         <div class="filter-actions">
-          <div class="filter-dropdown">
-            <select class="filter-select" [(ngModel)]="filterStatus" (change)="applyFilters()">
-              <option value="">All Statuses</option>
-              <option value="TO_DO">To Do</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="DONE">Done</option>
-            </select>
-            <span class="material-icons dropdown-chevron">expand_more</span>
-          </div>
-          <div class="filter-dropdown">
-            <select class="filter-select" [(ngModel)]="filterPriority" (change)="applyFilters()">
-              <option value="">All Priorities</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
-            </select>
-            <span class="material-icons dropdown-chevron">expand_more</span>
-          </div>
-          <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters">
+          <select class="filter-select" [(ngModel)]="filterStatus" (change)="applyFilters()">
+            <option value="">All Statuses</option>
+            <option *ngFor="let status of availableStatuses" [value]="getEnumValue(status)">{{ formatEnumValue(status) }}</option>
+          </select>
+          <select class="filter-select" [(ngModel)]="filterPriority" (change)="applyFilters()">
+            <option value="">All Priorities</option>
+            <option *ngFor="let priority of availablePriorities" [value]="getEnumValue(priority)">{{ formatEnumValue(priority) }}</option>
+          </select>
+          <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
             <span class="material-icons">tune</span>
           </button>
         </div>
@@ -80,29 +95,36 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
         <div class="filters-grid">
           <div class="filter-group">
             <label>Due Date From</label>
-            <input type="date" [(ngModel)]="dueDateFrom" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="dueDateFrom" (ngModelChange)="applyFilters()" placeholder="dd/mm/yyyy"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Due Date To</label>
-            <input type="date" [(ngModel)]="dueDateTo" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="dueDateTo" (ngModelChange)="applyFilters()" placeholder="dd/mm/yyyy"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Assigned From</label>
-            <input type="date" [(ngModel)]="assignedDateFrom" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="assignedDateFrom" (ngModelChange)="applyFilters()" placeholder="dd/mm/yyyy"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Assigned To</label>
-            <input type="date" [(ngModel)]="assignedDateTo" (change)="applyFilters()">
+            <app-datepicker [(ngModel)]="assignedDateTo" (ngModelChange)="applyFilters()" placeholder="dd/mm/yyyy"></app-datepicker>
           </div>
           <div class="filter-group">
-            <label>&nbsp;</label>
-            <button class="btn-ghost-sm" (click)="clearAdvancedFilters()">Clear All</button>
+             <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
           </div>
         </div>
       </div>
 
+      <!-- Loading State -->
+      <div class="loading-container shadow-premium" *ngIf="loading">
+        <div class="spinner-container">
+          <div class="loading-spinner"></div>
+        </div>
+        <p style="color: var(--color-gray-500);">Loading tasks...</p>
+      </div>
+
       <app-empty-state 
-        *ngIf="inProgressTasks.length === 0 && todoTasks.length === 0 && doneTasks.length === 0"
+        *ngIf="!loading && inProgressTasks.length === 0 && todoTasks.length === 0 && doneTasks.length === 0 && overdueTasks.length === 0 && cancelledTasks.length === 0"
         title="No Tasks Found"
         message="There are currently no tasks assigned."
         [showAction]="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'"
@@ -112,6 +134,59 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 
       <!-- View: List -->
       <div class="task-list-wrapper" *ngIf="viewMode === 'list' && !loading && tasks.length > 0">
+        <!-- Group: Overdue -->
+        <div class="group-section" *ngIf="overdueTasks.length > 0">
+          <div class="group-header overdue">
+            <div class="group-title-wrap">
+              <span class="material-icons collapse-icon">expand_more</span>
+              <h2 class="group-title">Overdue</h2>
+              <span class="group-count">{{ overdueTasks.length }}</span>
+            </div>
+          </div>
+
+          <div class="cards-container">
+            <div *ngFor="let task of overdueTasks" class="task-card-row" (click)="viewTaskDetails(task)">
+              <div class="card-content-wrap">
+                <div class="check-box" (click)="$event.stopPropagation()">
+                  <span class="material-icons-outlined">radio_button_unchecked</span>
+                </div>
+                
+                <div class="task-main-info">
+                  <h4 class="task-title">{{ task.title }}</h4>
+                  <p class="task-description">{{ task.description }}</p>
+                </div>
+
+                <div class="task-metadata">
+                  <div class="meta-item date">
+                    <span class="material-icons-outlined text-danger">calendar_today</span>
+                    <span class="text-danger font-bold">{{ task.dueDate }}</span>
+                  </div>
+
+                  <div class="meta-item priority" (click)="$event.stopPropagation()">
+                    <div class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                      <span class="priority-dot"></span>
+                      <span>{{ task.priority }}</span>
+                    </div>
+                  </div>
+
+                  <div class="meta-item status" (click)="$event.stopPropagation()">
+                    <div class="status-badge overdue">
+                      {{ task.status }}
+                    </div>
+                  </div>
+
+
+                  <div class="meta-item assignee">
+                    <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                      {{ getInitials(task.assigneeName || task.assignee) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Group: In Progress -->
         <div class="group-section" *ngIf="inProgressTasks.length > 0">
           <div class="group-header in-progress">
@@ -153,10 +228,6 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                     </div>
                   </div>
 
-                  <div class="meta-item comments">
-                    <span class="material-icons-outlined">chat_bubble_outline</span>
-                    <span>{{ task.comments || 0 }}</span>
-                  </div>
 
                   <div class="meta-item assignee">
                     <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
@@ -210,10 +281,6 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                     </div>
                   </div>
 
-                  <div class="meta-item comments">
-                    <span class="material-icons-outlined">chat_bubble_outline</span>
-                    <span>{{ task.comments || 0 }}</span>
-                  </div>
 
                   <div class="meta-item assignee">
                     <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
@@ -267,9 +334,56 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                     </div>
                   </div>
 
-                  <div class="meta-item comments">
-                    <span class="material-icons-outlined">chat_bubble_outline</span>
-                    <span>{{ task.comments || 0 }}</span>
+
+                  <div class="meta-item assignee">
+                    <div class="avatar-circle" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                      {{ getInitials(task.assigneeName || task.assignee) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Group: Cancelled -->
+        <div class="group-section mt-4" *ngIf="cancelledTasks.length > 0">
+          <div class="group-header cancelled">
+            <div class="group-title-wrap">
+              <span class="material-icons collapse-icon">expand_more</span>
+              <h2 class="group-title">Cancelled</h2>
+              <span class="group-count">{{ cancelledTasks.length }}</span>
+            </div>
+          </div>
+
+          <div class="cards-container">
+            <div *ngFor="let task of cancelledTasks" class="task-card-row cancelled" (click)="viewTaskDetails(task)">
+              <div class="card-content-wrap">
+                <div class="check-box" (click)="$event.stopPropagation()">
+                  <span class="material-icons-outlined">block</span>
+                </div>
+                
+                <div class="task-main-info">
+                  <h4 class="task-title">{{ task.title }}</h4>
+                  <p class="task-description">{{ task.description }}</p>
+                </div>
+
+                <div class="task-metadata">
+                  <div class="meta-item date">
+                    <span class="material-icons-outlined">calendar_today</span>
+                    <span>{{ task.dueDate }}</span>
+                  </div>
+
+                  <div class="meta-item priority" (click)="$event.stopPropagation()">
+                    <div class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                      <span class="priority-dot"></span>
+                      <span>{{ task.priority }}</span>
+                    </div>
+                  </div>
+
+                  <div class="meta-item status" (click)="$event.stopPropagation()">
+                    <div class="status-badge cancelled">
+                      {{ task.status }}
+                    </div>
                   </div>
 
                   <div class="meta-item assignee">
@@ -286,6 +400,46 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 
       <!-- View: Board (Kanban) -->
       <div class="kanban-wrapper" cdkDropListGroup *ngIf="viewMode === 'board' && !loading && tasks.length > 0">
+        <!-- Column: Overdue -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <div class="header-left">
+              <span class="status-dot overdue"></span>
+              <h3 class="column-title">Overdue</h3>
+              <span class="count">{{ overdueTasks.length }}</span>
+            </div>
+            <button class="btn-icon-sm" (click)="openCreateModal()" *ngIf="roleConfig.getCurrentUserRole() !== 'JUNIOR_COUNSELLOR'"><span class="material-icons">add</span></button>
+          </div>
+          
+          <div
+            cdkDropList
+            [cdkDropListData]="overdueTasks"
+            (cdkDropListDropped)="drop($event, 'OVERDUE')"
+            class="kanban-task-list">
+            <div *ngFor="let task of overdueTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
+              <div class="card-content">
+                <h4 class="task-title">{{ task.title }}</h4>
+                <p class="task-desc">{{ task.description }}</p>
+                
+                <div class="card-meta-row">
+                  <span class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                    <span class="dot"></span> {{ task.priority }}
+                  </span>
+                  <div class="assignee-avatar-sm" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                    {{ getInitials(task.assigneeName || task.assignee) }}
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="footer-item">
+                  <span class="material-icons-outlined text-danger">event</span>
+                  <span class="text-danger font-bold">{{ task.dueDate | date:'MMM d' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Column: To Do -->
         <div class="kanban-column">
           <div class="column-header">
@@ -300,7 +454,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
           <div
             cdkDropList
             [cdkDropListData]="todoTasks"
-            (cdkDropListDropped)="drop($event, 'TO_DO')"
+            (cdkDropListDropped)="drop($event, 'PENDING')"
             class="kanban-task-list">
             <div *ngFor="let task of todoTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
               <div class="card-content">
@@ -320,10 +474,6 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                 <div class="footer-item">
                   <span class="material-icons-outlined">event</span>
                   {{ task.dueDate | date:'MMM d' }}
-                </div>
-                <div class="footer-item">
-                  <span class="material-icons-outlined">chat_bubble_outline</span>
-                  {{ task.comments || 0 }}
                 </div>
               </div>
             </div>
@@ -365,10 +515,6 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                   <span class="material-icons-outlined">event</span>
                   {{ task.dueDate | date:'MMM d' }}
                 </div>
-                <div class="footer-item">
-                  <span class="material-icons-outlined">chat_bubble_outline</span>
-                  {{ task.comments || 0 }}
-                </div>
               </div>
             </div>
           </div>
@@ -388,7 +534,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
           <div
             cdkDropList
             [cdkDropListData]="doneTasks"
-            (cdkDropListDropped)="drop($event, 'DONE')"
+            (cdkDropListDropped)="drop($event, 'COMPLETED')"
             class="kanban-task-list">
             <div *ngFor="let task of doneTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
               <div class="card-content">
@@ -409,13 +555,60 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
                   <span class="material-icons-outlined">event</span>
                   {{ task.dueDate | date:'MMM d' }}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Column: Cancelled -->
+        <div class="kanban-column">
+          <div class="column-header">
+            <div class="header-left">
+              <span class="status-dot cancelled"></span>
+              <h3 class="column-title">Cancelled</h3>
+              <span class="count">{{ cancelledTasks.length }}</span>
+            </div>
+          </div>
+          
+          <div
+            cdkDropList
+            [cdkDropListData]="cancelledTasks"
+            (cdkDropListDropped)="drop($event, 'CANCELLED')"
+            class="kanban-task-list">
+            <div *ngFor="let task of cancelledTasks" cdkDrag class="kanban-task-card" (click)="viewTaskDetails(task)">
+              <div class="card-content">
+                <h4 class="task-title">{{ task.title }}</h4>
+                <p class="task-desc">{{ task.description }}</p>
+                
+                <div class="card-meta-row">
+                  <span class="priority-badge" [ngClass]="task.priority.toLowerCase()">
+                    <span class="dot"></span> {{ task.priority }}
+                  </span>
+                  <div class="assignee-avatar-sm" [style.background]="getAvatarColor(task.assigneeName || task.assignee)" [attr.title]="task.assigneeName || task.assignee || 'Unassigned'">
+                    {{ getInitials(task.assigneeName || task.assignee) }}
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
                 <div class="footer-item">
-                  <span class="material-icons-outlined">chat_bubble_outline</span>
-                  {{ task.comments || 0 }}
+                  <span class="material-icons-outlined">event</span>
+                  {{ task.dueDate | date:'MMM d' }}
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      
+      <!-- Pagination Footer -->
+      <div class="pagination-footer" *ngIf="!loading && tasks.length > 0">
+        <div class="load-more-container" *ngIf="currentPage < totalPages - 1">
+          <button class="btn btn-secondary load-more-btn" (click)="loadMore()" [disabled]="loadingMore">
+            <span class="spinner-sm" *ngIf="loadingMore"></span>
+            <span>{{ loadingMore ? 'Loading...' : 'Load More' }}</span>
+          </button>
+        </div>
+        <div class="pagination-info">
+          Showing {{ tasks.length }} of {{ totalElements }} tasks
         </div>
       </div>
 
@@ -482,9 +675,9 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
               </div>
               <div class="form-group flex-1">
                 <label>Due date <span class="text-danger">*</span></label>
-                <input type="date" class="form-control" [(ngModel)]="newTask.dueDate" required #dueDate="ngModel" [class.is-invalid]="dueDate.invalid && dueDate.touched" [min]="minDate">
-                <div class="invalid-feedback" *ngIf="dueDate.invalid && dueDate.touched">
-                  <span *ngIf="dueDate.errors?.['required']">Due date is required</span>
+                <app-datepicker [(ngModel)]="newTask.dueDate" [required]="true" [min]="minDate"></app-datepicker>
+                <div class="invalid-feedback" *ngIf="!newTask.dueDate">
+                  <span>Due date is required</span>
                 </div>
               </div>
             </div>
@@ -506,73 +699,93 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
         (updateField)="onPanelUpdateField($event)"
         (commentAdded)="addComment($event)">
       </app-task-detail-panel>
+
+      <!-- Task Bundle Modals -->
+      <app-task-bundle-modal
+        *ngIf="showBundleModal"
+        [isEdit]="isEditBundle"
+        [bundleData]="selectedBundle"
+        (close)="closeBundleModal()"
+        (saved)="onBundleSaved()">
+      </app-task-bundle-modal>
+
+      <app-task-bundle-manage-modal
+        *ngIf="showManageBundleModal"
+        (close)="closeManageBundlesModal()"
+        (edit)="onEditBundleFromManage($event)"
+        (create)="openCreateBundleModal()">
+      </app-task-bundle-manage-modal>
     </div>
   `,
   styles: [`
     :host { display: block; width: 100%; }
 
-    /* Advanced Filters Panel */
-    .advanced-filters-panel {
-      background: white;
-      border: 1px solid #eaecf0;
-      border-radius: 12px;
-      margin-bottom: 24px;
-      padding: 0;
-      max-height: 0;
-      overflow: hidden;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      opacity: 0;
+   
+    .header-left { display: flex; flex-direction: column; gap: 4px; }
+   
+   
+    
+   
+    
+   
+   
+    .switcher-btn .material-icons { font-size: 20px; }
+   
+    
+   
+   
+
+    /* Filters Section */
+   
+   
+   
+   
+   
+
+   
+   
+   
+
+    .filter-toggle-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      border: none;
+      background: var(--color-primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
       box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
     }
-    .advanced-filters-panel.show {
-      max-height: 200px;
-      padding: 20px 24px;
-      opacity: 1;
-      margin-bottom: 32px;
-    }
-    .filters-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 20px;
-      align-items: flex-end;
-    }
-    .filter-group {
+    .filter-toggle-btn:hover { background: var(--color-primary-hover); }
+    .filter-toggle-btn.active { background: var(--color-primary-hover); box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+
+    /* Advanced Filters Panel */
+   
+   
+   
+   
+   
+   
+   
+    .advanced-filters-footer {
+      margin-top: 20px;
       display: flex;
-      flex-direction: column;
-      gap: 6px;
     }
-    .filter-group label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #475467;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .filter-group input {
-      border: 1px solid #d0d5dd;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 0.875rem;
-      color: #101828;
-      outline: none;
-      transition: all 0.2s;
-    }
-    .filter-group input:focus {
-      border-color: #667cb0;
-      box-shadow: 0 0 0 4px rgba(102, 124, 176, 0.1);
-    }
-    .btn-ghost-sm {
+    .clear-filters-link {
       background: transparent;
       border: none;
-      color: #667085;
+      color: #2e90fa;
       font-size: 0.875rem;
       font-weight: 600;
       cursor: pointer;
-      padding: 8px;
-      text-align: left;
+      padding: 0;
     }
-    .btn-ghost-sm:hover {
-      color: #f04438;
+    .clear-filters-link:hover {
+      text-decoration: underline;
     }
 
     /* Task List Wrapper */
@@ -585,6 +798,8 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     .group-header.in-progress .group-title { color: #175cd3; }
     .group-header.todo .group-title { color: #344054; }
     .group-header.done .group-title { color: #027a48; }
+    .group-header.overdue .group-title { color: #b42318; }
+    .group-header.cancelled .group-title { color: #667085; }
     
     .group-count { background: #f2f4f7; color: #344054; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 12px; border: 1px solid #eaecf0; }
 
@@ -640,6 +855,8 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     .status-badge.in-progress { background: #eff8ff; color: #175cd3; }
     .status-badge.todo { background: #f2f4f7; color: #344054; }
     .status-badge.done { background: #ecfdf3; color: #027a48; }
+    .status-badge.overdue { background: #fef2f2; color: #b42318; border: 1px solid #fecdca; }
+    .status-badge.cancelled, .status-badge.rejected { background: #f2f4f7; color: #667085; border: 1px solid #d0d5dd; }
 
     /* Avatar Circles */
     .avatar-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: white; border: 2px solid white; box-shadow: 0 0 0 1px #eaecf0; }
@@ -659,6 +876,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     .modal-body { padding: 0 24px 24px; }
     .modal-subtitle { font-size: 0.8125rem; color: #667085; margin: 0 0 20px 0; }
     .text-danger { color: #f04438; }
+    .font-bold { font-weight: 700; }
     
     .form-group { margin-bottom: 20px; }
     .form-group label { display: block; font-size: 0.875rem; font-weight: 600; color: #344054; margin-bottom: 6px; }
@@ -685,7 +903,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 
     .modal-footer { padding: 16px 24px 24px; display: flex; justify-content: flex-end; gap: 12px; }
     .btn-secondary { background: white; border: 1px solid #d0d5dd; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; color: #344054; cursor: pointer; transition: all 0.2s; }
-    .btn-secondary:hover { background: #f9fafb; }
+    .btn-secondary:hover { background: #f9fafb; color: #344054; }
     .btn-ghost { background: transparent; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; color: #344054; cursor: pointer; transition: all 0.2s; }
     .btn-ghost:hover { background: #f2f4f7; color: #101828; }
 
@@ -778,11 +996,13 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     .kanban-wrapper { display: flex; gap: 1.5rem; min-height: 60vh; overflow-x: auto; padding-bottom: 1rem; align-items: flex-start; }
     .kanban-column { flex: 0 0 340px; background: #f9fafb; border-radius: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 250px); padding: 6px; }
     .column-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px 8px; }
-    .header-left { display: flex; align-items: center; gap: 8px; }
+    .column-header .header-left { display: flex; align-items: center; gap: 8px; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; }
     .status-dot.todo { background: #4b5563; }
     .status-dot.in-progress { background: #3b82f6; }
     .status-dot.done { background: #10b981; }
+    .status-dot.overdue { background: #d92d20; }
+    .status-dot.cancelled { background: #98a2b3; }
     .column-title { font-size: 0.9375rem; font-weight: 600; color: #101828; margin: 0; }
     .count { font-size: 0.75rem; color: #667085; }
     .kanban-task-list { flex: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 150px; }
@@ -807,6 +1027,41 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     .cdk-drag-preview { box-sizing: border-box; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
     .cdk-drag-placeholder { opacity: 0; }
     .cdk-drag-animating { transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); }
+
+    /* Pagination Footer */
+    .pagination-footer {
+      margin-top: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 40px;
+    }
+    .load-more-btn {
+      min-width: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      height: 44px;
+      border-radius: 22px;
+      font-weight: 600;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .pagination-info {
+      font-size: 0.875rem;
+      color: #667085;
+      font-weight: 500;
+    }
+    .spinner-sm {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top-color: #3b82f6;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
 export class TaskListComponent implements OnInit {
@@ -819,6 +1074,19 @@ export class TaskListComponent implements OnInit {
   assignedDateFrom = '';
   assignedDateTo = '';
   showAdvancedFilters = false;
+  loading = false;
+  loadingId: string | null = null;
+  
+  // Pagination
+  currentPage = 0;
+  pageSize = 20;
+  totalElements = 0;
+  totalPages = 0;
+  isInitialLoad = true;
+  loadingMore = false;
+  
+  availableStatuses: string[] = [];
+  availablePriorities: string[] = [];
   
   roles: Role[] = [];
   selectedRoleId: string = '';
@@ -831,6 +1099,8 @@ export class TaskListComponent implements OnInit {
   inProgressTasks: Task[] = [];
   todoTasks: Task[] = [];
   doneTasks: Task[] = [];
+  overdueTasks: Task[] = [];
+  cancelledTasks: Task[] = [];
   selectedTask: Task | null = null;
   selectedTaskComments: TaskComment[] = [];
   selectedTaskActivities: Activity[] = [];
@@ -841,7 +1111,6 @@ export class TaskListComponent implements OnInit {
   activeTab: string = 'comments';
   activeActionMenu: number | null = null;
   openDropdown: { taskId: number, field: string } | null = null;
-  loading = false;
   error: string | null = null;
   validationErrors: any[] = [];
 
@@ -851,7 +1120,7 @@ export class TaskListComponent implements OnInit {
     priority: 'MEDIUM',
     assigneeId: '',
     dueDate: '',
-    status: 'TO_DO'
+    status: 'PENDING'
   };
 
   getInitials(name?: string): string {
@@ -876,7 +1145,14 @@ export class TaskListComponent implements OnInit {
   private roleService = inject(RoleService);
   private branchService = inject(BranchService);
   private authService = inject(AuthService);
-  roleConfig = inject(RoleConfigService);
+  private notificationService = inject(NotificationService);
+  public roleConfig = inject(RoleConfigService);
+
+  // Task Bundle properties
+  showBundleModal = false;
+  showManageBundleModal = false;
+  selectedBundle: TaskBundle | null = null;
+  isEditBundle = false;
 
   constructor() {
     // Close dropdowns when clicking outside
@@ -891,6 +1167,54 @@ export class TaskListComponent implements OnInit {
     this.loadEmployees();
     this.loadRoles();
     this.loadBranches();
+    this.loadFilterOptions();
+  }
+
+  loadFilterOptions() {
+    this.taskService.getStatuses().subscribe({
+      next: (statuses) => this.availableStatuses = statuses,
+      error: (err) => console.error('Error loading statuses:', err)
+    });
+    this.taskService.getPriorities().subscribe({
+      next: (priorities) => this.availablePriorities = priorities,
+      error: (err) => console.error('Error loading priorities:', err)
+    });
+  }
+
+  formatEnumValue(value: any): string {
+    if (!value) return '';
+    
+    let str = '';
+    if (typeof value === 'string') {
+      str = value;
+    } else if (value && typeof value === 'object') {
+      // Try to find a label property
+      str = value.displayName || value.name || value.label || value.status || value.priority || value.value;
+      
+      // If still no string found, try to find the first string property
+      if (!str) {
+        const firstStringKey = Object.keys(value).find(k => typeof value[k] === 'string');
+        if (firstStringKey) str = value[firstStringKey];
+      }
+    }
+
+    if (!str) str = String(value);
+
+    // If it's still [object Object], return an empty string or a placeholder
+    if (str === '[object Object]') return 'Unknown';
+
+    return str.split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  getEnumValue(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object') {
+      return value.name || value.status || value.priority || value.value || value.id || String(value);
+    }
+    return String(value);
   }
 
   loadBranches() {
@@ -937,38 +1261,63 @@ export class TaskListComponent implements OnInit {
     });
   }
 
-  loadTasks(filter?: TaskFilter) {
-    this.loading = true;
+  loadTasks(filter?: TaskFilter, append = false) {
+    if (append) {
+      this.loadingMore = true;
+    } else {
+      this.loading = true;
+      this.currentPage = 0; // Reset to first page on new search/filter
+    }
+    
     this.error = null;
     this.validationErrors = [];
-    this.taskService.getTasks(filter).subscribe({
-      next: (tasks) => {
-        this.tasks = tasks;
+
+    const finalFilter: TaskFilter = {
+      ...filter,
+      page: this.currentPage,
+      size: this.pageSize,
+      sortBy: 'createdAt',
+      sortDir: 'desc'
+    };
+
+    this.taskService.getTasks(finalFilter).subscribe({
+      next: (response) => {
+        if (append) {
+          this.tasks = [...this.tasks, ...response.tasks];
+        } else {
+          this.tasks = response.tasks;
+        }
+        
+        this.totalElements = response.totalElements;
+        this.totalPages = response.totalPages;
+        
         this.groupTasksByStatus();
         this.loading = false;
-        
-        // Fetch comments count for each task asynchronously to display on the cards
-        this.tasks.forEach(task => {
-          this.taskService.getComments(task.id).subscribe({
-            next: (comments: any) => {
-              task.comments = comments && Array.isArray(comments) ? comments.length : 0;
-            },
-            error: () => {
-              task.comments = 0;
-            }
-          });
-        });
+        this.loadingMore = false;
+        this.isInitialLoad = false;
       },
       error: (err: ApiError) => {
         this.error = err.message || 'Failed to load tasks';
         this.validationErrors = err.errors || [];
         this.loading = false;
+        this.loadingMore = false;
         console.error('Error loading tasks:', err);
       }
     });
   }
 
+  loadMore() {
+    if (this.currentPage < this.totalPages - 1 && !this.loadingMore) {
+      this.currentPage++;
+      this.applyFilters(true);
+    }
+  }
+
   groupTasksByStatus() {
+    this.overdueTasks = this.tasks.filter(task => {
+      const status = task.status as any;
+      return status === 'OVERDUE';
+    });
     this.inProgressTasks = this.tasks.filter(task => {
       const status = task.status as any;
       return status === 'IN_PROGRESS' || status === 'IN PROGRESS';
@@ -981,9 +1330,13 @@ export class TaskListComponent implements OnInit {
       const status = task.status as any;
       return status === 'DONE' || status === 'COMPLETED';
     });
+    this.cancelledTasks = this.tasks.filter(task => {
+      const status = task.status as any;
+      return status === 'CANCELLED' || status === 'REJECTED';
+    });
   }
 
-  applyFilters() {
+  applyFilters(append = false) {
     const filter: TaskFilter = {
       search: this.searchQuery || undefined,
       status: this.filterStatus as Task['status'] || undefined,
@@ -993,7 +1346,14 @@ export class TaskListComponent implements OnInit {
       assignedDateFrom: this.assignedDateFrom || undefined,
       assignedDateTo: this.assignedDateTo || undefined
     };
-    this.loadTasks(filter);
+    this.loadTasks(filter, append);
+  }
+
+  resetFilters() {
+    this.searchQuery = '';
+    this.filterStatus = '';
+    this.filterPriority = '';
+    this.clearAdvancedFilters();
   }
 
   clearAdvancedFilters() {
@@ -1025,7 +1385,7 @@ export class TaskListComponent implements OnInit {
       priority: 'MEDIUM',
       assigneeId: '',
       dueDate: '',
-      status: 'TO_DO'
+      status: 'PENDING'
     };
   }
 
@@ -1061,12 +1421,11 @@ export class TaskListComponent implements OnInit {
     if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
       this.taskService.softDeleteTask(task.id).subscribe({
         next: () => {
-          this.tasks = this.tasks.filter(t => t.id !== task.id);
-          this.groupTasksByStatus();
+          this.notificationService.success('Task deleted successfully');
+          this.loadTasks();
         },
         error: (err: ApiError) => {
-          this.error = err.message || 'Failed to delete task';
-          console.error('Error deleting task:', err);
+          this.notificationService.error(err.message || 'Failed to delete task');
         }
       });
     }
@@ -1126,19 +1485,23 @@ export class TaskListComponent implements OnInit {
     // Remove from old list
     if (from === 'IN_PROGRESS') {
       this.inProgressTasks = this.inProgressTasks.filter(t => t.id !== task.id);
-    } else if (from === 'TO_DO') {
+    } else if (from === 'TO_DO' || from === 'PENDING') {
       this.todoTasks = this.todoTasks.filter(t => t.id !== task.id);
-    } else if (from === 'DONE') {
+    } else if (from === 'DONE' || from === 'COMPLETED') {
       this.doneTasks = this.doneTasks.filter(t => t.id !== task.id);
+    } else if (from === 'OVERDUE') {
+      this.overdueTasks = this.overdueTasks.filter(t => t.id !== task.id);
     }
 
     // Add to new list
     if (to === 'IN_PROGRESS') {
       this.inProgressTasks.unshift(task);
-    } else if (to === 'TO_DO') {
+    } else if (to === 'TO_DO' || to === 'PENDING') {
       this.todoTasks.unshift(task);
-    } else if (to === 'DONE') {
+    } else if (to === 'DONE' || to === 'COMPLETED') {
       this.doneTasks.unshift(task);
+    } else if (to === 'OVERDUE') {
+      this.overdueTasks.unshift(task);
     }
   }
 
@@ -1292,5 +1655,37 @@ export class TaskListComponent implements OnInit {
         }
       });
     }
+  }
+
+  // Task Bundle Methods
+  openCreateBundleModal() {
+    this.isEditBundle = false;
+    this.selectedBundle = null;
+    this.showBundleModal = true;
+    this.showManageBundleModal = false;
+  }
+
+  openManageBundlesModal() {
+    this.showManageBundleModal = true;
+  }
+
+  closeBundleModal() {
+    this.showBundleModal = false;
+    this.selectedBundle = null;
+  }
+
+  closeManageBundlesModal() {
+    this.showManageBundleModal = false;
+  }
+
+  onBundleSaved() {
+    this.closeBundleModal();
+    this.loadTasks();
+  }
+
+  onEditBundleFromManage(bundle: TaskBundle) {
+    this.isEditBundle = true;
+    this.selectedBundle = bundle;
+    this.showBundleModal = true;
   }
 }
