@@ -83,33 +83,6 @@ declare const lucide: any;
 
       <!-- Enrollment & Payment Charts Row -->
       <div class="enroll-charts-row">
-        <!-- Enrollment Trend Grouped Bar -->
-        <div class="enroll-chart-main">
-          <div class="card-tp-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
-            <div>
-              <h3 class="card-tp-title">Enrollment & Payment Trend</h3>
-              <p class="card-sub">Enrolled vs confirmed payments over selected period</p>
-            </div>
-            <div class="trend-filter-bar">
-              <div class="range-btn-group">
-                <button class="range-btn" [class.active]="trendRange === '7d'"  (click)="setTrendRange('7d')">7D</button>
-                <button class="range-btn" [class.active]="trendRange === '15d'" (click)="setTrendRange('15d')">15D</button>
-                <button class="range-btn" [class.active]="trendRange === '30d'" (click)="setTrendRange('30d')">30D</button>
-                <button class="range-btn" [class.active]="trendRange === 'custom'" (click)="setTrendRange('custom')">Custom</button>
-              </div>
-              <div class="custom-date-row" *ngIf="trendRange === 'custom'">
-                <input type="date" class="date-input-sm" [(ngModel)]="trendFrom" (change)="onCustomRangeChange()" placeholder="From">
-                <span class="date-sep">→</span>
-                <input type="date" class="date-input-sm" [(ngModel)]="trendTo" (change)="onCustomRangeChange()" placeholder="To">
-              </div>
-            </div>
-          </div>
-          <div class="chart-loading-overlay" *ngIf="trendLoading">
-            <div class="loading-spinner"></div>
-          </div>
-          <div id="enrollmentTrendChart" style="min-height: 320px;"></div>
-        </div>
-
         <!-- Payment Status Radial -->
         <div class="enroll-chart-side">
           <div style="margin-bottom:1.25rem;">
@@ -135,6 +108,44 @@ declare const lucide: any;
               <span class="rl-value">{{ getRejectedPct() }}%</span>
             </div>
           </div>
+        </div>
+
+        <!-- Conversion Funnel -->
+        <div class="enroll-chart-main">
+          <div class="card-tp-header" style="margin-bottom:1.25rem;">
+            <h3 class="card-tp-title">Conversion Funnel</h3>
+            <p class="card-sub">Lead to student conversion tracking</p>
+          </div>
+          <div id="funnelChart" style="min-height: 320px;"></div>
+        </div>
+      </div>
+
+      <!-- Enrollment Trend Grouped Bar -->
+      <div style="margin-bottom: 2rem;">
+        <div class="enroll-chart-main">
+          <div class="card-tp-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+            <div>
+              <h3 class="card-tp-title">Enrollment & Payment Trend</h3>
+              <p class="card-sub">Enrolled vs confirmed payments over selected period</p>
+            </div>
+            <div class="trend-filter-bar">
+              <div class="range-btn-group">
+                <button class="range-btn" [class.active]="trendRange === '7d'"  (click)="setTrendRange('7d')">7D</button>
+                <button class="range-btn" [class.active]="trendRange === '15d'" (click)="setTrendRange('15d')">15D</button>
+                <button class="range-btn" [class.active]="trendRange === '30d'" (click)="setTrendRange('30d')">30D</button>
+                <button class="range-btn" [class.active]="trendRange === 'custom'" (click)="setTrendRange('custom')">Custom</button>
+              </div>
+              <div class="custom-date-row" *ngIf="trendRange === 'custom'">
+                <input type="date" class="date-input-sm" [(ngModel)]="trendFrom" (change)="onCustomRangeChange()" placeholder="From">
+                <span class="date-sep">→</span>
+                <input type="date" class="date-input-sm" [(ngModel)]="trendTo" (change)="onCustomRangeChange()" placeholder="To">
+              </div>
+            </div>
+          </div>
+          <div class="chart-loading-overlay" *ngIf="trendLoading">
+            <div class="loading-spinner"></div>
+          </div>
+          <div id="enrollmentTrendChart" style="min-height: 320px;"></div>
         </div>
       </div>
 
@@ -324,7 +335,7 @@ declare const lucide: any;
     .ekpi-badge.info { background: #fef2f2; color: #dc2626; }
 
     /* ---- Enrollment Charts Row ---- */
-    .enroll-charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .enroll-charts-row { display: grid; grid-template-columns: 7fr 4fr; gap: 1.5rem; margin-bottom: 2rem; }
     .enroll-chart-main, .enroll-chart-side {
       background: white; border: 1px solid #eaecf0; border-radius: 12px;
       padding: 1.5rem; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1);
@@ -662,6 +673,39 @@ export class CompanyDashboardComponent implements AfterViewInit, OnInit {
         },
         tooltip: { theme: 'light', y: { formatter: (v: number) => v + '%' } }
       }).render();
+    }
+
+    // 3. Funnel Chart
+    const funnelEl = document.querySelector("#funnelChart");
+    if (funnelEl) {
+      const funnelOptions = {
+        series: [
+          {
+            name: "Funnel Series",
+            data: [1380, 1100, 990, 880, 740, 548],
+          },
+        ],
+        chart: { type: 'bar', height: 320, toolbar: { show: false } },
+        plotOptions: {
+          bar: {
+            borderRadius: 0,
+            horizontal: true,
+            barHeight: '80%',
+            isFunnel: true,
+          },
+        },
+        colors: ['#2563eb'],
+        dataLabels: {
+          enabled: true,
+          formatter: function (val: any, opt: any) {
+            return opt.w.globals.labels[opt.dataPointIndex] + ':  ' + val
+          },
+          dropShadow: { enabled: true },
+        },
+        xaxis: { categories: ['Leads', 'Qualified', 'Applied', 'Offer Letter', 'Visa Filed', 'Registered'] },
+        legend: { show: false },
+      };
+      new ApexCharts(funnelEl, funnelOptions).render();
     }
   }
 }

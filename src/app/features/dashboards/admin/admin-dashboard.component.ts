@@ -135,76 +135,90 @@ import { Router } from '@angular/router';
     </div>
   `,
   styles: [`
-   
-
-    /* Breadcrumbs */
-   
-
-   
-
-   
-
-   
-
-   
-
-   
+    .dashboard-wrapper { padding: 1.5rem; background: #fff; min-height: 100vh; }
+    .welcome-header { margin-bottom: 2rem; }
+    .welcome-title { font-size: 1.875rem; font-weight: 700; color: #111827; margin: 0; }
+    .welcome-subtitle { font-size: 1rem; color: #6b7280; margin-top: 0.25rem; }
 
     /* KPI Grid */
-   
-
-   
-
-   
-
-   
-
-   
-
-   
-
-   
-
-   
-   
-
-   
-
-   
-
-   
-
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(4, 1fr); 
+      gap: 1.5rem; 
+      margin-bottom: 2rem; 
+    }
+    .stat-card { 
+      background: #fff; 
+      padding: 1.5rem; 
+      border-radius: 1rem; 
+      border: 1px solid #e5e7eb; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+    }
+    .stat-label { font-size: 0.875rem; color: #6b7280; font-weight: 500; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: #111827; margin: 0.5rem 0; }
+    .stat-trend { display: flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; font-weight: 600; }
+    .stat-trend.up { color: #10b981; }
+    .stat-trend.down { color: #ef4444; }
+    .trend-label { color: #9ca3af; font-weight: 400; margin-left: 0.25rem; }
+    .stat-icon-wrap { width: 48px; height: 48px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; }
+    .stat-icon-wrap i { width: 24px; height: 24px; }
 
     /* Charts Grid */
-   
+    .charts-grid-tp { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 1.5rem; 
+      margin-bottom: 2rem; 
+    }
+    .chart-card-tp { 
+      background: #fff; 
+      padding: 1.5rem; 
+      border-radius: 1rem; 
+      border: 1px solid #e5e7eb; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+    }
+    .card-tp-title { font-size: 1.125rem; font-weight: 700; color: #111827; margin: 0 0 1.5rem 0; }
+    .chart-container-tp { min-height: 320px; width: 100%; }
 
-   
+    /* Tables Grid */
+    .data-grid-tp { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .table-card { 
+      background: #fff; 
+      border-radius: 1rem; 
+      border: 1px solid #e5e7eb; 
+      overflow: hidden; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+    }
+    .table-card-header { padding: 1.5rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+    .table-header-title h2 { font-size: 1.125rem; font-weight: 700; color: #111827; margin: 0; }
+    .count-badge { background: #f3f4f6; color: #4b5563; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.625rem; border-radius: 1rem; margin-left: 0.75rem; }
+    
+    .premium-table { width: 100%; border-collapse: collapse; }
+    .premium-table th { background: #f9fafb; padding: 0.75rem 1.5rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; }
+    .premium-table td { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.875rem; color: #374151; }
+    .status-badge-tp { padding: 0.25rem 0.625rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; }
+    .status-badge-tp.registered { background: #ecfdf5; color: #059669; }
+    .status-badge-tp.lead { background: #eff6ff; color: #2563eb; }
+    .status-badge-tp.lost { background: #fef2f2; color: #dc2626; }
 
-   
-
-   
-
-   
-
-    /* Data Grid */
-   
-
-   
-
-
-
-   
-
-   
-   
-   
-
-
+    /* Responsive Queries */
     @media (max-width: 1280px) {
-      .charts-grid-tp,
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    
+    @media (max-width: 1024px) {
+      .charts-grid-tp { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .dashboard-wrapper { padding: 1rem; }
+      .welcome-title { font-size: 1.5rem; }
+      .stat-card { padding: 1rem; }
+    }
   `]
 })
 export class AdminDashboardComponent {
