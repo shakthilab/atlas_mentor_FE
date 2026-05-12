@@ -1,11 +1,12 @@
-import { Component, Input, forwardRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { CalendarModule } from 'primeng/calendar';
 
 @Component({
   selector: 'app-datepicker',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CalendarModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -14,150 +15,91 @@ import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/f
     }
   ],
   template: `
-    <div class="datepicker-container" [class.disabled]="disabled" [class.focused]="isFocused" (click)="focusInput()">
-      <span class="material-icons calendar-icon">calendar_today</span>
-      <input 
-        #dateInput
-        [type]="inputType" 
-        [ngModel]="value" 
-        (ngModelChange)="onValueChange($event)"
-        (focus)="onFocus()"
-        (blur)="onBlur()"
-        [disabled]="disabled"
-        [min]="min"
-        [max]="max"
-        [required]="required"
-        [placeholder]="placeholder"
-        class="native-date-input"
-      >
-    </div>
+    <p-calendar
+      [ngModel]="dateValue"
+      (ngModelChange)="onDateChange($event)"
+      [showIcon]="true"
+      [iconDisplay]="'input'"
+      [minDate]="minDateObj"
+      [maxDate]="maxDateObj"
+      [required]="required"
+      [disabled]="disabled"
+      [placeholder]="placeholder"
+      dateFormat="dd/mm/yy"
+      styleClass="prime-datepicker"
+    ></p-calendar>
   `,
   styles: [`
-    .datepicker-container {
-      position: relative;
-      display: flex;
-      align-items: center;
+    :host { display: block; }
+    :host ::ng-deep .prime-datepicker { width: 100%; }
+    :host ::ng-deep .prime-datepicker .p-inputtext {
       width: 100%;
-      background: #ffffff;
-      border: 1px solid #d0d5dd;
       border-radius: 8px;
-      padding: 0 12px;
+      border: 1px solid #d0d5dd;
       height: 44px;
-      transition: all 0.2s ease;
-      cursor: text;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+      font-family: inherit;
+      font-size: 0.9375rem;
+      color: #101828;
+      padding: 0 12px;
     }
-
-    .datepicker-container:hover:not(.disabled) {
-      border-color: #667cb0;
-    }
-
-    .datepicker-container.focused {
+    :host ::ng-deep .prime-datepicker .p-inputtext:enabled:focus {
       border-color: #667cb0;
       box-shadow: 0 0 0 4px rgba(102, 124, 176, 0.1);
     }
-
-    .datepicker-container.disabled {
-      background: #f9fafb;
-      cursor: not-allowed;
-      border-color: #eaecf0;
-    }
-
-    .calendar-icon {
-      font-size: 1.25rem;
-      color: #667085;
-      margin-right: 10px;
-      pointer-events: none;
-    }
-
-    .native-date-input {
-      flex: 1;
-      border: none;
+    :host ::ng-deep .prime-datepicker .p-button {
       background: transparent;
-      font-size: 0.9375rem;
-      color: #101828;
-      outline: none;
-      font-family: inherit;
-      width: 100%;
-      height: 100%;
-      padding: 0;
-    }
-
-    .native-date-input::placeholder {
+      border: 1px solid #d0d5dd;
+      border-left: none;
+      border-radius: 0 8px 8px 0;
       color: #667085;
-      opacity: 1;
+      height: 44px;
     }
-
-    .disabled .calendar-icon,
-    .disabled .native-date-input {
-      color: #98a2b3;
+    :host ::ng-deep .prime-datepicker .p-button:hover {
+      background: #f9fafb;
+      color: #667cb0;
     }
-
-    /* Adjust date input internal padding for cleaner look */
-    .native-date-input::-webkit-calendar-picker-indicator {
-      cursor: pointer;
-      padding: 5px;
-      filter: invert(45%) sepia(10%) saturate(800%) hue-rotate(185deg) brightness(95%) contrast(90%);
+    :host ::ng-deep .p-calendar-w-btn .p-inputtext {
+      border-radius: 8px 0 0 8px;
     }
   `]
 })
 export class DatepickerComponent implements ControlValueAccessor {
   @Input() placeholder: string = 'Select date';
-  @Input() min: string = '';
-  @Input() max: string = '';
   @Input() required: boolean = false;
   @Input() disabled: boolean = false;
 
-  @ViewChild('dateInput') dateInput!: ElementRef<HTMLInputElement>;
+  @Input() set min(val: string) {
+    this.minDateObj = val ? new Date(val) : null;
+  }
+  @Input() set max(val: string) {
+    this.maxDateObj = val ? new Date(val) : null;
+  }
 
-  value: string = '';
-  isFocused: boolean = false;
-  inputType: 'text' | 'date' = 'text';
+  dateValue: Date | null = null;
+  minDateObj: Date | null = null;
+  maxDateObj: Date | null = null;
 
   onChange: any = () => {};
   onTouched: any = () => {};
 
   writeValue(value: any): void {
-    this.value = value || '';
-    this.updateInputType();
+    this.dateValue = value ? new Date(value) : null;
   }
 
-  registerOnChange(fn: any): void {
-    this.onChange = fn;
-  }
+  registerOnChange(fn: any): void { this.onChange = fn; }
+  registerOnTouched(fn: any): void { this.onTouched = fn; }
+  setDisabledState(isDisabled: boolean): void { this.disabled = isDisabled; }
 
-  registerOnTouched(fn: any): void {
-    this.onTouched = fn;
-  }
-
-  setDisabledState?(isDisabled: boolean): void {
-    this.disabled = isDisabled;
-  }
-
-  onValueChange(newValue: string): void {
-    this.value = newValue;
-    this.onChange(newValue);
-    this.onTouched();
-  }
-
-  onFocus(): void {
-    this.isFocused = true;
-    this.inputType = 'date';
-  }
-
-  onBlur(): void {
-    this.isFocused = false;
-    this.onTouched();
-    this.updateInputType();
-  }
-
-  private updateInputType(): void {
-    this.inputType = (this.value || this.isFocused) ? 'date' : 'text';
-  }
-
-  focusInput(): void {
-    if (!this.disabled) {
-      this.dateInput.nativeElement.focus();
+  onDateChange(date: Date | null): void {
+    this.dateValue = date;
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      this.onChange(`${y}-${m}-${d}`);
+    } else {
+      this.onChange(null);
     }
+    this.onTouched();
   }
 }

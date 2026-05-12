@@ -113,4 +113,22 @@ export class StudentService {
       map(response => response.data || response)
     );
   }
+
+  getDashboardSummary(): Observable<any> {
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.DASHBOARD.REFERRAL_SUMMARY}`).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  getCommissionTrend(params: { range?: string; from?: string; to?: string }): Observable<any> {
+    let query = '';
+    if (params.from && params.to) {
+      query = `?from=${params.from}&to=${params.to}`;
+    } else if (params.range) {
+      query = `?range=${params.range}`;
+    }
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.DASHBOARD.COMMISSION_TREND}${query}`).pipe(
+      map(response => response.data || response)
+    );
+  }
 }

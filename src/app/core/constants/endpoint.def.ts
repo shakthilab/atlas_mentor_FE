@@ -88,5 +88,9 @@ export const ApiEndpoint = {
     BASE: '/api/referral-resources',
     OWNER: '/api/referral-resources/owner',
     MY_RESOURCES: '/api/referral-resources/my-resources',
+  },
+  DASHBOARD: {
+    REFERRAL_SUMMARY: '/api/dashboard/referral-summary',
+    COMMISSION_TREND: '/api/dashboard/referral-commission-trend',
   }
 };

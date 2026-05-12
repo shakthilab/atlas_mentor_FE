@@ -5,11 +5,12 @@ import { TaskBundleService, TaskBundle, BundleTask, ScheduleType, BundleStatus, 
 import { RoleService, Role } from '../../../../core/services/role.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { DatepickerComponent } from '../../../../shared/components/datepicker/datepicker.component';
+import { CalendarModule } from 'primeng/calendar';
 
 @Component({
   selector: 'app-task-bundle-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatepickerComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatepickerComponent, CalendarModule],
   template: `
     <div class="modal-overlay" (click)="onCancel()">
       <div class="modal-content bundle-modal" (click)="$event.stopPropagation()">
@@ -83,7 +84,14 @@ import { DatepickerComponent } from '../../../../shared/components/datepicker/da
                     </div>
                     <div class="form-group flex-1">
                       <label>Execution Time <span class="required">*</span></label>
-                      <input type="time" formControlName="executionTime" class="form-control">
+                      <p-calendar
+                        [ngModel]="executionTimeDate"
+                        (ngModelChange)="onExecutionTimeChange($event)"
+                        [timeOnly]="true"
+                        hourFormat="12"
+                        placeholder="Select time"
+                        styleClass="time-picker-full"
+                      ></p-calendar>
                     </div>
                   </div>
 
@@ -342,6 +350,7 @@ export class TaskBundleModalComponent implements OnInit {
   isLoadingTasks = false;
   minDate = new Date().toISOString().split('T')[0];
   weekDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+  executionTimeDate: Date | null = null;
   collapsedTasks: boolean[] = [];
 
   constructor() {
@@ -384,6 +393,17 @@ export class TaskBundleModalComponent implements OnInit {
 
   get tasksArray() {
     return this.bundleForm.get('tasks') as FormArray;
+  }
+
+  onExecutionTimeChange(date: Date | null): void {
+    this.executionTimeDate = date;
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+      this.bundleForm.get('executionTime')?.setValue(`${h}:${m}`);
+    } else {
+      this.bundleForm.get('executionTime')?.setValue('');
+    }
   }
 
   loadRoles() {
@@ -434,6 +454,14 @@ export class TaskBundleModalComponent implements OnInit {
       dayOfMonth: schedule.dayOfMonth || schedule.executionDayOfMonth,
       executionDate: schedule.executionDate || schedule.oneTimeExecutionDate
     });
+
+    const timeStr = schedule.executionTime ? schedule.executionTime.substring(0, 5) : null;
+    if (timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
+      const d = new Date();
+      d.setHours(h, m, 0, 0);
+      this.executionTimeDate = d;
+    }
 
     this.tasksArray.clear();
     this.collapsedTasks = [];
