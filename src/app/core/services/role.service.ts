@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 export interface Role {
   id: number;
@@ -14,7 +16,7 @@ export interface Role {
   providedIn: 'root'
 })
 export class RoleService {
-  private apiUrl = 'http://65.2.175.37:8080/api/roles';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.ROLES.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 

@@ -6,15 +6,18 @@ import { FormsModule } from '@angular/forms';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
 import { StudentService } from '../../../../core/services/student.service';
+import { finalize } from 'rxjs/operators';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
 import { DatePipe } from '@angular/common';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { StudentFormComponent } from '../../students/student-form/student-form.component';
 import { StudentDetailComponent } from '../../students/student-detail/student-detail.component';
+import { DatepickerComponent } from '../../../../shared/components/datepicker/datepicker.component';
 
 @Component({
   selector: 'app-lead-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent],
+  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent, DatepickerComponent],
   providers: [DatePipe],
   template: `
     <div class="module-container">
@@ -44,16 +47,31 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
       <!-- Stats row -->
       <div class="stats-grid">
         <div class="stat-mini-card">
-          <span class="label">Total Leads</span>
-          <span class="value">{{ totalElements }}</span>
+          <div class="stat-icon-wrap" style="background: #eff4ff; color: #2e90fa;">
+            <span class="material-icons">groups</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">Total Leads</span>
+            <span class="value">{{ totalElements }}</span>
+          </div>
         </div>
         <div class="stat-mini-card">
-          <span class="label">New This Week</span>
-          <span class="value orange">{{ newLeadsCount }}</span>
+          <div class="stat-icon-wrap" style="background: #fffaeb; color: #f79009;">
+            <span class="material-icons">fiber_new</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">New This Week</span>
+            <span class="value">{{ newLeadsCount }}</span>
+          </div>
         </div>
         <div class="stat-mini-card">
-          <span class="label">Conversion Rate</span>
-          <span class="value">{{ conversionRate }}%</span>
+          <div class="stat-icon-wrap" style="background: #ecfdf3; color: #12b76a;">
+            <span class="material-icons">trending_up</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">Conversion Rate</span>
+            <span class="value">{{ conversionRate }}%</span>
+          </div>
         </div>
       </div>
 
@@ -98,11 +116,11 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
           </div>
           <div class="filter-group">
             <label>Date From</label>
-            <input type="date" [(ngModel)]="filterDateFrom" (change)="onFilterChange()">
+            <app-datepicker [(ngModel)]="filterDateFrom" (ngModelChange)="onFilterChange()"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Date To</label>
-            <input type="date" [(ngModel)]="filterDateTo" (change)="onFilterChange()">
+            <app-datepicker [(ngModel)]="filterDateTo" (ngModelChange)="onFilterChange()"></app-datepicker>
           </div>
           <div class="filter-group">
             <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
@@ -120,22 +138,23 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
       </app-empty-state>
 
       <!-- List View -->
-      <div class="table-card overflow-visible" *ngIf="leads.length > 0 && viewMode === 'list'">
-        <div class="table-responsive overflow-visible">
-          <table class="premium-table" style="min-width: 1100px;">
+      <div class="table-card" *ngIf="leads.length > 0 && viewMode === 'list'">
+        <div class="table-responsive">
+          <table class="premium-table">
             <thead>
               <tr>
                 <th>Lead</th>
                 <th>Contact Info</th>
                 <th>Status</th>
                 <th>Assigned To</th>
-                <th>Country / Source</th>
+                <th>Added by</th>
+                <th>Country / University</th>
                 <th>Lead Date</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let lead of leads" [class.row-active]="openStatusDropdownId === lead.id">
+              <tr *ngFor="let lead of leads; let i = index" [class.row-active]="openStatusDropdownId === lead.id">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(lead.name)">
@@ -149,7 +168,7 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                 </td>
                 <td>
                   <div class="entity-info">
-                    <span class="entity-name" style="font-weight: 500;">{{ lead.phone }}</span>
+                    <span class="entity-name" style="font-weight: 500;">{{ getFormattedPhone(lead) }}</span>
                     <span class="entity-subtext">{{ lead.email }}</span>
                   </div>
                 </td>
@@ -161,7 +180,7 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                       <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
                     </span>
                     
-                    <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === lead.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                    <div class="status-dropdown shadow-premium" [class.open-up]="i >= leads.length - 2" *ngIf="openStatusDropdownId === lead.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
                       <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(lead.id, s)">
                         <span class="dot" [ngClass]="getStatusClass(s)"></span>
                         {{ s }}
@@ -170,10 +189,11 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
                   </div>
                 </td>
                 <td>{{ lead.assignedTo }}</td>
+                <td>{{ lead.createdBy }}</td>
                 <td>
                   <div class="entity-info">
                     <span class="entity-name" style="font-weight: 500;">{{ lead.country }}</span>
-                    <span class="entity-subtext">{{ lead.source }}</span>
+                    <span class="entity-subtext">{{ lead.university }}</span>
                   </div>
                 </td>
                 <td>{{ lead.date }}</td>
@@ -191,15 +211,39 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
             </tbody>
           </table>
         </div>
+        
+        <!-- Pagination Footer -->
+        <div class="table-card-footer">
+          <button class="pagination-btn" [disabled]="currentPage === 0" (click)="changePage(currentPage - 1)">
+            <span class="material-icons">arrow_back</span>
+            Previous
+          </button>
+          
+          <div class="pagination-pages">
+            <ng-container *ngFor="let p of [].constructor(totalPages); let idx = index">
+              <button 
+                class="page-num" 
+                [class.active]="currentPage === idx" 
+                (click)="changePage(idx)"
+                *ngIf="idx < 5 || idx > totalPages - 2 || (idx >= currentPage - 1 && idx <= currentPage + 1)">
+                {{ idx + 1 }}
+              </button>
+            </ng-container>
+          </div>
+
+          <button class="pagination-btn" [disabled]="currentPage >= totalPages - 1" (click)="changePage(currentPage + 1)">
+            Next
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
       </div>
 
       <!-- Grid View -->
-      <div class="grid-container" *ngIf="leads.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+      <div class="grid-container" *ngIf="leads.length > 0 && viewMode === 'grid'">
         <div class="table-card" *ngFor="let lead of leads | slice:0:displayedCardsCount" 
              [class.overflow-visible]="openStatusDropdownId === lead.id"
-             [style.z-index]="openStatusDropdownId === lead.id ? '100' : '1'"
-             style="padding: 1.25rem; transition: all 0.2s; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+             [style.z-index]="openStatusDropdownId === lead.id ? '100' : '1'">
+          <div class="table-card-header" style="border-bottom: none; padding-bottom: 0;">
             <div class="entity-meta">
               <div class="avatar-circle" [style.background]="getAvatarColor(lead.name)">
                 {{ getInitials(lead.name) }}
@@ -224,26 +268,32 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
             </div>
           </div>
           
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
-            <div class="entity-info">
-              <span class="entity-subtext">Phone</span>
-              <span class="entity-name" style="font-size: 0.8125rem;">{{ lead.phone }}</span>
+          <div style="padding: 0 1.5rem 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
+              <div class="entity-info">
+                <span class="entity-subtext">Phone</span>
+                <span class="entity-name" style="font-size: 0.8125rem;">{{ getFormattedPhone(lead) }}</span>
+              </div>
+              <div class="entity-info">
+                <span class="entity-subtext">University</span>
+                <span class="entity-name" style="font-size: 0.8125rem;">{{ lead.university }}</span>
+              </div>
+              <div class="entity-info" style="grid-column: span 2;">
+                <span class="entity-subtext">Added by</span>
+                <span class="entity-name" style="font-size: 0.8125rem;">{{ lead.createdBy }}</span>
+              </div>
             </div>
-            <div class="entity-info">
-              <span class="entity-subtext">Source</span>
-              <span class="badge-status gray" style="align-self: flex-start; margin-top: 2px;">{{ lead.source }}</span>
-            </div>
-          </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
-            <span class="entity-subtext">{{ lead.date }}</span>
-            <div class="action-btns" (click)="$event.stopPropagation()">
-              <button class="btn-icon" (click)="openEditModal(lead.id)" title="Edit">
-                <span class="material-icons">edit</span>
-              </button>
-              <button class="btn-icon" style="color: var(--color-error);" (click)="openConfirmModal(lead.id)" title="Delete">
-                <span class="material-icons">delete_outline</span>
-              </button>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
+              <span class="entity-subtext">{{ lead.date }}</span>
+              <div class="action-btns" (click)="$event.stopPropagation()">
+                <button class="btn-icon" (click)="openEditModal(lead.id)" title="Edit">
+                  <span class="material-icons">edit</span>
+                </button>
+                <button class="btn-icon" style="color: var(--color-error);" (click)="openConfirmModal(lead.id)" title="Delete">
+                  <span class="material-icons">delete_outline</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -345,6 +395,21 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
       overflow: hidden;
       animation: dropdownFade 0.2s ease-out;
     }
+    
+    .status-dropdown.open-up {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      animation: dropdownUpFade 0.2s ease-out;
+    }
+
+    @keyframes dropdownUpFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .row-active { position: relative; z-index: 10 !important; }
     .dropdown-item {
       padding: 0.75rem 1rem;
       display: flex;
@@ -378,7 +443,9 @@ import { StudentDetailComponent } from '../../students/student-detail/student-de
 })
 export class LeadListComponent implements OnInit {
   router = inject(Router);
-  roleConfig = inject(RoleConfigService);
+  public roleConfig = inject(RoleConfigService);
+  private countryService = inject(CountryService);
+  countryCodes: CountryMobileCode[] = [];
   studentService = inject(StudentService);
   datePipe = inject(DatePipe);
   notificationService = inject(NotificationService);
@@ -396,6 +463,7 @@ export class LeadListComponent implements OnInit {
   allLeads: any[] = [];
   loading = false;
   totalElements = 0;
+  totalPages = 0;
   currentPage = 0;
   pageSize = 10;
 
@@ -420,51 +488,114 @@ export class LeadListComponent implements OnInit {
 
   ngOnInit() {
     this.loadLeads();
+    this.loadCountryCodes();
+  }
+
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => this.countryCodes = data,
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  getFormattedPhone(lead: any): string {
+    if (!lead) return 'N/A';
+    const phone = lead.phone || lead.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = lead.dialCode || lead.user?.dialCode;
+    const mccId = lead.mobileCountryCodeId || lead.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
   }
 
   loadLeads() {
     this.loading = true;
-    this.studentService.getNonRegisteredStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+    this.studentService.getNonRegisteredStudents(
+      this.currentPage, 
+      this.pageSize, 
+      this.searchQuery, 
+      this.filterStatus,
+      this.filterCountry,
+      this.filterSource
+    )
       .subscribe({
         next: (data) => {
-          this.allLeads = data.content.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
-            status: s.status || 'LEAD',
-            source: s.source || 'N/A',
-            country: s.country?.name || 'N/A',
-            date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
-            assignedTo: s.createdBy?.fullName || 'Unassigned'
-          }));
-          this.totalElements = data.totalElements;
+          console.log('Leads API Response:', data);
+          if (data && data.content) {
+            this.allLeads = data.content.map((s: any) => ({
+              id: s.id,
+              name: s.name || s.fullName || s.user?.fullName || 'N/A',
+              phone: s.phone || s.user?.phone,
+              email: s.email || s.user?.email,
+              mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
+              dialCode: s.dialCode || s.user?.dialCode,
+              status: s.status || 'LEAD',
+              country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+              university: s.universityName || s.university?.name || 'N/A',
+              date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
+              assignedTo: s.assignedBy?.fullName || s.assignedByName || 'Unassigned',
+              createdBy: s.createdByName || (s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A')
+            }));
+            this.totalElements = data.totalElements || 0;
+            this.totalPages = data.totalPages || Math.ceil(this.totalElements / this.pageSize) || 0;
+          } else {
+            console.warn('Leads API returned no content or unexpected structure', data);
+            this.allLeads = [];
+            this.totalElements = 0;
+            this.totalPages = 0;
+          }
           this.loading = false;
         },
         error: (err) => {
           console.error('Error fetching leads:', err);
           this.loading = false;
+          this.notificationService.error('Failed to load leads');
         }
       });
   }
 
+  changePage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.loadLeads();
+    }
+  }
+
   loadMoreCards() {
     this.currentPage++;
-    this.studentService.getNonRegisteredStudents(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus)
+    this.studentService.getNonRegisteredStudents(
+      this.currentPage, 
+      this.pageSize, 
+      this.searchQuery, 
+      this.filterStatus,
+      this.filterCountry,
+      this.filterSource
+    )
       .subscribe({
         next: (data) => {
-          const newLeads = data.content.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
-            status: s.status || 'LEAD',
-            source: s.source || 'N/A',
-            country: s.country?.name || 'N/A',
-            date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
-            assignedTo: s.createdBy?.fullName || 'Unassigned'
-          }));
-          this.allLeads = [...this.allLeads, ...newLeads];
+          if (data && data.content) {
+            const newLeads = data.content.map((s: any) => ({
+              id: s.id,
+              name: s.name || s.fullName || s.user?.fullName || 'N/A',
+              phone: s.phone || s.user?.phone,
+              email: s.email || s.user?.email,
+              status: s.status || 'LEAD',
+              country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+              university: s.universityName || s.university?.name || 'N/A',
+              date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy'),
+              assignedTo: s.assignedBy?.fullName || s.assignedByName || 'Unassigned',
+              createdBy: s.createdByName || (s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A')
+            }));
+            this.allLeads = [...this.allLeads, ...newLeads];
+          }
         }
       });
   }
@@ -505,7 +636,8 @@ export class LeadListComponent implements OnInit {
       },
       error: (err) => {
         this.updatingStatus = false;
-        this.notificationService.error('Failed to update status');
+        const errorMessage = err.error?.message || 'Failed to update status';
+        this.notificationService.error(errorMessage, 0, 'Update Failed', '', true);
         console.error(err);
       }
     });
@@ -605,6 +737,7 @@ export class LeadListComponent implements OnInit {
     const role = this.roleConfig.getCurrentUserRole();
     let prefix = 'admin';
     if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'BRANCH_PARTNER') prefix = 'branch-partner';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';
@@ -625,6 +758,7 @@ export class LeadListComponent implements OnInit {
     const role = this.roleConfig.getCurrentUserRole();
     let prefix = 'admin';
     if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'BRANCH_PARTNER') prefix = 'branch-partner';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';

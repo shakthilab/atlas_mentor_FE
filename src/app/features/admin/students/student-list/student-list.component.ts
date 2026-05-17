@@ -11,11 +11,14 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
 import { StudentFormComponent } from '../student-form/student-form.component';
 import { StudentDetailComponent } from '../student-detail/student-detail.component';
 import { NotificationService } from '../../../../core/services/notification.service';
+import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
+import { finalize } from 'rxjs/operators';
+import { DatepickerComponent } from '../../../../shared/components/datepicker/datepicker.component';
 
 @Component({
   selector: 'app-student-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent],
+  imports: [CommonModule, RouterModule, FormsModule, EmptyStateComponent, StudentFormComponent, StudentDetailComponent, DatepickerComponent],
   providers: [DatePipe],
   template: `
     <div class="module-container" (click)="closeAllDropdowns()">
@@ -77,11 +80,11 @@ import { NotificationService } from '../../../../core/services/notification.serv
           </div>
           <div class="filter-group">
             <label>Joined Date From</label>
-            <input type="date" [(ngModel)]="filterDateFrom">
+            <app-datepicker [(ngModel)]="filterDateFrom"></app-datepicker>
           </div>
           <div class="filter-group">
             <label>Joined Date To</label>
-            <input type="date" [(ngModel)]="filterDateTo">
+            <app-datepicker [(ngModel)]="filterDateTo"></app-datepicker>
           </div>
           <div class="filter-group">
             <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
@@ -89,8 +92,16 @@ import { NotificationService } from '../../../../core/services/notification.serv
         </div>
       </div>
 
+      <!-- Loading State -->
+      <div class="loading-container shadow-premium" *ngIf="loading">
+        <div class="spinner-container">
+          <div class="loading-spinner"></div>
+        </div>
+        <p style="color: var(--color-gray-500);">Loading students...</p>
+      </div>
+
       <app-empty-state 
-        *ngIf="students.length === 0"
+        *ngIf="students.length === 0 && !loading"
         title="No Students Found"
         message="There are currently no students registered. Add your first student to get started."
         [showAction]="true"
@@ -99,22 +110,23 @@ import { NotificationService } from '../../../../core/services/notification.serv
       </app-empty-state>
 
       <!-- List View -->
-      <div class="table-card overflow-visible" *ngIf="students.length > 0 && viewMode === 'list'">
-        <div class="table-responsive overflow-visible">
-          <table class="premium-table" style="min-width: 1100px;">
+      <div class="table-card" *ngIf="students.length > 0 && viewMode === 'list' && !loading">
+        <div class="table-responsive">
+          <table class="premium-table">
             <thead>
               <tr>
                 <th>Student</th>
                 <th>Contact Info</th>
                 <th>Status</th>
                 <th>Counsellor</th>
+                <th>Added by</th>
                 <th>Country / University</th>
                 <th>Joined Date</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let student of students" [class.row-active]="openStatusDropdownId === student.id">
+              <tr *ngFor="let student of students; let i = index" [class.row-active]="openStatusDropdownId === student.id">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(student.name)">
@@ -128,7 +140,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
                 </td>
                 <td>
                   <div class="entity-info">
-                    <span class="entity-name" style="font-weight: 500;">{{ student.phone }}</span>
+                    <span class="entity-name" style="font-weight: 500;">{{ getFormattedPhone(student) }}</span>
                     <span class="entity-subtext">{{ student.email }}</span>
                   </div>
                 </td>
@@ -140,7 +152,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
                       <span class="material-icons" *ngIf="roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" style="font-size: 14px;">expand_more</span>
                     </span>
                     
-                    <div class="status-dropdown shadow-premium" *ngIf="openStatusDropdownId === student.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
+                    <div class="status-dropdown shadow-premium" [class.open-up]="i >= students.length - 2" *ngIf="openStatusDropdownId === student.id && roleConfig.getCurrentUserRole() !== 'REFERRAL' && roleConfig.getCurrentUserRole() !== 'COMPANY'" (click)="$event.stopPropagation()">
                       <div class="dropdown-item" *ngFor="let s of statusOptions" (click)="selectNewStatus(student.id, s)">
                         <span class="dot" [ngClass]="getStatusClass(s)"></span>
                         {{ s }}
@@ -149,6 +161,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
                   </div>
                 </td>
                 <td>{{ student.counsellor }}</td>
+                <td>{{ student.createdBy }}</td>
                 <td>
                   <div class="entity-info">
                     <span class="entity-name" style="font-weight: 500;">{{ student.country }}</span>
@@ -169,6 +182,31 @@ import { NotificationService } from '../../../../core/services/notification.serv
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- Pagination Footer -->
+        <div class="table-card-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-gray-200);">
+          <button class="pagination-btn" [disabled]="currentPage === 0" (click)="changePage(currentPage - 1)">
+            <span class="material-icons">arrow_back</span>
+            Previous
+          </button>
+          
+          <div class="pagination-pages" style="display: flex; gap: 4px;">
+            <ng-container *ngFor="let p of [].constructor(totalPages); let idx = index">
+              <button 
+                class="page-num" 
+                [class.active]="currentPage === idx" 
+                (click)="changePage(idx)"
+                *ngIf="idx < 5 || idx > totalPages - 2 || (idx >= currentPage - 1 && idx <= currentPage + 1)">
+                {{ idx + 1 }}
+              </button>
+            </ng-container>
+          </div>
+
+          <button class="pagination-btn" [disabled]="currentPage >= totalPages - 1" (click)="changePage(currentPage + 1)">
+            Next
+            <span class="material-icons">arrow_forward</span>
+          </button>
         </div>
       </div>
 
@@ -206,11 +244,19 @@ import { NotificationService } from '../../../../core/services/notification.serv
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
             <div class="entity-info">
               <span class="entity-subtext">Phone</span>
-              <span class="entity-name" style="font-size: 0.8125rem;">{{ student.phone }}</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ getFormattedPhone(student) }}</span>
             </div>
             <div class="entity-info">
               <span class="entity-subtext">Country</span>
               <span class="entity-name" style="font-size: 0.8125rem;">{{ student.country }}</span>
+            </div>
+            <div class="entity-info">
+              <span class="entity-subtext">University</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ student.university }}</span>
+            </div>
+            <div class="entity-info">
+              <span class="entity-subtext">Added by</span>
+              <span class="entity-name" style="font-size: 0.8125rem;">{{ student.createdBy }}</span>
             </div>
           </div>
 
@@ -220,14 +266,14 @@ import { NotificationService } from '../../../../core/services/notification.serv
               <button class="btn-icon" (click)="toggleActionDropdown($event, student.id)">
                 <span class="material-icons">more_vert</span>
               </button>
-              <div class="status-dropdown shadow-premium" *ngIf="openActionDropdownId === student.id" (click)="$event.stopPropagation()" style="right: 0; left: auto; top: calc(100% + 4px); min-width: 120px;">
+              <div class="action-dropdown shadow-premium" *ngIf="openActionDropdownId === student.id" (click)="$event.stopPropagation()" style="right: 0; left: auto;">
                 <div class="dropdown-item" (click)="openEditModal(student.id); openActionDropdownId = null">
-                  <span class="material-icons" style="font-size: 18px;">edit</span>
-                  <span style="font-weight: 500;">Edit</span>
+                  <span class="material-icons">edit</span>
+                  <span>Edit</span>
                 </div>
                 <div class="dropdown-item" style="color: var(--color-error);" (click)="deleteStudent(student.id); openActionDropdownId = null">
-                  <span class="material-icons" style="font-size: 18px;">delete_outline</span>
-                  <span style="font-weight: 500;">Delete</span>
+                  <span class="material-icons">delete_outline</span>
+                  <span>Delete</span>
                 </div>
               </div>
             </div>
@@ -305,8 +351,6 @@ import { NotificationService } from '../../../../core/services/notification.serv
     .table-responsive.overflow-visible { 
       overflow-x: auto; 
       overflow-y: visible !important; 
-      padding-bottom: 180px !important;
-      margin-bottom: -180px !important;
     }
     .table-card.overflow-visible { overflow: visible !important; }
 
@@ -330,6 +374,17 @@ import { NotificationService } from '../../../../core/services/notification.serv
       text-align: left;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.05);
       animation: dropdownIn 0.2s ease-out;
+    }
+
+    .status-dropdown.open-up {
+      top: auto;
+      bottom: calc(100% + 8px);
+      animation: dropdownUpIn 0.2s ease-out;
+    }
+
+    @keyframes dropdownUpIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     @keyframes dropdownIn {
@@ -398,14 +453,44 @@ export class StudentListComponent implements OnInit {
   updatingStatus = false;
   statusOptions = ['LEAD', 'PROSPECTIVE', 'REGISTERED', 'STUDENT', 'LOST'];
 
+  private countryService = inject(CountryService);
+  countryCodes: CountryMobileCode[] = [];
+
   allStudents: any[] = [];
   loading = false;
   totalElements = 0;
+  totalPages = 0;
   currentPage = 0;
   pageSize = 10;
 
   ngOnInit() {
     this.loadStudents();
+    this.loadCountryCodes();
+  }
+
+  loadCountryCodes() {
+    this.countryService.getMobileCountryCodes().subscribe({
+      next: (data) => this.countryCodes = data,
+      error: (err) => console.error('Failed to load country codes', err)
+    });
+  }
+
+  getFormattedPhone(student: any): string {
+    if (!student) return 'N/A';
+    const phone = student.phone || student.user?.phone;
+    if (!phone) return 'N/A';
+
+    if (phone.startsWith('+')) return phone;
+
+    let dialCode = student.dialCode || student.user?.dialCode;
+    const mccId = student.mobileCountryCodeId || student.user?.mobileCountryCodeId;
+
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+
+    return dialCode ? `${dialCode} ${phone}` : phone;
   }
 
   openAddModal() {
@@ -423,6 +508,7 @@ export class StudentListComponent implements OnInit {
     let prefix = 'admin';
 
     if (role === 'MANAGER') prefix = 'manager';
+    else if (role === 'BRANCH_PARTNER') prefix = 'branch-partner';
     else if (role === 'EMPLOYEE' || role === 'SENIOR_COUNSELLOR' || role === 'JUNIOR_COUNSELLOR') prefix = 'employee';
     else if (role === 'COMPANY') prefix = 'company';
     else if (role === 'REFERRAL') prefix = 'referral';
@@ -489,7 +575,8 @@ export class StudentListComponent implements OnInit {
       error: (err) => {
         console.error('Error updating status:', err);
         this.updatingStatus = false;
-        this.notificationService.error('Failed to update status');
+        const errorMessage = err.error?.message || 'Failed to update status';
+        this.notificationService.error(errorMessage, 0, 'Update Failed', '', true);
       }
     });
   }
@@ -503,6 +590,13 @@ export class StudentListComponent implements OnInit {
     if (this.deleting) return;
     this.showConfirmModal = false;
     this.studentIdToDelete = null;
+  }
+
+  changePage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.loadStudents();
+    }
   }
 
   executeDelete() {
@@ -532,16 +626,20 @@ export class StudentListComponent implements OnInit {
         next: (data) => {
           this.allStudents = data.content.map((s: any) => ({
             id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
+            name: s.fullName || s.name || s.user?.fullName || 'N/A',
+            phone: s.phone || s.user?.phone,
+            email: s.email || s.user?.email,
+            mobileCountryCodeId: s.mobileCountryCodeId || s.user?.mobileCountryCodeId,
+            dialCode: s.dialCode || s.user?.dialCode,
             status: s.status,
-            counsellor: s.createdBy?.fullName || 'Unassigned',
-            country: s.country?.name || 'N/A',
-            university: s.university?.name || 'N/A',
+            counsellor: s.assignedByName || s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByName || (s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A'),
+            country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+            university: s.universityName || s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
           }));
-          this.totalElements = data.totalElements;
+          this.totalElements = data.totalElements || 0;
+          this.totalPages = data.totalPages || Math.ceil(this.totalElements / this.pageSize) || 0;
           this.loading = false;
         },
         error: (err) => {
@@ -568,13 +666,14 @@ export class StudentListComponent implements OnInit {
         next: (data) => {
           const newStudents = data.content.map((s: any) => ({
             id: s.id,
-            name: s.name,
-            phone: s.phone,
-            email: s.email,
+            name: s.fullName || s.name || s.user?.fullName || 'N/A',
+            phone: s.phone || s.user?.phone,
+            email: s.email || s.user?.email,
             status: s.status,
-            counsellor: s.createdBy?.fullName || 'Unassigned',
-            country: s.country?.name || 'N/A',
-            university: s.university?.name || 'N/A',
+            counsellor: s.assignedByName || s.assignedBy?.fullName || 'Unassigned',
+            createdBy: s.createdByName || (s.createdByUser ? `${s.createdByUser.fullName} (${s.createdByUser.role || 'N/A'})` : 'N/A'),
+            country: s.countryName || s.country?.name || s.user?.country?.name || 'N/A',
+            university: s.universityName || s.university?.name || 'N/A',
             date: this.datePipe.transform(s.createdAt, 'dd MMM yyyy')
           }));
           this.allStudents = [...this.allStudents, ...newStudents];
@@ -595,6 +694,8 @@ export class StudentListComponent implements OnInit {
       case 'ADMIN':
         return 'Manage all student leads and registered accounts.';
       case 'MANAGER':
+        return 'Manage students for your branch.';
+      case 'BRANCH_PARTNER':
         return 'Manage students for your branch.';
       case 'COMPANY':
         return 'Manage students referred by your company.';

@@ -4,6 +4,8 @@ import { delay, tap, catchError } from 'rxjs/operators';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 interface LoginResponse {
   success: boolean;
@@ -34,8 +36,9 @@ export class AuthService {
   private sessionExpiredSubject = new BehaviorSubject<boolean>(false);
   public sessionExpired$: Observable<boolean> = this.sessionExpiredSubject.asObservable();
   
-  private apiUrl = 'http://65.2.175.37:8080/api/auth';
-  private studentApiUrl = 'http://65.2.175.37:8080/api/students';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.AUTH.LOGIN.replace('/login', ''); // Base auth URL
+  private authEndpoints = ApiEndpoint.AUTH;
+  private studentApiUrl = environment.serviceUrl + ApiEndpoint.STUDENTS.BASE;
   private http = inject(HttpClient);
   private router = inject(Router);
 
@@ -63,7 +66,8 @@ export class AuthService {
       const mockUsers: User[] = [
         { id: '1', name: 'Admin User', email: 'admin@atlas.com', role: 'Admin', status: 'ACTIVE' },
         { id: '2', name: 'Manager User', email: 'manager@atlas.com', role: 'Manager', status: 'ACTIVE' },
-        { id: '3', name: 'Jane Student', email: 'jane@student.com', role: 'Student', status: 'ACTIVE' }
+        { id: '3', name: 'Branch Partner User', email: 'partner@atlas.com', role: 'BRANCH_PARTNER', status: 'ACTIVE' },
+        { id: '4', name: 'Jane Student', email: 'jane@student.com', role: 'Student', status: 'ACTIVE' }
       ];
       localStorage.setItem(this.USERS_KEY, JSON.stringify(mockUsers));
     }
@@ -79,7 +83,7 @@ export class AuthService {
   }
 
   login(email: string, password?: string): Observable<User | null> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
+    return this.http.post<LoginResponse>(environment.serviceUrl + this.authEndpoints.LOGIN, { email, password }).pipe(
       map(response => {
         if (response.success && response.data) {
           const apiUser = response.data;
@@ -119,7 +123,7 @@ export class AuthService {
   }
 
   registerStudent(studentData: any): Observable<any> {
-    return this.http.post(`${this.studentApiUrl}/register`, studentData).pipe(
+    return this.http.post(environment.serviceUrl + ApiEndpoint.STUDENTS.REGISTER, studentData).pipe(
       catchError(error => {
         const errorMessage = error.error?.message || 'Registration failed. Please try again.';
         throw new Error(errorMessage);
@@ -128,7 +132,7 @@ export class AuthService {
   }
 
   verifyEmail(token: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/verify-email`, { params: { token } }).pipe(
+    return this.http.get(environment.serviceUrl + this.authEndpoints.VERIFY_EMAIL, { params: { token } }).pipe(
       catchError(error => {
         const errorMessage = error.error?.message || 'Email verification failed.';
         throw new Error(errorMessage);
@@ -140,7 +144,7 @@ export class AuthService {
     const headers = new HttpHeaders().set('Content-Type', 'application/x-www-form-urlencoded');
     const body = new HttpParams().set('email', email);
     
-    return this.http.post(`${this.apiUrl}/forgot-password`, body.toString(), { headers }).pipe(
+    return this.http.post(environment.serviceUrl + this.authEndpoints.FORGOT_PASSWORD, body.toString(), { headers }).pipe(
       catchError(error => {
         const errorMessage = error.error?.message || 'Failed to send reset link.';
         throw new Error(errorMessage);
@@ -154,7 +158,7 @@ export class AuthService {
       .set('token', token)
       .set('newPassword', newPassword);
     
-    return this.http.post(`${this.apiUrl}/reset-password`, body.toString(), { headers }).pipe(
+    return this.http.post(environment.serviceUrl + this.authEndpoints.RESET_PASSWORD, body.toString(), { headers }).pipe(
       catchError(error => {
         const errorMessage = error.error?.message || 'Failed to reset password.';
         throw new Error(errorMessage);

@@ -67,8 +67,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </div>
 
       <!-- Loading State -->
-      <div class="loading-container shadow-premium" *ngIf="loading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
-        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+      <div class="loading-container shadow-premium" *ngIf="loading">
+        <div class="spinner-container">
           <div class="loading-spinner"></div>
         </div>
         <p style="color: var(--color-gray-500);">Loading branches...</p>
@@ -84,10 +84,10 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </app-empty-state>
 
       <!-- Table View -->
-      <div class="table-card" *ngIf="!loading && branches.length > 0 && viewMode === 'list'" style="border-radius: 12px; border: 1px solid var(--color-gray-200); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 2rem;">
+      <div class="table-card" *ngIf="!loading && branches.length > 0 && viewMode === 'list'">
         <div class="table-responsive">
           <table class="premium-table" style="width: 100%; border-collapse: collapse;">
-            <thead style="background: var(--color-gray-50); border-bottom: 1px solid var(--color-gray-200);">
+            <thead>
               <tr>
                 <th>Branch Name</th>
                 <th>Location</th>
@@ -98,7 +98,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let branch of filteredBranches" class="clickable-row" (click)="openEditModal(branch)">
+              <tr *ngFor="let branch of branches; let i = index" class="clickable-row" (click)="openEditModal(branch)">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" style="background: var(--color-primary-light); color: var(--color-primary);">
@@ -145,15 +145,18 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <button class="btn-icon" (click)="openEditModal(branch)" title="Edit"><span class="material-icons">edit</span></button>
                     <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + branch.id)"><span class="material-icons">more_vert</span></button>
                     
-                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + branch.id" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
-                      <button class="dropdown-item" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
+                    <div class="action-dropdown shadow-premium" 
+                         *ngIf="openDropdownId === 'row-' + branch.id" 
+                         (click)="$event.stopPropagation()"
+                         [ngClass]="{'open-up': i >= branches.length - 2 && branches.length > 3}">
+                      <button class="dropdown-item" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status !== 'INACTIVE'" style="color: #b54708;">
+                        <span class="material-icons">block</span> Deactivate
                       </button>
-                      <button class="dropdown-item" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
+                      <button class="dropdown-item" (click)="onToggleStatus(branch); openDropdownId = null" *ngIf="branch.status === 'INACTIVE'" style="color: #027a48;">
+                        <span class="material-icons">check_circle</span> Reactivate
                       </button>
-                      <button class="dropdown-item" (click)="onDeleteBranch(branch.id); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">delete</span> Delete
+                      <button class="dropdown-item" (click)="onDeleteBranch(branch.id); openDropdownId = null" style="color: #b42318;">
+                        <span class="material-icons">delete</span> Delete
                       </button>
                     </div>
                   </div>
@@ -161,6 +164,31 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- Pagination Footer -->
+        <div class="table-card-footer" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-gray-200);">
+          <button class="pagination-btn" [disabled]="currentPage === 0" (click)="changePage(currentPage - 1)">
+            <span class="material-icons">arrow_back</span>
+            Previous
+          </button>
+          
+          <div class="pagination-pages" style="display: flex; gap: 4px;">
+            <ng-container *ngFor="let p of [].constructor(totalPages); let idx = index">
+              <button 
+                class="page-num" 
+                [class.active]="currentPage === idx" 
+                (click)="changePage(idx)"
+                *ngIf="idx < 5 || idx > totalPages - 2 || (idx >= currentPage - 1 && idx <= currentPage + 1)">
+                {{ idx + 1 }}
+              </button>
+            </ng-container>
+          </div>
+
+          <button class="pagination-btn" [disabled]="currentPage >= totalPages - 1" (click)="changePage(currentPage + 1)">
+            Next
+            <span class="material-icons">arrow_forward</span>
+          </button>
         </div>
       </div>
 
@@ -320,6 +348,10 @@ export class BranchListComponent implements OnInit {
   displayedCardsCount = 10;
   submitting = false;
   loading = true;
+  totalElements = 0;
+  totalPages = 0;
+  currentPage = 0;
+  pageSize = 10;
   openDropdownId: string | null = null;
   
   newBranch: Partial<Branch> = { name: '', location: '' };
@@ -336,14 +368,36 @@ export class BranchListComponent implements OnInit {
   }
 
   loadMoreCards() {
-    this.displayedCardsCount += 10;
+    this.currentPage++;
+    this.branchService.getBranchesPaginated(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus).subscribe({
+      next: (data) => {
+        const branches = data.content || (Array.isArray(data) ? data : []);
+        this.branches = [...this.branches, ...branches];
+        this.currentPage = data.number !== undefined ? data.number : this.currentPage;
+      }
+    });
+  }
+
+  changePage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.loadBranches();
+    }
   }
 
   loadBranches() {
     this.loading = true;
-    this.branchService.getAllBranches().subscribe({
+    this.branchService.getBranchesPaginated(this.currentPage, this.pageSize, this.searchQuery, this.filterStatus).subscribe({
       next: (data) => {
-        this.branches = data;
+        if (Array.isArray(data)) {
+          this.branches = data;
+          this.totalElements = data.length;
+          this.totalPages = 1;
+        } else {
+          this.branches = data.content || [];
+          this.totalElements = data.totalElements || this.branches.length;
+          this.totalPages = data.totalPages || Math.ceil(this.totalElements / this.pageSize);
+        }
         this.loading = false;
       },
       error: (err) => {
@@ -351,11 +405,14 @@ export class BranchListComponent implements OnInit {
         this.notificationService.error('Failed to load branches. Please check your connection.');
         this.loading = false;
         // Fallback to mock data if API fails in dev
-        this.branches = [
+        const mockBranches: Branch[] = [
           { id: 1, name: 'Ahmedabad Main', location: '401, Sapphire Complex, CG Road, Ahmedabad, Gujarat', staffCount: 12, studentCount: 145, revenue: 84000, manager: { id: 1, name: 'John Doe', email: 'john@example.com' }, status: 'ACTIVE' },
           { id: 2, name: 'Mumbai North', location: 'Shop 12, Sterling Center, Andheri West, Mumbai', staffCount: 8, studentCount: 92, revenue: 52000, manager: { id: 2, name: 'Sarah Jenkins', email: 'sarah@example.com' }, status: 'ACTIVE' },
           { id: 3, name: 'Delhi South', location: 'B-42, Lajpat Nagar, New Delhi', staffCount: 15, studentCount: 184, revenue: 112000, manager: { id: 3, name: 'Rohan Gupta', email: 'rohan@example.com' }, status: 'INACTIVE' }
         ];
+        this.branches = mockBranches;
+        this.totalElements = mockBranches.length;
+        this.totalPages = 1;
       }
     });
   }
@@ -385,23 +442,17 @@ export class BranchListComponent implements OnInit {
   }
 
   get filteredBranches(): Branch[] {
-    return this.branches.filter(branch => {
-      const matchesSearch = !this.searchQuery || 
-        branch.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        branch.location.toLowerCase().includes(this.searchQuery.toLowerCase());
-      
-      const matchesStatus = !this.filterStatus || branch.status === this.filterStatus;
-      
-      return matchesSearch && matchesStatus;
-    });
+    return this.branches;
   }
 
   onSearchChange() {
-    this.displayedCardsCount = 10;
+    this.currentPage = 0;
+    this.loadBranches();
   }
 
   onFilterChange() {
-    this.displayedCardsCount = 10;
+    this.currentPage = 0;
+    this.loadBranches();
   }
 
   resetFilters() {

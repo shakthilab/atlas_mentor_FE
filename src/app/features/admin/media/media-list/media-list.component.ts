@@ -1,10 +1,12 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
+import { ReferralResourceService } from '../../../../core/services/referral-resource.service';
+import { ReferralResource } from '../../../../core/models/referral-resource.model';
 
 @Component({
   selector: 'app-media-list',
@@ -14,160 +16,147 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
     <div class="module-container">
       <div class="module-header">
         <div class="header-left">
-          <h1 class="page-title">{{ roleConfig.getRoleSpecificTitle('Media & Documents') }}</h1>
+          <h1 class="page-title">{{ roleConfig.getRoleSpecificTitle('Media & Resources') }}</h1>
           <p class="page-subtitle">{{ getRoleSpecificSubtitle() }}</p>
         </div>
         <div class="header-actions">
           <div class="view-switcher">
-            <button class="switcher-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List View">
-              <span class="material-icons">list</span>
-              <span>List</span>
-            </button>
             <button class="switcher-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Grid View">
               <span class="material-icons">grid_view</span>
               <span>Grid</span>
             </button>
+            <button class="switcher-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List View">
+              <span class="material-icons">list</span>
+              <span>List</span>
+            </button>
           </div>
-          <button class="btn btn-primary" (click)="uploadMedia()">
-            <span class="material-icons">cloud_upload</span>
-            <span>Upload Media</span>
-          </button>
         </div>
       </div>
 
-      <!-- Stats row for media -->
+      <!-- Quick Stats -->
       <div class="stats-grid">
         <div class="stat-mini-card">
-          <span class="label">Total Files</span>
-          <span class="value">{{ mediaFiles.length }}</span>
+          <div class="stat-icon-wrap" style="background: #eff6ff; color: #2563eb;">
+            <span class="material-icons">folder</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">Total Resources</span>
+            <span class="value">{{ resources.length }}</span>
+          </div>
         </div>
         <div class="stat-mini-card">
-          <span class="label">Storage Used</span>
-          <span class="value orange">{{ totalStorageUsed }}</span>
-        </div>
-        <div class="stat-mini-card">
-          <span class="label">This Month</span>
-          <span class="value">{{ thisMonthUploads }}</span>
+          <div class="stat-icon-wrap" style="background: #ecfdf3; color: #16a34a;">
+            <span class="material-icons">check_circle</span>
+          </div>
+          <div class="stat-content">
+            <span class="label">Active Resources</span>
+            <span class="value">{{ activeCount }}</span>
+          </div>
         </div>
       </div>
 
-      <!-- Filters Section -->
+      <!-- Search & Filter -->
       <div class="filters-card">
         <div class="search-bar">
           <span class="material-icons">search</span>
-          <input type="text" placeholder="Search by filename or type..." [(ngModel)]="searchQuery">
+          <input type="text" placeholder="Search resources..." [(ngModel)]="searchQuery">
         </div>
         <div class="filter-actions">
-          <select class="filter-select" [(ngModel)]="filterType">
+          <select class="filter-select" [(ngModel)]="filterResourceType">
             <option value="">All Types</option>
-            <option value="Image">Images</option>
-            <option value="Document">Documents</option>
-            <option value="Video">Videos</option>
-            <option value="Audio">Audio</option>
-            <option value="Other">Other</option>
+            <option value="DOCUMENT">Documents</option>
+            <option value="IMAGE">Images</option>
+            <option value="VIDEO">Videos</option>
+            <option value="LINK">Links</option>
           </select>
-          <select class="filter-select" [(ngModel)]="filterCategory">
-            <option value="">All Categories</option>
-            <option value="Student Docs">Student Documents</option>
-            <option value="Marketing">Marketing</option>
-            <option value="Training">Training</option>
-            <option value="Legal">Legal</option>
-          </select>
-          <button class="btn-icon-secondary" [class.active]="showAdvancedFilters" (click)="showAdvancedFilters = !showAdvancedFilters" title="Advanced Filters">
-            <span class="material-icons">tune</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Advanced Filters Panel -->
-      <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
-        <div class="filters-grid">
-          <div class="filter-group">
-            <label>Upload Date From</label>
-            <input type="date" [(ngModel)]="filterDateFrom">
-          </div>
-          <div class="filter-group">
-            <label>Upload Date To</label>
-            <input type="date" [(ngModel)]="filterDateTo">
-          </div>
-          <div class="filter-group">
-            <label>File Size</label>
-            <select [(ngModel)]="filterSize">
-              <option value="">All Sizes</option>
-              <option value="small">&lt; 1MB</option>
-              <option value="medium">1MB - 10MB</option>
-              <option value="large">&gt; 10MB</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <button class="btn-ghost-sm" (click)="resetFilters()">Reset All Filters</button>
-          </div>
         </div>
       </div>
 
       <app-empty-state 
-        *ngIf="filteredMedia.length === 0"
-        title="No Media Files Found"
-        message="There are currently no media files matching your criteria. Upload your first media file to get started."
-        [showAction]="true"
-        actionText="Upload Media"
-        (actionClick)="uploadMedia()">
+        *ngIf="filteredResources.length === 0 && !isLoading"
+        title="No Resources Available"
+        message="There are currently no media or resource files shared with you."
+        [showAction]="false">
       </app-empty-state>
 
+      <div class="loading-container shadow-premium" *ngIf="isLoading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
+        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+          <div class="loading-spinner"></div>
+        </div>
+        <p style="color: var(--color-gray-500);">Fetching your resources...</p>
+      </div>
+
+      <!-- Grid View -->
+      <div class="grid-container" *ngIf="viewMode === 'grid' && filteredResources.length > 0 && !isLoading">
+        <div class="table-card" *ngFor="let res of filteredResources" style="padding: 0; overflow: hidden;" (click)="viewResource(res)">
+          <div class="card-preview" [ngClass]="res.resourceType.toLowerCase()" style="height: 140px; display: flex; align-items: center; justify-content: center; position: relative; background: #f8fafc;">
+            <span class="material-icons" style="font-size: 48px;">{{ getResourceIcon(res.resourceType) }}</span>
+            <div class="card-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center;">
+              <span class="material-icons" style="color: white; font-size: 32px; opacity: 0;">visibility</span>
+            </div>
+          </div>
+          
+          <div class="card-details" style="padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+              <h3 style="font-size: 0.9375rem; font-weight: 600; color: var(--color-gray-900); margin: 0; line-height: 1.4;">{{ res.fileName }}</h3>
+              <span class="badge-status info" style="font-size: 0.625rem; padding: 2px 6px;">{{ res.resourceType }}</span>
+            </div>
+            <p style="font-size: 0.8125rem; color: var(--color-gray-500); margin: 0 0 1rem; line-height: 1.5; height: 2.4rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ res.description }}</p>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="material-icons" style="font-size: 16px; color: var(--color-gray-400);">history</span>
+                <span style="font-size: 0.75rem; color: var(--color-gray-500);">{{ res.createdAt | date:'MMM d, y' }}</span>
+              </div>
+              <button class="btn-icon" style="color: var(--color-primary);">
+                <span class="material-icons">open_in_new</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- List View -->
-      <div class="table-card" *ngIf="filteredMedia.length > 0 && viewMode === 'list'">
+      <div class="table-card" *ngIf="viewMode === 'list' && filteredResources.length > 0 && !isLoading">
         <div class="table-responsive">
           <table class="premium-table">
             <thead>
               <tr>
-                <th style="width: 40px;"><input type="checkbox"></th>
-                <th>File</th>
+                <th>Resource</th>
                 <th>Type</th>
-                <th>Category</th>
-                <th>Size</th>
-                <th>Uploaded By</th>
-                <th>Upload Date</th>
+                <th>Shared Date</th>
+                <th>Description</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let media of filteredMedia" class="clickable-row">
-                <td><input type="checkbox"></td>
+              <tr *ngFor="let res of filteredResources" class="clickable-row" (click)="viewResource(res)">
                 <td>
                   <div class="entity-meta">
-                    <div class="file-icon" [ngClass]="getFileIconClass(media.type)">
-                      <span class="material-icons">{{ getFileIcon(media.type) }}</span>
+                    <div class="avatar-circle" [style.background]="getAvatarColor(res.resourceType)" style="border-radius: 8px;">
+                      <span class="material-icons" style="font-size: 18px;">{{ getResourceIcon(res.resourceType) }}</span>
                     </div>
                     <div class="entity-info">
-                      <span class="entity-name">{{ media.name }}</span>
-                      <span class="entity-subtext">{{ media.description }}</span>
+                      <span class="entity-name">{{ res.fileName }}</span>
                     </div>
                   </div>
                 </td>
                 <td>
-                  <span class="badge-status" [ngClass]="getTypeBadgeClass(media.type)">
-                    {{ media.type }}
+                  <span class="badge-status info">{{ res.resourceType }}</span>
+                </td>
+                <td>{{ res.createdAt | date:'MMM d, y' }}</td>
+                <td>
+                  <span style="font-size: 0.8125rem; color: var(--color-gray-500); max-width: 300px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ res.description }}
                   </span>
                 </td>
-                <td>
-                  <span class="badge-status gray">{{ media.category }}</span>
-                </td>
-                <td>{{ media.size }}</td>
-                <td>{{ media.uploadedBy }}</td>
-                <td>{{ media.uploadDate }}</td>
                 <td style="text-align: right;">
-                  <div class="action-btns" (click)="$event.stopPropagation()">
-                    <button class="btn-icon" (click)="downloadMedia(media.id)" title="Download">
-                      <span class="material-icons">download</span>
-                    </button>
-                    <button class="btn-icon" (click)="previewMedia(media.id)" title="Preview">
+                  <div class="action-btns">
+                    <button class="btn-icon" title="View Resource">
                       <span class="material-icons">visibility</span>
                     </button>
-                    <button class="btn-icon" (click)="shareMedia(media.id)" title="Share">
-                      <span class="material-icons">share</span>
-                    </button>
-                    <button class="btn-icon" style="color: var(--color-error);" (click)="deleteMedia(media.id)" title="Delete">
-                      <span class="material-icons">delete_outline</span>
+                    <button class="btn-icon" style="color: var(--color-primary);" title="Open External">
+                      <span class="material-icons">open_in_new</span>
                     </button>
                   </div>
                 </td>
@@ -176,220 +165,128 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
           </table>
         </div>
       </div>
-
-      <!-- Grid View -->
-      <div class="grid-container" *ngIf="filteredMedia.length > 0 && viewMode === 'grid'" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
-        <div class="table-card" *ngFor="let media of filteredMedia | slice:0:displayedCardsCount" style="cursor: pointer; padding: 1.25rem; transition: all 0.2s;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-            <div class="file-icon" [ngClass]="getFileIconClass(media.type)" style="width: 48px; height: 48px;">
-              <span class="material-icons">{{ getFileIcon(media.type) }}</span>
-            </div>
-            <span class="badge-status" [ngClass]="getTypeBadgeClass(media.type)">{{ media.type }}</span>
-          </div>
-          
-          <div style="margin-bottom: 1rem;">
-            <div class="entity-name" style="font-weight: 600; margin-bottom: 0.25rem;">{{ media.name }}</div>
-            <div class="entity-subtext" style="font-size: 0.8125rem; line-height: 1.4;">{{ media.description }}</div>
-          </div>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; padding: 1rem; background: var(--color-gray-50); border-radius: 8px;">
-            <div class="entity-info">
-              <span class="entity-subtext">Size</span>
-              <span class="entity-name" style="font-size: 0.8125rem;">{{ media.size }}</span>
-            </div>
-            <div class="entity-info">
-              <span class="entity-subtext">Category</span>
-              <span class="badge-status gray" style="align-self: flex-start; margin-top: 2px; font-size: 0.75rem;">{{ media.category }}</span>
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--color-gray-100);">
-            <span class="entity-subtext" style="font-size: 0.75rem;">{{ media.uploadDate }}</span>
-            <div class="action-btns" (click)="$event.stopPropagation()">
-              <button class="btn-icon" (click)="downloadMedia(media.id)" title="Download">
-                <span class="material-icons">download</span>
-              </button>
-              <button class="btn-icon" (click)="previewMedia(media.id)" title="Preview">
-                <span class="material-icons">visibility</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Load More -->
-        <div *ngIf="filteredMedia.length > displayedCardsCount" style="grid-column: 1 / -1; display: flex; justify-content: center; margin-top: 1rem;">
-          <button class="btn btn-secondary" (click)="loadMoreCards()">
-            <span>Load More Files</span>
-            <span class="material-icons">expand_more</span>
-          </button>
-        </div>
-      </div>
     </div>
   `,
   styles: [`
-    :host { display: block; width: 100%; }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
-    .stat-mini-card { background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-gray-200); display: flex; flex-direction: column; gap: 0.5rem; box-shadow: var(--shadow-sm); }
-    .stat-mini-card .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--color-gray-500); letter-spacing: 0.05em; }
-    .stat-mini-card .value { font-size: 1.75rem; font-weight: 700; color: var(--color-gray-900); }
-    .stat-mini-card .value.orange { color: #f79009; }
-    .file-icon { 
-      width: 40px; 
-      height: 40px; 
-      border-radius: 8px; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-size: 20px;
+    :host { display: block; width: 100%; padding: 2.5rem; background: var(--dash-bg-main); min-height: 100vh; }
+    
+
+
+   
+   
+   
+
+    .table-card:hover .card-preview .card-overlay { opacity: 1 !important; }
+    .table-card:hover .card-preview .material-icons { transform: scale(1.1); }
+
+    .card-preview.document { color: #3b82f6; }
+    .card-preview.image { color: #f59e0b; }
+    .card-preview.video { color: #ef4444; }
+    .card-preview.link { color: #10b981; }
+
+    .loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--color-gray-200);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
-    .file-icon.image { background: #fef3c7; color: #f59e0b; }
-    .file-icon.document { background: #dbeafe; color: #3b82f6; }
-    .file-icon.video { background: #fce7f3; color: #ec4899; }
-    .file-icon.audio { background: #d1fae5; color: #10b981; }
-    .file-icon.other { background: #f3f4f6; color: #6b7280; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
-export class MediaListComponent {
+export class MediaListComponent implements OnInit {
   router = inject(Router);
   roleConfig = inject(RoleConfigService);
-  searchQuery = '';
-  filterType = '';
-  filterCategory = '';
-  filterSize = '';
-  filterDateFrom = '';
-  filterDateTo = '';
-  showAdvancedFilters = false;
-  viewMode: 'list' | 'grid' = 'grid';
-  displayedCardsCount = 12;
+  resourceService = inject(ReferralResourceService);
 
-  loadMoreCards() {
-    this.displayedCardsCount += 12;
+  resources: ReferralResource[] = [];
+  isLoading = true;
+  searchQuery = '';
+  filterResourceType = '';
+  viewMode: 'list' | 'grid' = 'grid';
+
+  ngOnInit() {
+    this.loadMyResources();
+  }
+
+  loadMyResources() {
+    this.isLoading = true;
+    this.resourceService.getMyResources().subscribe({
+      next: (res) => {
+        this.resources = res;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error loading resources:', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  get filteredResources() {
+    return this.resources.filter(res => {
+      const matchesSearch = !this.searchQuery || 
+        res.fileName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        res.description.toLowerCase().includes(this.searchQuery.toLowerCase());
+      
+      const matchesType = !this.filterResourceType || res.resourceType === this.filterResourceType;
+      
+      return matchesSearch && matchesType;
+    });
+  }
+
+  get activeCount() {
+    return this.resources.filter(r => r.isActive).length;
+  }
+
+  getResourceIcon(type: string): string {
+    switch (type) {
+      case 'DOCUMENT': return 'description';
+      case 'IMAGE': return 'image';
+      case 'VIDEO': return 'videocam';
+      case 'LINK': return 'link';
+      default: return 'insert_drive_file';
+    }
+  }
+
+  getTypeBadgeClass(type: string): string {
+    switch (type) {
+      case 'DOCUMENT': return 'info';
+      case 'IMAGE': return 'warning';
+      case 'VIDEO': return 'error';
+      case 'LINK': return 'success';
+      default: return 'info';
+    }
+  }
+
+  getAvatarColor(type: string): string {
+    switch (type) {
+      case 'DOCUMENT': return '#38bdf8';
+      case 'IMAGE': return '#fbbf24';
+      case 'VIDEO': return '#f87171';
+      case 'LINK': return '#34d399';
+      default: return '#94a3b8';
+    }
+  }
+
+  viewResource(resource: ReferralResource) {
+    if (resource.externalUrl) {
+      window.open(resource.externalUrl, '_blank');
+    } else {
+      console.log('Downloading file:', resource.fileName);
+    }
   }
 
   getRoleSpecificSubtitle(): string {
     const role = this.roleConfig.getCurrentUserRole();
     switch (role) {
-      case 'ADMIN':
-        return 'Manage documents, images, videos, and other media files.';
-      case 'MANAGER':
-        return 'Manage media files for your branch.';
       case 'COMPANY':
-        return 'Manage media files for your company.';
+        return 'Access resources and documents shared with your company.';
       case 'REFERRAL':
-        return 'Manage your referral-related media files.';
+        return 'Access resources and documents shared with you as a referral partner.';
       default:
-        return 'Manage media and documents.';
-    }
-  }
-
-  mediaFiles = [
-    { id: 'MD1001', name: 'Student Application Form.pdf', type: 'Document', category: 'Student Docs', size: '2.4 MB', uploadedBy: 'Admin', uploadDate: '15 Apr 2024', description: 'Standard student application template' },
-    { id: 'MD1002', name: 'University Campus Tour.mp4', type: 'Video', category: 'Marketing', size: '156 MB', uploadedBy: 'Rohan Gupta', uploadDate: '14 Apr 2024', description: 'Virtual campus tour video' },
-    { id: 'MD1003', name: 'Company Logo.png', type: 'Image', category: 'Marketing', size: '45 KB', uploadedBy: 'Siddharth Patel', uploadDate: '13 Apr 2024', description: 'Official company logo' },
-    { id: 'MD1004', name: 'Training Manual.pdf', type: 'Document', category: 'Training', size: '8.7 MB', uploadedBy: 'Admin', uploadDate: '12 Apr 2024', description: 'Employee training manual' },
-    { id: 'MD1005', name: 'Podcast Episode 1.mp3', type: 'Audio', category: 'Marketing', size: '23 MB', uploadedBy: 'Rohan Gupta', uploadDate: '11 Apr 2024', description: 'Educational podcast episode' },
-    { id: 'MD1006', name: 'Legal Agreement.docx', type: 'Document', category: 'Legal', size: '124 KB', uploadedBy: 'Admin', uploadDate: '10 Apr 2024', description: 'Standard legal agreement template' },
-    { id: 'MD1007', name: 'Student Photo.jpg', type: 'Image', category: 'Student Docs', size: '2.1 MB', uploadedBy: 'Siddharth Patel', uploadDate: '09 Apr 2024', description: 'Student passport photo' },
-    { id: 'MD1008', name: 'Promotional Video.mov', type: 'Video', category: 'Marketing', size: '89 MB', uploadedBy: 'Rohan Gupta', uploadDate: '08 Apr 2024', description: 'Marketing promotional video' }
-  ];
-
-  get totalStorageUsed(): string {
-    const totalMB = this.mediaFiles.reduce((total, file) => {
-      const size = parseFloat(file.size);
-      return total + size;
-    }, 0);
-    
-    if (totalMB < 1024) {
-      return `${totalMB.toFixed(1)} MB`;
-    } else {
-      return `${(totalMB / 1024).toFixed(1)} GB`;
-    }
-  }
-
-  get thisMonthUploads(): number {
-    // This is a simplified calculation - in real app, would check actual dates
-    return this.mediaFiles.filter(file => file.uploadDate.includes('Apr')).length;
-  }
-
-  get filteredMedia() {
-    return this.mediaFiles.filter(media => {
-      const matchesSearch = !this.searchQuery || 
-        media.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        media.description.toLowerCase().includes(this.searchQuery.toLowerCase());
-      
-      const matchesType = !this.filterType || media.type === this.filterType;
-      const matchesCategory = !this.filterCategory || media.category === this.filterCategory;
-      
-      let matchesSize = true;
-      if (this.filterSize) {
-        const size = parseFloat(media.size);
-        switch (this.filterSize) {
-          case 'small':
-            matchesSize = size < 1;
-            break;
-          case 'medium':
-            matchesSize = size >= 1 && size <= 10;
-            break;
-          case 'large':
-            matchesSize = size > 10;
-            break;
-        }
-      }
-      
-      return matchesSearch && matchesType && matchesCategory && matchesSize;
-    });
-  }
-
-  uploadMedia() {
-    console.log('Upload new media file');
-  }
-
-  downloadMedia(id: string) {
-    console.log('Download media:', id);
-  }
-
-  previewMedia(id: string) {
-    console.log('Preview media:', id);
-  }
-
-  shareMedia(id: string) {
-    console.log('Share media:', id);
-  }
-
-  deleteMedia(id: string) {
-    console.log('Delete media:', id);
-  }
-
-  resetFilters() {
-    this.searchQuery = '';
-    this.filterType = '';
-    this.filterCategory = '';
-    this.filterSize = '';
-    this.filterDateFrom = '';
-    this.filterDateTo = '';
-  }
-
-  getFileIcon(type: string): string {
-    switch (type.toLowerCase()) {
-      case 'image': return 'image';
-      case 'document': return 'description';
-      case 'video': return 'videocam';
-      case 'audio': return 'audio_file';
-      default: return 'insert_drive_file';
-    }
-  }
-
-  getFileIconClass(type: string): string {
-    return type.toLowerCase();
-  }
-
-  getTypeBadgeClass(type: string): string {
-    switch (type.toLowerCase()) {
-      case 'image': return 'warning';
-      case 'document': return 'primary';
-      case 'video': return 'error';
-      case 'audio': return 'success';
-      default: return 'gray';
+        return 'Access your shared resources and documents.';
     }
   }
 }

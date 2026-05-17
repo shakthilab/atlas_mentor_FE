@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, HostListener } from '@angular/core';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 import { BranchService } from '../../../../core/services/branch.service';
 import { Branch } from '../../../../core/models/branch.model';
@@ -11,6 +11,7 @@ import { EmployeeService, Employee } from '../../../../core/services/employee.se
 import { NotificationService } from '../../../../core/services/notification.service';
 import { LoadingService } from '../../../../core/services/loading.service';
 import { CountryService, CountryMobileCode } from '../../../../core/services/country.service';
+import { RoleConfigService } from '../../../../core/services/role-config.service';
 
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 
@@ -74,8 +75,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </div>
 
       <!-- Loading State -->
-      <div class="loading-container shadow-premium" *ngIf="isLoading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
-        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+      <div class="loading-container shadow-premium" *ngIf="isLoading">
+        <div class="spinner-container">
           <div class="loading-spinner"></div>
         </div>
         <p style="color: var(--color-gray-500);">Loading employees...</p>
@@ -108,7 +109,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let emp of employees" class="clickable-row" (click)="viewDetails(emp)">
+                <tr *ngFor="let emp of employees; let i = index" class="clickable-row" (click)="viewDetails(emp)">
                   <td>
                     <div class="entity-meta">
                       <div class="avatar-circle" [style.background]="getAvatarColor(emp.name || (emp.firstName + ' ' + emp.lastName))">
@@ -142,15 +143,18 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                         <button class="btn-icon" (click)="toggleDropdown($event, emp.id || emp.email)"><span class="material-icons">more_vert</span></button>
                         
                         <!-- Dropdown Menu -->
-                        <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === (emp.id || emp.email)" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
-                          <button class="dropdown-item" (click)="confirmDeactivate(emp); openDropdownId = null" *ngIf="emp.status !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                            <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
+                        <div class="action-dropdown shadow-premium" 
+                             *ngIf="openDropdownId === (emp.id || emp.email)" 
+                             (click)="$event.stopPropagation()"
+                             [ngClass]="{'open-up': i >= employees.length - 2 && employees.length > 3}">
+                          <button class="dropdown-item" (click)="confirmDeactivate(emp); openDropdownId = null" *ngIf="emp.status !== 'INACTIVE'" style="color: #b54708;">
+                            <span class="material-icons">block</span> Deactivate
                           </button>
-                          <button class="dropdown-item" (click)="confirmReactivate(emp); openDropdownId = null" *ngIf="emp.status === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                            <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
+                          <button class="dropdown-item" (click)="confirmReactivate(emp); openDropdownId = null" *ngIf="emp.status === 'INACTIVE'" style="color: #027a48;">
+                            <span class="material-icons">check_circle</span> Reactivate
                           </button>
-                          <button class="dropdown-item" (click)="confirmDelete(emp); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                            <span class="material-icons" style="font-size: 18px;">delete_outline</span> Delete
+                          <button class="dropdown-item" (click)="confirmDelete(emp); openDropdownId = null" style="color: #b42318;">
+                            <span class="material-icons">delete_outline</span> Delete
                           </button>
                         </div>
                       </ng-container>
@@ -256,16 +260,25 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                 <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">First Name</label>
                   <input type="text" class="form-control" formControlName="firstName" placeholder="e.g., John">
+                  <div *ngIf="employeeForm.get('firstName')?.touched && employeeForm.get('firstName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    First name is required.
+                  </div>
                 </div>
                 <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Last Name</label>
                   <input type="text" class="form-control" formControlName="lastName" placeholder="e.g., Smith">
+                  <div *ngIf="employeeForm.get('lastName')?.touched && employeeForm.get('lastName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    Last name is required.
+                  </div>
                 </div>
               </div>
 
               <div class="form-group" style="margin-bottom: 1rem;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Email Address</label>
                 <input type="email" class="form-control" formControlName="email" placeholder="john.smith@company.com" [readonly]="isEditMode">
+                <div *ngIf="employeeForm.get('email')?.touched && employeeForm.get('email')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Please enter a valid email address.
+                </div>
               </div>
 
               <div class="form-group" style="margin-bottom: 1rem;">
@@ -275,7 +288,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" style="width: 20px; height: 14px; margin-right: 6px;">
                     <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
                   </div>
-                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [maxlength]="selectedCountry?.mobileNumberLength || 20">
                 </div>
                 <div *ngIf="employeeForm.get('phone')?.touched && employeeForm.get('phone')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
                   <span *ngIf="employeeForm.get('phone')?.hasError('required')">Phone number is required.</span>
@@ -293,6 +306,9 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <option value="" disabled>Select Branch</option>
                     <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name }}</option>
                   </select>
+                  <div *ngIf="employeeForm.get('branchId')?.touched && employeeForm.get('branchId')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    Branch is required.
+                  </div>
                 </div>
                 <div class="form-group" style="flex: 1;">
                   <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Role</label>
@@ -300,12 +316,15 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <option value="" disabled>Select Role</option>
                     <option *ngFor="let role of roles" [value]="role.id">{{ role.displayName || role.name }}</option>
                   </select>
+                  <div *ngIf="employeeForm.get('roleId')?.touched && employeeForm.get('roleId')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                    Role is required.
+                  </div>
                 </div>
               </div>
 
               <div class="modal-footer" style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="employeeForm.invalid || submitting">
+                <button type="submit" class="btn btn-primary" [disabled]="submitting">
                   {{ isEditMode ? 'Save Changes' : 'Create Employee' }}
                 </button>
               </div>
@@ -343,7 +362,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </div>
               <div class="entity-info">
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Phone</span>
-                <span class="entity-name" style="margin-top: 4px;">{{ selectedEmployee?.phone || 'N/A' }}</span>
+                <span class="entity-name" style="margin-top: 4px;">{{ getFormattedPhone(selectedEmployee) }}</span>
               </div>
               <div class="entity-info">
                 <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Branch</span>
@@ -403,6 +422,8 @@ export class EmployeeListComponent implements OnInit {
   private roleService = inject(RoleService);
   private employeeService = inject(EmployeeService);
   private notificationService = inject(NotificationService);
+  router = inject(Router);
+  public roleConfig = inject(RoleConfigService);
   public loadingService = inject(LoadingService);
   private countryService = inject(CountryService);
   private fb = inject(FormBuilder);
@@ -418,6 +439,24 @@ export class EmployeeListComponent implements OnInit {
   isEditMode = false;
   editingEmployeeId: string | number | null = null;
   selectedEmployee: Employee | null = null;
+
+  getFormattedPhone(emp: any): string {
+    if (!emp) return 'N/A';
+    const phone = emp.phone || emp.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = emp.dialCode || emp.user?.dialCode;
+    const mccId = emp.mobileCountryCodeId || emp.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
+  }
   showDetailModal = false;
   constructor() {
     this.employeeForm = this.fb.group({
@@ -600,9 +639,13 @@ export class EmployeeListComponent implements OnInit {
       console.log('Employees paginated response received:', data);
       this.isLoading = false;
 
-      let fetchedEmployees = data?.content || [];
+      let fetchedEmployees = (data?.content || []).map((e: any) => ({
+        ...e,
+        name: e.name || `${e.firstName || ''} ${e.lastName || ''}`.trim() || 'N/A'
+      }));
+
       // Client-side sort to ensure ADMIN roles always appear at the top of the current page
-      fetchedEmployees.sort((a: Employee, b: Employee) => {
+      fetchedEmployees.sort((a: any, b: any) => {
         const aIsAdmin = this.isAdmin(a) ? 1 : 0;
         const bIsAdmin = this.isAdmin(b) ? 1 : 0;
         return bIsAdmin - aIsAdmin;
@@ -674,8 +717,17 @@ export class EmployeeListComponent implements OnInit {
     let dialCode = '+91';
     let phone = employee.phone || '';
 
-    // Try to match dial code from the phone string
-    if (phone.startsWith('+')) {
+    // Try to match dial code
+    if (employee.mobileCountryCodeId) {
+      const matched = this.countryCodes.find(c => c.id === employee.mobileCountryCodeId);
+      if (matched) {
+        dialCode = matched.mobileCode;
+        this.selectedCountry = matched;
+        if (phone.startsWith(dialCode)) {
+          phone = phone.substring(dialCode.length);
+        }
+      }
+    } else if (phone.startsWith('+')) {
       const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
       if (matchedCountry) {
         dialCode = matchedCountry.mobileCode;
@@ -708,6 +760,7 @@ export class EmployeeListComponent implements OnInit {
   onSubmitEmployee() {
     if (this.employeeForm.invalid) {
       this.employeeForm.markAllAsTouched();
+      this.notificationService.error('Please fill all required fields correctly.');
       return;
     }
 
@@ -719,7 +772,7 @@ export class EmployeeListComponent implements OnInit {
       lastName: formValue.lastName,
       name: `${formValue.firstName} ${formValue.lastName}`,
       email: formValue.email,
-      phone: `${formValue.dialCode}${formValue.phone}`,
+      phone: formValue.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       branchId: Number(formValue.branchId),
       roleId: Number(formValue.roleId)

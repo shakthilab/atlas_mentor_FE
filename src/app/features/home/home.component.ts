@@ -149,6 +149,9 @@ export class HomeComponent implements AfterViewInit {
             case 'MANAGER':
               this.router.navigate(['/manager']);
               break;
+            case 'BRANCH_PARTNER':
+              this.router.navigate(['/branch-partner']);
+              break;
             case 'COMPANY':
               this.router.navigate(['/company']);
               break;

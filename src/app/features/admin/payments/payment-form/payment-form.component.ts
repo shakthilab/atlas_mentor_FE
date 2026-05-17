@@ -7,11 +7,12 @@ import { BranchService } from '../../../../core/services/branch.service';
 import { ReferralService } from '../../../../core/services/referral.service';
 import { CompanyService } from '../../../../core/services/company.service';
 import { RoleConfigService } from '../../../../core/services/role-config.service';
+import { DatepickerComponent } from '../../../../shared/components/datepicker/datepicker.component';
 
 @Component({
   selector: 'app-payment-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DatepickerComponent],
   template: `
     <div class="modal-overlay" (click)="onClose.emit()">
       <div class="modal-content" (click)="$event.stopPropagation()">
@@ -80,7 +81,7 @@ import { RoleConfigService } from '../../../../core/services/role-config.service
             <!-- Date -->
             <div class="form-group">
               <label class="form-label">Date *</label>
-              <input type="date" formControlName="date" class="form-control">
+              <app-datepicker formControlName="date"></app-datepicker>
             </div>
 
             <!-- Notes -->

@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 export interface Company {
   id?: number | string;
@@ -50,13 +52,13 @@ export interface CompanyResponse {
   providedIn: 'root'
 })
 export class CompanyService {
-  private apiUrl = 'http://65.2.175.37:8080/api/company';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.COMPANIES.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
 
   createCompany(company: Partial<Company>): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/create`, company).pipe(
+    return this.http.post<any>(environment.serviceUrl + ApiEndpoint.COMPANIES.CREATE, company).pipe(
       map(response => response.data || response)
     );
   }
@@ -68,7 +70,7 @@ export class CompanyService {
 
     if (search) params = params.set('search', search);
 
-    return this.http.get<any>(`${this.apiUrl}/list`, { params }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.COMPANIES.LIST, { params }).pipe(
       map(response => {
         // If data is directly the paginated response
         if (response.content !== undefined) {
@@ -80,15 +82,15 @@ export class CompanyService {
   }
 
   deleteCompany(id: number | string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/delete/${id}`);
+    return this.http.delete<any>(`${environment.serviceUrl}${ApiEndpoint.COMPANIES.DELETE}/${id}`);
   }
 
   updateCompanyStatus(id: number | string): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/toggle-status/${id}`, {});
+    return this.http.put<any>(`${environment.serviceUrl}${ApiEndpoint.COMPANIES.TOGGLE_STATUS}/${id}`, {});
   }
 
   updateCompany(id: number | string, company: Partial<Company>): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/edit/${id}`, company).pipe(
+    return this.http.put<any>(`${environment.serviceUrl}${ApiEndpoint.COMPANIES.EDIT}/${id}`, company).pipe(
       map(response => response.data || response)
     );
   }

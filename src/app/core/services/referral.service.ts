@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 export interface Referral {
   id?: number | string;
@@ -24,6 +26,7 @@ export interface Referral {
   payout?: number;
   status?: string;
   assignedToUsername?: string;
+  assignedToIds?: number[];
 }
 
 export interface ReferralResponse {
@@ -38,7 +41,7 @@ export interface ReferralResponse {
   providedIn: 'root'
 })
 export class ReferralService {
-  private apiUrl = 'http://65.2.175.37:8080/api/referral';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.REFERRALS.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -52,13 +55,13 @@ export class ReferralService {
   }
 
   getReferralTypes(): Observable<string[]> {
-    return this.http.get<any>(`${this.apiUrl}/types`, { headers: this.getHeaders() }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.REFERRALS.TYPES, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
 
   createReferral(referral: Partial<Referral>): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/create`, referral, { headers: this.getHeaders() }).pipe(
+    return this.http.post<any>(environment.serviceUrl + ApiEndpoint.REFERRALS.CREATE, referral, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
@@ -72,21 +75,21 @@ export class ReferralService {
     if (referralType) params = params.set('referralType', referralType);
     if (branchId) params = params.set('branchId', branchId);
 
-    return this.http.get<any>(`${this.apiUrl}/list`, { headers: this.getHeaders(), params }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.REFERRALS.LIST, { headers: this.getHeaders(), params }).pipe(
       map(response => response.data || response)
     );
   }
 
   deleteReferral(id: number | string): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/delete/${id}`, { headers: this.getHeaders() });
+    return this.http.delete<any>(`${environment.serviceUrl}${ApiEndpoint.REFERRALS.DELETE}/${id}`, { headers: this.getHeaders() });
   }
 
   updateReferralStatus(id: number | string, status: 'ACTIVE' | 'INACTIVE'): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/status/${id}?status=${status}`, {}, { headers: this.getHeaders() });
+    return this.http.put<any>(`${environment.serviceUrl}${ApiEndpoint.REFERRALS.STATUS}/${id}?status=${status}`, {}, { headers: this.getHeaders() });
   }
 
   updateReferral(id: number | string, referral: Partial<Referral>): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/update/${id}`, referral, { headers: this.getHeaders() }).pipe(
+    return this.http.put<any>(`${environment.serviceUrl}${ApiEndpoint.REFERRALS.UPDATE}/${id}`, referral, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }

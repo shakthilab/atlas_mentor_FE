@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 export interface Employee {
   id?: number | string;
@@ -17,6 +19,7 @@ export interface Employee {
   roles?: { id: number; name: string; description?: string }[];
   branch?: string;
   status?: string;
+  dialCode?: string;
   taskCount?: {
     pending: number;
     inProgress: number;
@@ -37,7 +40,7 @@ export interface PaginatedResponse<T> {
   providedIn: 'root'
 })
 export class EmployeeService {
-  private apiUrl = 'http://65.2.175.37:8080/api/employees';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.EMPLOYEES.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -106,16 +109,39 @@ export class EmployeeService {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
 
-  getAdminEmployees(roleId?: number | string, branchId?: number | string): Observable<Employee[]> {
+  getAdminEmployees(roleIds?: string, branchId?: number | string): Observable<Employee[]> {
     let params = new HttpParams();
-    if (roleId) {
-      params = params.set('roleId', roleId.toString());
+    if (roleIds) {
+      params = params.set('roleIds', roleIds);
     }
     if (branchId) {
       params = params.set('branchId', branchId.toString());
     }
-    return this.http.get<any>(`http://65.2.175.37:8080/api/admin/get-all-employee`, { params }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.ADMIN.GET_ALL_EMPLOYEE, { params }).pipe(
       map(response => response.data || response)
+    );
+  }
+
+  getActiveUsersByRoleAndBranch(roleId: number, branchId: number): Observable<any[]> {
+    let params = new HttpParams()
+      .set('roleId', roleId.toString())
+      .set('branchId', branchId.toString());
+
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.USERS.ACTIVE_BY_ROLE_AND_BRANCH, { params }).pipe(
+      map(response => {
+        console.log('Active users response:', response);
+        
+        // Try to find the array in common nested structures
+        let result = response;
+        if (result.data) result = result.data;
+        if (result.data) result = result.data; // Handle double nesting if present
+        
+        if (result && result.content && Array.isArray(result.content)) {
+          return result.content;
+        }
+        
+        return Array.isArray(result) ? result : [];
+      })
     );
   }
 }

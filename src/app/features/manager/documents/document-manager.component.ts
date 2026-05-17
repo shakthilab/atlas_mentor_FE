@@ -12,11 +12,7 @@ import { CommonModule } from "@angular/common";
     </div>
   `,
   styles: [`
-    .module-container {
-      padding: 1.5rem;
-      background: var(--color-gray-50);
-      min-height: 100vh;
-    }
+   
   `]
 })
 export class ManagerDocumentManagerComponent {}

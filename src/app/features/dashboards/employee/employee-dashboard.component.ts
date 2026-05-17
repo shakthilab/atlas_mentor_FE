@@ -120,23 +120,10 @@ declare const lucide: any;
   `,
   styles: [`
     :host { display: block; }
-    .dashboard-wrapper {
-      padding: 2rem;
-    }
-    .welcome-header {
-      margin-bottom: 2rem;
-    }
-    .welcome-title {
-      font-size: 1.875rem;
-      font-weight: 600;
-      color: var(--color-gray-900);
-      margin: 0;
-    }
-    .welcome-subtitle {
-      font-size: 1rem;
-      color: var(--color-gray-600);
-      margin: 0.25rem 0 0;
-    }
+   
+   
+   
+   
   `]
 })
 export class EmployeeDashboardComponent implements AfterViewInit {

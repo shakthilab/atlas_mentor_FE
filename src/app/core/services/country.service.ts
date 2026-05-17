@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 export interface CountryMobileCode {
   id: number;
@@ -29,17 +31,17 @@ export class CountryService {
   private http = inject(HttpClient);
   
   getMobileCountryCodes(): Observable<CountryMobileCode[]> {
-    return this.http.get<{success: boolean, data: CountryMobileCode[]}>('http://65.2.175.37:8080/api/mobile-country-codes')
+    return this.http.get<{success: boolean, data: CountryMobileCode[]}>(environment.serviceUrl + ApiEndpoint.COUNTRIES.MOBILE_CODES)
       .pipe(map(res => res.data));
   }
 
   getCountries(): Observable<Country[]> {
-    return this.http.get<{success: boolean, data: Country[]}>('http://65.2.175.37:8080/api/countries')
+    return this.http.get<{success: boolean, data: Country[]}>(environment.serviceUrl + ApiEndpoint.COUNTRIES.BASE)
       .pipe(map(res => res.data));
   }
 
   getUniversitiesByCountryId(countryId: number | string): Observable<University[]> {
-    return this.http.get<{success: boolean, data: University[]}>(`http://65.2.175.37:8080/api/universities/country/${countryId}`)
+    return this.http.get<{success: boolean, data: University[]}>(`${environment.serviceUrl}${ApiEndpoint.UNIVERSITIES.BY_COUNTRY}/${countryId}`)
       .pipe(map(res => res.data));
   }
 }

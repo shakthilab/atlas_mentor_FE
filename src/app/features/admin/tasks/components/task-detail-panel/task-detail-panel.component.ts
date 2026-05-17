@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Task, TaskComment, Activity, TaskService, ApiError } from '../../../../../core/services/task.service';
@@ -68,14 +68,14 @@ import { RoleConfigService } from '../../../../../core/services/role-config.serv
             <div class="grid-item">
               <label><span class="material-icons-outlined">radio_button_unchecked</span> Status</label>
               <div class="dropdown-wrapper">
-                <div class="status-badge-dropdown" [ngClass]="task?.status?.toLowerCase()?.replace(' ', '-')" (click)="toggleDropdown('status')">
-                  {{ task?.status }}
+                <div class="status-badge-dropdown" [ngClass]="getStatusClass(task?.status)" (click)="toggleDropdown('status')">
+                  {{ formatStatus(task?.status) }}
                   <span class="material-icons">expand_more</span>
                 </div>
                 <div class="dropdown-menu" *ngIf="activeDropdown === 'status'">
-                  <div class="dropdown-item" (click)="onUpdateField('status', 'TO_DO')">To Do</div>
-                  <div class="dropdown-item" (click)="onUpdateField('status', 'IN_PROGRESS')">In Progress</div>
-                  <div class="dropdown-item" (click)="onUpdateField('status', 'DONE')">Done</div>
+                  <div class="dropdown-item" *ngFor="let s of availableStatuses" (click)="onUpdateField('status', getStatusValue(s))">
+                    {{ formatStatus(s) }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -205,6 +205,8 @@ import { RoleConfigService } from '../../../../../core/services/role-config.serv
     .status-badge-dropdown.to-do { color: #344054; }
     .status-badge-dropdown.in-progress { color: #175cd3; background: #eff8ff; border-color: #d1e9ff; }
     .status-badge-dropdown.done { color: #067647; background: #ecfdf3; border-color: #abefc6; }
+    .status-badge-dropdown.overdue { color: #b42318; background: #fef2f2; border-color: #fecdca; }
+    .status-badge-dropdown.cancelled, .status-badge-dropdown.rejected { color: #667085; background: #f2f4f7; border-color: #d0d5dd; }
     
     .dropdown-menu { position: absolute; top: 100%; left: 0; margin-top: 8px; background: white; border: 1px solid #eaecf0; border-radius: 12px; box-shadow: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03); width: 180px; z-index: 100; padding: 6px; overflow: hidden; animation: popIn 0.2s ease; }
     @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -271,7 +273,7 @@ import { RoleConfigService } from '../../../../../core/services/role-config.serv
     }
   `]
 })
-export class TaskDetailPanelComponent {
+export class TaskDetailPanelComponent implements OnInit {
   @Input() task: Task | null = null;
   @Input() comments: TaskComment[] = [];
   @Input() activities: Activity[] = [];
@@ -281,6 +283,58 @@ export class TaskDetailPanelComponent {
   @Output() commentAdded = new EventEmitter<string>();
 
   private taskService = inject(TaskService);
+  availableStatuses: any[] = [];
+  
+  ngOnInit() {
+    this.loadStatuses();
+  }
+
+  loadStatuses() {
+    this.taskService.getStatuses().subscribe({
+      next: (statuses) => {
+        this.availableStatuses = statuses;
+      },
+      error: (err) => console.error('Error loading statuses:', err)
+    });
+  }
+
+  formatStatus(status: any): string {
+    if (!status) return '';
+    
+    let str = '';
+    if (typeof status === 'string') {
+      str = status;
+    } else if (status && typeof status === 'object') {
+      str = status.displayName || status.name || status.status || status.label || String(status);
+    }
+    
+    if (!str || str === '[object Object]') return 'Unknown';
+
+    // Special mappings for common statuses to keep labels familiar if desired
+    const upper = str.toUpperCase().replace(/[\s-]/g, '_');
+    if (upper === 'PENDING' || upper === 'TO_DO' || upper === 'TODO') return 'To Do';
+    if (upper === 'COMPLETED' || upper === 'DONE') return 'Done';
+
+    return str.split('_')
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  getStatusValue(status: any): string {
+    if (!status) return '';
+    if (typeof status === 'string') return status;
+    return status.status || status.name || status.value || status.id || String(status);
+  }
+
+  getStatusClass(status?: string): string {
+    if (!status) return '';
+    const s = status.toUpperCase().replace(/[\s-]/g, '_');
+    if (s === 'PENDING' || s === 'TO_DO' || s === 'TODO') return 'to-do';
+    if (s === 'IN_PROGRESS') return 'in-progress';
+    if (s === 'COMPLETED' || s === 'DONE') return 'done';
+    if (s === 'OVERDUE') return 'overdue';
+    return s.toLowerCase().replace(/_/g, '-');
+  }
   
   activeTab: 'comments' | 'activity' = 'comments';
   activeDropdown: 'status' | 'priority' | null = null;

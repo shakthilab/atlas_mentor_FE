@@ -70,8 +70,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
       </div>
 
       <!-- Loading State -->
-      <div class="loading-container shadow-premium" *ngIf="isLoading" style="padding: 3rem; text-align: center; background: white; border-radius: 12px; border: 1px solid var(--color-gray-200); margin-bottom: 2rem;">
-        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1rem;">
+      <div class="loading-container shadow-premium" *ngIf="isLoading">
+        <div class="spinner-container">
           <div class="loading-spinner"></div>
         </div>
         <p style="color: var(--color-gray-500);">Loading companies...</p>
@@ -101,7 +101,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let company of companies" class="clickable-row" (click)="viewDetails(company)">
+              <tr *ngFor="let company of companies; let i = index" class="clickable-row" (click)="viewDetails(company)">
                 <td>
                   <div class="entity-meta">
                     <div class="avatar-circle" [style.background]="getAvatarColor(company.companyDetails?.companyName || company.name || company.firstName)">
@@ -137,15 +137,18 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <button class="btn-icon" (click)="openEditModal(company)"><span class="material-icons">edit</span></button>
                     <button class="btn-icon" (click)="toggleDropdown($event, 'row-' + company.id)"><span class="material-icons">more_vert</span></button>
                     
-                    <div class="action-dropdown shadow-premium" *ngIf="openDropdownId === 'row-' + company.id" (click)="$event.stopPropagation()" style="position: absolute; right: 0; top: 100%; z-index: 100; background: white; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 4px; min-width: 160px; box-shadow: var(--shadow-lg);">
-                      <button class="dropdown-item" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b54708; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">block</span> Deactivate
+                    <div class="action-dropdown shadow-premium" 
+                         *ngIf="openDropdownId === 'row-' + company.id" 
+                         (click)="$event.stopPropagation()"
+                         [ngClass]="{'open-up': i >= companies.length - 2 && companies.length > 3}">
+                      <button class="dropdown-item" (click)="confirmDeactivate(company); openDropdownId = null" *ngIf="(company.status || 'ACTIVE').toUpperCase() !== 'INACTIVE'" style="color: #b54708;">
+                        <span class="material-icons">block</span> Deactivate
                       </button>
-                      <button class="dropdown-item" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #027a48; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">check_circle</span> Reactivate
+                      <button class="dropdown-item" (click)="confirmReactivate(company); openDropdownId = null" *ngIf="(company.status || '').toUpperCase() === 'INACTIVE'" style="color: #027a48;">
+                        <span class="material-icons">check_circle</span> Reactivate
                       </button>
-                      <button class="dropdown-item" (click)="confirmDelete(company); openDropdownId = null" style="width: 100%; text-align: left; padding: 8px 12px; display: flex; align-items: center; gap: 8px; color: #b42318; border: none; background: none; cursor: pointer; border-radius: 4px;">
-                        <span class="material-icons" style="font-size: 18px;">delete</span> Delete
+                      <button class="dropdown-item" (click)="confirmDelete(company); openDropdownId = null" style="color: #b42318;">
+                        <span class="material-icons">delete</span> Delete
                       </button>
                     </div>
                   </div>
@@ -244,10 +247,16 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Company Name</label>
                 <input type="text" class="form-control" formControlName="name" placeholder="Tech Company Inc">
+                <div *ngIf="companyForm.get('name')?.touched && companyForm.get('name')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Company name is required.
+                </div>
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Industry</label>
                 <input type="text" class="form-control" formControlName="industry" placeholder="Technology">
+                <div *ngIf="companyForm.get('industry')?.touched && companyForm.get('industry')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Industry is required.
+                </div>
               </div>
             </div>
 
@@ -255,6 +264,9 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Email Address</label>
                 <input type="email" class="form-control" formControlName="email" placeholder="contact@company.com" [readonly]="isEditMode">
+                <div *ngIf="companyForm.get('email')?.touched && companyForm.get('email')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Please enter a valid email address.
+                </div>
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Phone Number</label>
@@ -263,7 +275,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
                     <img *ngIf="selectedCountry?.flagUrl" [src]="selectedCountry?.flagUrl" style="width: 20px; height: 14px; margin-right: 6px;">
                     <span style="font-size: 0.875rem; font-weight: 500;">{{ selectedCountry?.mobileCode || '+91' }}</span>
                   </div>
-                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+                  <input type="text" class="form-control" style="border: none;" formControlName="phone" placeholder="Phone number" [maxlength]="selectedCountry?.mobileNumberLength || 20">
                 </div>
                 <div *ngIf="companyForm.get('phone')?.touched && companyForm.get('phone')?.invalid" class="validation-error" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
                   <span *ngIf="companyForm.get('phone')?.hasError('required')">Phone number is required.</span>
@@ -279,21 +291,33 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Contact First Name</label>
                 <input type="text" class="form-control" formControlName="firstName" placeholder="John">
+                <div *ngIf="companyForm.get('firstName')?.touched && companyForm.get('firstName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  First name is required.
+                </div>
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Contact Last Name</label>
                 <input type="text" class="form-control" formControlName="lastName" placeholder="Doe">
+                <div *ngIf="companyForm.get('lastName')?.touched && companyForm.get('lastName')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                  Last name is required.
+                </div>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;">
               <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Website</label>
               <input type="text" class="form-control" formControlName="website" placeholder="https://example.com">
+              <div *ngIf="companyForm.get('website')?.touched && companyForm.get('website')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                Website is required.
+              </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;">
               <label class="form-label" style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Address</label>
               <textarea class="form-control" formControlName="address" placeholder="123 Business St, City, State" rows="2"></textarea>
+              <div *ngIf="companyForm.get('address')?.touched && companyForm.get('address')?.invalid" style="color: var(--color-error); font-size: 0.75rem; margin-top: 4px;">
+                Address is required.
+              </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;">
@@ -306,7 +330,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 
             <div class="modal-footer" style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 12px;">
               <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary" [disabled]="companyForm.invalid || submitting">
+              <button type="submit" class="btn btn-primary" [disabled]="submitting">
                 {{ isEditMode ? 'Save Changes' : 'Create Company' }}
               </button>
             </div>
@@ -348,7 +372,7 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
             </div>
             <div class="entity-info">
               <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Phone</span>
-              <span class="entity-name" style="margin-top: 4px;">{{ selectedCompany?.phone }}</span>
+              <span class="entity-name" style="margin-top: 4px;">{{ getFormattedPhone(selectedCompany) }}</span>
             </div>
             <div class="entity-info">
               <span class="entity-subtext" style="text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; font-weight: 700;">Branch</span>
@@ -419,6 +443,24 @@ export class CompanyListComponent implements OnInit {
   isEditMode = false;
   selectedCompany: Company | null = null;
   openDropdownId: string | null = null;
+
+  getFormattedPhone(comp: any): string {
+    if (!comp) return 'N/A';
+    const phone = comp.phone || comp.user?.phone;
+    if (!phone) return 'N/A';
+    
+    if (phone.startsWith('+')) return phone;
+    
+    let dialCode = comp.dialCode || comp.user?.dialCode;
+    const mccId = comp.mobileCountryCodeId || comp.user?.mobileCountryCodeId;
+    
+    if (!dialCode && mccId && this.countryCodes?.length > 0) {
+      const country = this.countryCodes.find(c => c.id === mccId);
+      if (country) dialCode = country.mobileCode;
+    }
+    
+    return dialCode ? `${dialCode} ${phone}` : phone;
+  }
   showAdvancedFilters = false;
   filterBranch = '';
 
@@ -700,11 +742,22 @@ export class CompanyListComponent implements OnInit {
     let dialCode = '+91';
     let phone = comp.phone || '';
     
-    const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
-    if (matchedCountry) {
-      dialCode = matchedCountry.mobileCode;
-      phone = phone.substring(dialCode.length);
-      this.selectedCountry = matchedCountry;
+    if (comp.mobileCountryCodeId) {
+      const matched = this.countryCodes.find(c => c.id === comp.mobileCountryCodeId);
+      if (matched) {
+        dialCode = matched.mobileCode;
+        this.selectedCountry = matched;
+        if (phone.startsWith(dialCode)) {
+          phone = phone.substring(dialCode.length);
+        }
+      }
+    } else if (phone.startsWith('+')) {
+      const matchedCountry = this.countryCodes.find(c => phone.startsWith(c.mobileCode));
+      if (matchedCountry) {
+        dialCode = matchedCountry.mobileCode;
+        phone = phone.substring(dialCode.length);
+        this.selectedCountry = matchedCountry;
+      }
     }
 
     this.companyForm.patchValue({
@@ -743,6 +796,7 @@ export class CompanyListComponent implements OnInit {
   onSubmitCompany() {
     if (this.companyForm.invalid) {
       this.companyForm.markAllAsTouched();
+      this.notificationService.error('Please fill all required fields correctly.');
       return;
     }
 
@@ -753,7 +807,7 @@ export class CompanyListComponent implements OnInit {
       name: formValue.name,
       industry: formValue.industry,
       email: formValue.email,
-      phone: `${formValue.dialCode}${formValue.phone}`,
+      phone: formValue.phone,
       mobileCountryCodeId: this.selectedCountry?.id,
       firstName: formValue.firstName,
       lastName: formValue.lastName,

@@ -3,12 +3,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HierarchyService {
-  private apiUrl = 'http://65.2.175.37:8080/api/hierarchy';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.HIERARCHY.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -40,19 +42,19 @@ export class HierarchyService {
   }
 
   getManagersHierarchy(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/managers`, { headers: this.getHeaders() }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.HIERARCHY.MANAGERS, { headers: this.getHeaders() }).pipe(
       map(response => this.mapHierarchyResponse(response))
     );
   }
 
   getCounsellorsHierarchy(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/counsellors`, { headers: this.getHeaders() }).pipe(
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.HIERARCHY.COUNSELLORS, { headers: this.getHeaders() }).pipe(
       map(response => this.mapHierarchyResponse(response, 'JUNIOR_COUNSELLOR'))
     );
   }
 
   getUsersByRole(role: string, branchId: number): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/users-by-role`, { 
+    return this.http.get<any>(environment.serviceUrl + ApiEndpoint.HIERARCHY.USERS_BY_ROLE, { 
       headers: this.getHeaders(),
       params: { role, branchId: branchId.toString() } 
     }).pipe(
@@ -61,13 +63,13 @@ export class HierarchyService {
   }
 
   assignEmployees(payload: { roleId: number, managerId: number, userIds: number[] }): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/assign-employee-by-roles`, payload, {
+    return this.http.post<any>(environment.serviceUrl + ApiEndpoint.HIERARCHY.ASSIGN_EMPLOYEES_BY_ROLES, payload, {
       headers: this.getHeaders()
     });
   }
 
   getJuniorCounsellors(branchId: number): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/junior-counsellors`, { 
+    return this.http.get<any>(`${environment.serviceUrl}${ApiEndpoint.HIERARCHY.BASE}/junior-counsellors`, { 
       headers: this.getHeaders(),
       params: { branchId: branchId.toString() }
     }).pipe(
@@ -76,19 +78,19 @@ export class HierarchyService {
   }
 
   assignJuniorCounsellors(payload: { seniorCounsellorId: number, juniorCounsellorIds: number[] }): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/assign-junior-counsellors`, payload, {
+    return this.http.post<any>(environment.serviceUrl + ApiEndpoint.HIERARCHY.ASSIGN_JUNIORS, payload, {
       headers: this.getHeaders()
     });
   }
 
   unassignEmployee(employeeId: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/unassign-employee/${employeeId}`, {
+    return this.http.delete<any>(`${environment.serviceUrl}${ApiEndpoint.HIERARCHY.UNASSIGN_EMPLOYEE}/${employeeId}`, {
       headers: this.getHeaders()
     });
   }
 
   unassignJuniorCounsellor(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/unassign-junior-counsellor/${id}`, {
+    return this.http.delete<any>(`${environment.serviceUrl}${ApiEndpoint.HIERARCHY.UNASSIGN_JUNIOR}/${id}`, {
       headers: this.getHeaders()
     });
   }

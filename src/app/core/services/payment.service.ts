@@ -2,12 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PaymentService {
-  private apiUrl = 'http://65.2.175.37:8080/api/payments';
+  private apiUrl = environment.serviceUrl + ApiEndpoint.PAYMENTS.BASE;
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -20,15 +22,14 @@ export class PaymentService {
   }
 
   createPayment(paymentData: any): Observable<any> {
+    const url = `${environment.serviceUrl}/api/client-payouts/${paymentData.clientPayoutId}/add-payment`;
     const payload = {
-      studentId: paymentData.studentId,
       amount: paymentData.amount,
-      paymentMethod: paymentData.paymentMethod, // e.g. 'BANK_TRANSFER', 'UPI', 'CASH'
-      transactionType: 'CREDIT',
-      transactionReference: paymentData.transactionReference || ('TXN' + Date.now()),
+      paymentMethod: paymentData.paymentMethod,
+      transactionReference: paymentData.transactionReference || ('TXN' + Math.floor(Math.random() * 1000000)),
       notes: paymentData.notes
     };
-    return this.http.post<any>(`${this.apiUrl}/transactions`, payload, { headers: this.getHeaders() }).pipe(
+    return this.http.post<any>(url, payload, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
@@ -88,13 +89,19 @@ export class PaymentService {
   }
 
   getPaymentTransactions(studentId: number | string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/student/${studentId}/transactions`, { headers: this.getHeaders() }).pipe(
+    return this.http.get<any>(`${this.apiUrl}/${studentId}/transactions`, { headers: this.getHeaders() }).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  getClientPayoutActivities(payoutId: number | string): Observable<any> {
+    return this.http.get<any>(`${environment.serviceUrl}/api/client-payouts/${payoutId}/activities`, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
 
   raiseDispute(paymentId: number | string, disputeReason: string): Observable<any> {
-    const url = `http://65.2.175.37:8080/api/payments/${paymentId}/dispute`;
+    const url = `${environment.serviceUrl}/api/client-payouts/${paymentId}/dispute`;
     return this.http.post<any>(url, { disputeReason }, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
@@ -113,30 +120,30 @@ export class PaymentService {
   }
 
   updatePaymentAmount(paymentId: number | string, assignedAmount: number, notes: string): Observable<any> {
-    const url = 'http://65.2.175.37:8080/api/students/payment/amount';
-    return this.http.put<any>(url, { paymentId, assignedAmount, notes }, { headers: this.getHeaders() }).pipe(
+    const url = environment.serviceUrl + ApiEndpoint.PAYMENTS.UPDATE_AMOUNT;
+    return this.http.put<any>(url, { clientPayoutId: paymentId, assignedAmount, notes }, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
 
   updatePaymentStatus(paymentId: number | string, paymentStatus: string, notes: string): Observable<any> {
-    const url = 'http://65.2.175.37:8080/api/students/payment/status';
+    const url = environment.serviceUrl + ApiEndpoint.PAYMENTS.UPDATE_STATUS;
     return this.http.put<any>(url, { paymentId, paymentStatus, notes }, { headers: this.getHeaders() }).pipe(
       map(response => response.data || response)
     );
   }
 
   acceptDispute(paymentId: number | string, response: string): Observable<any> {
-    const url = `http://65.2.175.37:8080/api/payments/${paymentId}/dispute/accept`;
-    return this.http.post<any>(url, { response, acceptDispute: true }, { headers: this.getHeaders() }).pipe(
-      map(response => response.data || response)
+    const url = `${environment.serviceUrl}/api/payments/payouts/${paymentId}/dispute/accept`;
+    return this.http.post<any>(url, { response }, { headers: this.getHeaders() }).pipe(
+      map(res => res.data || res)
     );
   }
 
   rejectDispute(paymentId: number | string, response: string): Observable<any> {
-    const url = `http://65.2.175.37:8080/api/payments/${paymentId}/dispute/reject`;
-    return this.http.post<any>(url, { response, acceptDispute: false }, { headers: this.getHeaders() }).pipe(
-      map(response => response.data || response)
+    const url = `${environment.serviceUrl}/api/payments/payouts/${paymentId}/dispute/reject`;
+    return this.http.post<any>(url, { response }, { headers: this.getHeaders() }).pipe(
+      map(res => res.data || res)
     );
   }
 }

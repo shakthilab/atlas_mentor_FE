@@ -166,6 +166,8 @@ export class LoginComponent implements OnInit {
               this.router.navigate(['/admin']);
             } else if (role === 'MANAGER') {
               this.router.navigate(['/manager']);
+            } else if (role === 'BRANCH_PARTNER') {
+              this.router.navigate(['/branch-partner']);
             } else if (role === 'REFERRAL') {
               this.router.navigate(['/referral']);
             } else if (role === 'COMPANY') {

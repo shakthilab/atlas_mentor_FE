@@ -69,6 +69,7 @@ export const routes: Routes = [
           { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
           { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
           { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'resources', loadComponent: () => import('./features/admin/media/resource-module/resource-module.component').then(m => m.ResourceModuleComponent) },
           { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
           { path: 'export', loadComponent: () => import('./features/admin/export/export-tool/export-tool.component').then(m => m.ExportToolComponent) },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
@@ -117,11 +118,38 @@ export const routes: Routes = [
           { path: 'hierarchy', loadComponent: () => import('./features/admin/hierarchy/hierarchy-manager/hierarchy-manager.component').then(m => m.HierarchyManagerComponent) },
           { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
           { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'resources', loadComponent: () => import('./features/admin/media/resource-module/resource-module.component').then(m => m.ResourceModuleComponent) },
           { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
           { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
           { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
         ]
       },
+      {
+        path: 'branch-partner',
+        canActivate: [authGuard],
+        data: { roles: ['BRANCH_PARTNER'] },
+        children: [
+          { path: '', loadComponent: () => import('./features/dashboards/branch-partner/branch-partner-dashboard.component').then(m => m.BranchPartnerDashboardComponent) },
+          // Reuse admin components with branch-specific filtering
+          { path: 'tasks', loadComponent: () => import('./features/admin/tasks/task-list/task-list.component').then(m => m.TaskListComponent) },
+          { path: 'leads', loadComponent: () => import('./features/admin/leads/lead-list/lead-list.component').then(m => m.LeadListComponent) },
+          { 
+            path: 'students', children: [
+              { path: '', loadComponent: () => import('./features/admin/students/student-list/student-list.component').then(m => m.StudentListComponent) },
+              { path: ':id', loadComponent: () => import('./features/admin/students/student-detail/student-detail.component').then(m => m.StudentDetailComponent) }
+            ]
+          },
+          { path: 'employees', loadComponent: () => import('./features/admin/employees/employee-list/employee-list.component').then(m => m.EmployeeListComponent) },
+          { path: 'hierarchy', loadComponent: () => import('./features/admin/hierarchy/hierarchy-manager/hierarchy-manager.component').then(m => m.HierarchyManagerComponent) },
+          { path: 'referrals', loadComponent: () => import('./features/admin/referrals/referral-list/referral-list.component').then(m => m.ReferralListComponent) },
+          { path: 'companies', loadComponent: () => import('./features/admin/companies/company-list/company-list.component').then(m => m.CompanyListComponent) },
+          { path: 'resources', loadComponent: () => import('./features/admin/media/resource-module/resource-module.component').then(m => m.ResourceModuleComponent) },
+          { path: 'branches', loadComponent: () => import('./features/admin/branches/branch-list/branch-list.component').then(m => m.BranchListComponent) },
+          { path: 'documents', loadComponent: () => import('./features/admin/documents/document-manager/document-manager.component').then(m => m.DocumentManagerComponent) },
+          { path: 'settings', loadComponent: () => import('./features/admin/settings/settings.component').then(m => m.SettingsComponent) }
+        ]
+      },
+
       {
         path: 'company',
         canActivate: [authGuard],
@@ -137,7 +165,7 @@ export const routes: Routes = [
             ]
           },
           { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
-          { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
+          { path: 'resources', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
         ]
       },
       {
@@ -155,7 +183,7 @@ export const routes: Routes = [
             ]
           },
           { path: 'payments', loadComponent: () => import('./features/admin/payments/payment-list/payment-list.component').then(m => m.PaymentListComponent) },
-          { path: 'media', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
+          { path: 'resources', loadComponent: () => import('./features/admin/media/media-list/media-list.component').then(m => m.MediaListComponent) }
         ]
       }
     ]

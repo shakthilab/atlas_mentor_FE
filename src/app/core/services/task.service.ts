@@ -2,13 +2,15 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+import { ApiEndpoint } from '../constants/endpoint.def';
 
 // Task interfaces for type safety
 export interface Task {
   id: number;
   title: string;
   description: string;
-  status: 'TO_DO' | 'IN_PROGRESS' | 'DONE';
+  status: 'TO_DO' | 'IN_PROGRESS' | 'DONE' | 'OVERDUE' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   assigneeName?: string;
   assignerName?: string;
@@ -65,6 +67,18 @@ export interface TaskFilter {
   createdBy?: number;
   keyword?: string;
   overdue?: boolean;
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDir?: string;
+}
+
+export interface PaginatedTasks {
+  tasks: Task[];
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
 }
 
 export interface CreateTaskRequest {
@@ -95,7 +109,7 @@ export interface ApiError {
   providedIn: 'root'
 })
 export class TaskService {
-  private readonly baseUrl = 'http://65.2.175.37:8080/api';
+  private readonly baseUrl = environment.serviceUrl + ApiEndpoint.TASKS.BASE;
 
   constructor(private http: HttpClient) {}
 
@@ -137,7 +151,7 @@ export class TaskService {
   }
 
   // Core Task Operations
-  getTasks(filter?: TaskFilter): Observable<Task[]> {
+  getTasks(filter?: TaskFilter): Observable<PaginatedTasks> {
     let params = new HttpParams();
     
     if (filter) {
@@ -153,30 +167,66 @@ export class TaskService {
       if (filter.createdBy) params = params.set('createdBy', filter.createdBy.toString());
       if (filter.keyword) params = params.set('keyword', filter.keyword);
       if (filter.overdue !== undefined) params = params.set('overdue', filter.overdue.toString());
+      if (filter.page !== undefined) params = params.set('page', filter.page.toString());
+      if (filter.size !== undefined) params = params.set('size', filter.size.toString());
+      if (filter.sortBy) params = params.set('sortBy', filter.sortBy);
+      if (filter.sortDir) params = params.set('sortDir', filter.sortDir);
     }
     
-    return this.http.get<any>(`${this.baseUrl}/tasks`, {
+    return this.http.get<any>(`${this.baseUrl}`, {
       headers: this.getAuthHeaders(),
       params
     }).pipe(
       map((response: any) => {
-        // Handle paginated response: { data: { content: [...] } }
-        if (response && response.data && response.data.content && Array.isArray(response.data.content)) {
-          return response.data.content;
+        let content: Task[] = [];
+        let totalElements = 0;
+        let totalPages = 0;
+        let currentPage = 0;
+        let pageSize = 20;
+
+        // Case 1: Wrapped in 'data' and paginated
+        if (response && response.data && response.data.content) {
+          content = response.data.content;
+          totalElements = response.data.totalElements || content.length;
+          totalPages = response.data.totalPages || 1;
+          currentPage = response.data.number || 0;
+          pageSize = response.data.size || 20;
+        } 
+        // Case 2: Directly paginated (not wrapped in 'data')
+        else if (response && response.content && Array.isArray(response.content)) {
+          content = response.content;
+          totalElements = response.totalElements !== undefined ? response.totalElements : content.length;
+          totalPages = response.totalPages || 1;
+          currentPage = response.number || 0;
+          pageSize = response.size || 20;
         }
-        // Handle wrapped non-paginated: { data: [...] }
-        if (response && response.data && Array.isArray(response.data)) {
-          return response.data;
+        // Case 3: Wrapped in 'data' but not paginated (direct array)
+        else if (response && response.data && Array.isArray(response.data)) {
+          content = response.data;
+          totalElements = content.length;
+          totalPages = 1;
+        } 
+        // Case 4: Direct array
+        else if (Array.isArray(response)) {
+          content = response;
+          totalElements = content.length;
+          totalPages = 1;
         }
-        // Handle direct array or other
-        return Array.isArray(response) ? response : [];
+
+        return {
+          tasks: content,
+          totalElements,
+          totalPages,
+          currentPage,
+          pageSize
+        };
       }),
       catchError(this.handleError)
     );
   }
 
   getTask(taskId: number): Observable<Task> {
-    return this.http.get<any>(`${this.baseUrl}/tasks/${taskId}`, {
+    return this.http.get<any>(`${this.baseUrl}/${taskId}`, {
       headers: this.getAuthHeaders()
     }).pipe(
       map((response: any) => response && response.data ? response.data : response),
@@ -185,7 +235,7 @@ export class TaskService {
   }
 
   getTaskDetails(taskId: number): Observable<TaskDetails> {
-    return this.http.get<TaskDetails>(`${this.baseUrl}/tasks/${taskId}/details`, {
+    return this.http.get<TaskDetails>(`${this.baseUrl}/${taskId}/details`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -193,7 +243,7 @@ export class TaskService {
   }
 
   createTask(taskData: CreateTaskRequest): Observable<Task> {
-    return this.http.post<any>(`${this.baseUrl}/tasks`, taskData, {
+    return this.http.post<any>(`${this.baseUrl}`, taskData, {
       headers: this.getAuthHeaders()
     }).pipe(
       map((response: any) => response && response.data ? response.data : response),
@@ -202,7 +252,7 @@ export class TaskService {
   }
 
   softDeleteTask(taskId: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/tasks/${taskId}`, {
+    return this.http.delete<void>(`${this.baseUrl}/${taskId}`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -211,7 +261,7 @@ export class TaskService {
 
   // Task Updates (PUT)
   updateStatus(taskId: number, status: Task['status']): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/status`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/status`, 
       { status }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -220,7 +270,7 @@ export class TaskService {
   }
 
   assignUser(taskId: number, userId: number): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/assignee`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/assignee`, 
       { assignedToId: userId }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -229,7 +279,7 @@ export class TaskService {
   }
 
   updatePriority(taskId: number, priority: Task['priority']): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/priority`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/priority`, 
       { priority }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -238,7 +288,7 @@ export class TaskService {
   }
 
   updateDueDate(taskId: number, dueDate: string): Observable<Task> {
-    return this.http.put<Task>(`${this.baseUrl}/tasks/${taskId}/due-date`, 
+    return this.http.put<Task>(`${this.baseUrl}/${taskId}/due-date`, 
       { dueDate }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -248,7 +298,7 @@ export class TaskService {
 
   // Comments & Activities
   getComments(taskId: number): Observable<Comment[]> {
-    return this.http.get<Comment[]>(`${this.baseUrl}/tasks/${taskId}/comments`, {
+    return this.http.get<Comment[]>(`${this.baseUrl}/${taskId}/comments`, {
       headers: this.getAuthHeaders()
     }).pipe(
       catchError(this.handleError)
@@ -256,7 +306,7 @@ export class TaskService {
   }
 
   addComment(taskId: number, comment: string): Observable<Comment> {
-    return this.http.post<Comment>(`${this.baseUrl}/tasks/${taskId}/comments`, 
+    return this.http.post<Comment>(`${this.baseUrl}/${taskId}/comments`, 
       { comment }, 
       { headers: this.getAuthHeaders() }
     ).pipe(
@@ -265,9 +315,27 @@ export class TaskService {
   }
 
   getActivity(taskId: number): Observable<Activity[]> {
-    return this.http.get<Activity[]>(`${this.baseUrl}/tasks/${taskId}/activity`, {
+    return this.http.get<Activity[]>(`${this.baseUrl}/${taskId}/activity`, {
       headers: this.getAuthHeaders()
     }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getStatuses(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/statuses`, {
+      headers: this.getAuthHeaders()
+    }).pipe(
+      map(response => response && response.data ? response.data : response),
+      catchError(this.handleError)
+    );
+  }
+
+  getPriorities(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/priorities`, {
+      headers: this.getAuthHeaders()
+    }).pipe(
+      map(response => response && response.data ? response.data : response),
       catchError(this.handleError)
     );
   }

@@ -57,14 +57,23 @@ import { NotificationService } from '../../../core/services/notification.service
           <div class="form-group">
             <label class="form-label">First Name <span class="text-error">*</span></label>
             <input type="text" class="form-control" formControlName="firstName" placeholder="John">
+            <div *ngIf="personalGroup.get('firstName')?.touched && personalGroup.get('firstName')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+              First name is required.
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Last Name <span class="text-error">*</span></label>
             <input type="text" class="form-control" formControlName="lastName" placeholder="Doe">
+            <div *ngIf="personalGroup.get('lastName')?.touched && personalGroup.get('lastName')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+              Last name is required.
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Email <span class="text-error">*</span></label>
             <input type="email" class="form-control" formControlName="email" placeholder="john@company.com">
+            <div *ngIf="personalGroup.get('email')?.touched && personalGroup.get('email')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+              Please enter a valid email address.
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Phone <span class="text-error">*</span></label>
@@ -85,7 +94,7 @@ import { NotificationService } from '../../../core/services/notification.service
                   </div>
                 </div>
               </div>
-              <input type="text" class="form-control" formControlName="phone" placeholder="Phone without country code" [attr.maxlength]="selectedCountry?.mobileNumberLength">
+              <input type="text" class="form-control" formControlName="phone" placeholder="Phone without country code" [maxlength]="selectedCountry?.mobileNumberLength || 20">
             </div>
             <div *ngIf="personalGroup.get('phone')?.touched && personalGroup.get('phone')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
               <span *ngIf="personalGroup.get('phone')?.hasError('required')">Phone number is required.</span>
@@ -102,10 +111,16 @@ import { NotificationService } from '../../../core/services/notification.service
               <option value="Graphic Designer">Graphic Designer</option>
               <option value="Web Developer">Web Developer</option>
             </select>
+            <div *ngIf="personalGroup.get('employeeType')?.touched && personalGroup.get('employeeType')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+              Role selection is required.
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Password <span class="text-error">*</span></label>
             <input type="password" class="form-control" formControlName="password" placeholder="Create a strong password">
+            <div *ngIf="personalGroup.get('password')?.touched && personalGroup.get('password')?.invalid" class="text-error" style="font-size: 0.75rem; margin-top: 0.25rem;">
+              Password is required.
+            </div>
             
             <div class="password-meter" *ngIf="passwordStrength.score > 0">
               <div class="password-meter-segment" [class.segment-weak]="passwordStrength.score >= 1" [class.segment-fair]="passwordStrength.score >= 2" [class.segment-good]="passwordStrength.score >= 3" [class.segment-strong]="passwordStrength.score >= 4"></div>
@@ -143,7 +158,7 @@ import { NotificationService } from '../../../core/services/notification.service
           <button type="button" class="btn btn-outline" *ngIf="currentStep > 1" (click)="prevStep()">Back</button>
           <div style="flex-grow: 1;"></div>
           <button type="button" class="btn btn-primary" *ngIf="currentStep < 2" (click)="nextStep()">Continue</button>
-          <button type="submit" class="btn btn-primary" *ngIf="currentStep === 2" [disabled]="employeeForm.invalid || isLoading">
+          <button type="submit" class="btn btn-primary" *ngIf="currentStep === 2" [disabled]="isLoading">
             <span *ngIf="!isLoading">Submit Request</span>
             <span *ngIf="isLoading">Submitting...</span>
           </button>
@@ -246,6 +261,7 @@ export class RegisterEmployeeComponent implements OnInit {
   nextStep() {
     if (this.currentStep === 1 && this.personalGroup.invalid) {
       this.personalGroup.markAllAsTouched();
+      this.notificationService.error('Please fill all required fields correctly.');
       return;
     }
     this.currentStep++;
@@ -258,17 +274,25 @@ export class RegisterEmployeeComponent implements OnInit {
   onSubmit() {
     if (this.employeeForm.invalid) {
       this.employeeForm.markAllAsTouched();
+      this.notificationService.error('Please fill all required fields correctly.');
       return;
     }
 
     this.isLoading = true;
 
-    const personalData = this.employeeForm.value.personal || {};
+    const professionalData = this.employeeForm.value.professional || {};
 
     const payload = {
-      ...personalData,
-      ...this.employeeForm.value.professional
-    } as Partial<User>;
+      firstName: personalData.firstName,
+      lastName: personalData.lastName,
+      email: personalData.email,
+      phone: personalData.phone,
+      mobileCountryCodeId: this.selectedCountry?.id,
+      password: personalData.password,
+      employeeType: personalData.employeeType,
+      experience: professionalData.experience,
+      notes: professionalData.notes
+    };
 
     this.authService.registerEmployee(payload).subscribe({
       next: () => {
