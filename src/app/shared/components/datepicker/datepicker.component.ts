@@ -27,6 +27,8 @@ import { CalendarModule } from 'primeng/calendar';
       [placeholder]="placeholder"
       dateFormat="dd/mm/yy"
       styleClass="prime-datepicker"
+      appendTo="body"
+      [baseZIndex]="3000"
     ></p-calendar>
   `,
   styles: [`

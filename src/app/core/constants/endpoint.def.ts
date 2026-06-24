@@ -16,7 +16,7 @@ export const ApiEndpoint = {
     REQUIRED_DOCUMENTS: '/api/students/required-documents',
     ONBOARDING: '/api/students/onboarding',
     BY_EMAIL: '/api/students/by-email',
-    UPDATE_STATUS: '/api/students', // used as /api/students/{id}/status
+    UPDATE_STATUS: '/api/students',
     WITH_PAYMENTS: '/api/students/with-payment-by-referral-company',
   },
   EMPLOYEES: {

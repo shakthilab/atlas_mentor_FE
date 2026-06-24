@@ -1,7 +1,7 @@
 export const environment = {
   production: true,
-  angularBaseUrl: 'http://localhost:4200',
-  serviceUrl: 'http://65.2.175.37:8080'
+  angularBaseUrl: 'https://app.atlasmentor.com/',
+  serviceUrl: 'https://app.atlasmentor.com/BE'
   // serviceUrl: 'http://localhost:8080'
 
 };

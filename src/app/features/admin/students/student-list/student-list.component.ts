@@ -118,6 +118,7 @@ import { DatepickerComponent } from '../../../../shared/components/datepicker/da
                 <th>Student</th>
                 <th>Contact Info</th>
                 <th>Status</th>
+                <th>Active</th>
                 <th>Counsellor</th>
                 <th>Added by</th>
                 <th>Country / University</th>

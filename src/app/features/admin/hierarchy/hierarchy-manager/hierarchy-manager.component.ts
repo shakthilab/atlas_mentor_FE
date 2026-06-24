@@ -24,7 +24,7 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
         <div class="header-actions">
           <div class="filter-actions" style="margin: 0;">
             <select class="filter-select" [(ngModel)]="locationFilter" style="min-width: 180px;">
-              <option>All locations</option>
+              <option>All Locations</option>
               <option *ngFor="let branch of branches">{{ branch.name }}</option>
             </select>
           </div>
@@ -107,15 +107,13 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
                           {{ isExpanded(team.leader.id) ? 'keyboard_arrow_down' : 'keyboard_arrow_right' }}
                         </span>
                       </div>
-                      <div class="node-avatar" [class.manager-avatar]="level === 'MANAGER'" [style.background]="getAvatarColor(team.leader.name)">
+                      <div class="node-avatar" [class.manager-avatar]="level === 'MANAGER'" [style.background]="getRoleColorHex(team.leader, level)">
                         {{ getInitials(team.leader.name) }}
                       </div>
                       <div class="node-info">
                         <div class="name-role">
                           <span class="name">{{ team.leader.name }}</span>
-                          <span class="badge" 
-                                [class.badge-manager]="level === 'MANAGER'" 
-                                [class.badge-senior]="level === 'SENIOR'">
+                          <span class="badge" [ngClass]="getRoleBadgeClass(team.leader, level)">
                             {{ getDisplayRole(team.leader, level) }}
                           </span>
                         </div>
@@ -152,13 +150,11 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
                         <div class="node-content child">
                           <div class="node-main">
                             <div class="node-toggle spacer"></div>
-                            <div class="node-avatar child-avatar" [style.background]="getAvatarColor(member.name)">{{ getInitials(member.name) }}</div>
+                            <div class="node-avatar child-avatar" [style.background]="getRoleColorHex(member)">{{ getInitials(member.name) }}</div>
                             <div class="node-info">
                               <div class="name-role">
                                 <span class="name">{{ member.name }}</span>
-                                <span class="badge" 
-                                      [class.badge-junior]="isJunior(member)"
-                                      [class.badge-other]="!isJunior(member) && !isSenior(member) && !isManager(member)">
+                                <span class="badge" [ngClass]="getRoleBadgeClass(member)">
                                   {{ getDisplayRole(member) }}
                                 </span>
                               </div>
@@ -243,10 +239,10 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
                   <div class="check-box" [class.checked]="selectedEmployeeIds.includes(emp.id)">
                     <span class="material-icons" *ngIf="selectedEmployeeIds.includes(emp.id)">check</span>
                   </div>
-                  <div class="emp-avatar" [style.background]="getAvatarColor(emp.name)">{{ getInitials(emp.name) }}</div>
+                  <div class="emp-avatar" [style.background]="getRoleColorHex(emp)">{{ getInitials(emp.name) }}</div>
                   <div class="emp-info">
                     <span class="emp-name">{{ emp.name }}</span>
-                    <span class="badge" [class.badge-senior]="isSenior(emp)" [class.badge-junior]="isJunior(emp)" style="font-size: 0.625rem;">
+                    <span class="badge" [ngClass]="getRoleBadgeClass(emp)" style="font-size: 0.625rem;">
                       {{ getDisplayRole(emp) }}
                     </span>
                   </div>
@@ -260,15 +256,11 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
           </div>
 
           <div class="sidebar-footer">
-            <button class="btn btn-tertiary" (click)="cancelSidebarAssignment()">
-              <span class="material-icons">close</span>
-              Cancel
-            </button>
-            <button class="btn btn-primary" [disabled]="!sidebarSelectedManagerId || selectedEmployeeIds.length === 0 || isSubmitting" (click)="saveSidebarAssignment()">
-              <ng-container *ngIf="!isSubmitting">Save Assignment</ng-container>
+            <button class="btn btn-primary" [disabled]="!sidebarSelectedManagerId || selectedEmployeeIds.length === 0 || isSubmitting" (click)="saveSidebarAssignment()" style="width: 100%; border-radius: 12px; height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; background: #2e90fa; color: white; border: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); cursor: pointer;">
+              <ng-container *ngIf="!isSubmitting">Assign Selected Employees</ng-container>
               <ng-container *ngIf="isSubmitting">
                 <div class="spinner-inline"></div>
-                Saving...
+                Assigning...
               </ng-container>
             </button>
           </div>
@@ -487,9 +479,37 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
       margin-top: 2rem;
     }
 
+    .stat-mini-card {
+      background: white;
+      padding: 1.25rem;
+      border-radius: 16px;
+      border: 1px solid #eaecf0;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-mini-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+    }
+    .stat-icon-wrap {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stat-icon-wrap .material-icons {
+      font-size: 1.25rem;
+    }
+
+
 
     /* Org Tree Card */
-    .org-tree-card { background: white; border-radius: 12px; border: 1px solid #eaecf0; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); position: relative; min-height: 400px; }
+    .org-tree-card { background: white; border-radius: 16px; border: 1px solid #eaecf0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); position: relative; min-height: 400px; }
     .org-tree-card .card-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #eaecf0; display: flex; justify-content: space-between; align-items: center; }
     .card-title-info { display: flex; gap: 0.75rem; align-items: center; }
     .card-icon { width: 36px; height: 36px; border-radius: 8px; background: #eff4ff; color: #2e90fa; display: flex; align-items: center; justify-content: center; }
@@ -499,8 +519,8 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
     /* Tree View Styles */
     .tree-container { padding: 1.5rem; min-height: 300px; position: relative; }
     .tree-node { margin-bottom: 1rem; }
-    .node-content { border-radius: 8px; border: 1px solid #eaecf0; transition: all 0.2s; background: white; }
-    .node-content.expanded { border-color: #d0d5dd; }
+    .node-content { border-radius: 12px; border: 1px solid #eaecf0; transition: all 0.2s; background: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+    .node-content.expanded { border-color: #d0d5dd; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
     .node-main { padding: 1rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; position: relative; }
     .node-main:hover { background-color: #f9fafb; }
     
@@ -513,19 +533,26 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
     .name-role .name { font-weight: 600; color: #101828; font-size: 0.9375rem; }
     
     .badge { padding: 0.125rem 0.5rem; border-radius: 6px; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.025em; min-width: 110px; text-align: center; }
-    .badge-manager { background: #eff4ff; color: #175cd3; }
-    .badge-senior { background: #fdf2fa; color: #c11574; }
-    .badge-junior { background: #ecfdf3; color: #027a48; }
-    .badge-other { background: #f2f4f7; color: #344054; }
+    .badge-manager { background: #eff6ff; color: #1d4ed8; }
+    .badge-senior { background: #f0fdf4; color: #15803d; }
+    .badge-junior { background: #fff7ed; color: #c2410c; }
+    .badge-employee { background: #faf5ff; color: #7e22ce; }
+    .badge-referral { background: #fefce8; color: #a16207; }
+    .badge-company { background: #f3f4f6; color: #374151; }
     
     .meta { font-size: 0.75rem; color: #667085; display: flex; align-items: center; gap: 0.5rem; }
     .meta .material-icons { font-size: 0.875rem; vertical-align: middle; }
 
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     /* Children Styles */
-    .node-children { margin-left: 3rem; margin-top: 0.5rem; position: relative; }
+    .node-children { margin-left: 3.5rem; margin-top: 0.5rem; position: relative; animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
     .child-node { position: relative; margin-bottom: 0.75rem; }
-    .node-line { position: absolute; left: -1.5rem; top: -1rem; bottom: 50%; width: 1.5rem; border-left: 2px solid #eaecf0; border-bottom: 2px solid #eaecf0; border-bottom-left-radius: 12px; }
-    .child-node:not(:last-child)::after { content: ''; position: absolute; left: -1.5rem; top: 50%; bottom: -0.75rem; border-left: 2px solid #eaecf0; }
+    .node-line { position: absolute; left: -1.75rem; top: -1rem; bottom: 50%; width: 1.5rem; border-left: 2px solid #e5e7eb; border-bottom: 2px solid #e5e7eb; border-bottom-left-radius: 6px; }
+    .child-node:not(:last-child)::after { content: ''; position: absolute; left: -1.75rem; top: 50%; bottom: -0.75rem; border-left: 2px solid #e5e7eb; }
     
     .node-content.child { border: 1px solid #eaecf0; background: #fff; }
     .child-avatar { width: 32px; height: 32px; font-size: 0.75rem; }
@@ -551,7 +578,7 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
 
     /* Sidebar Styles */
     .right-sidebar { position: sticky; top: 1.5rem; height: calc(100vh - 3rem); }
-    .sidebar-card { background: white; border-radius: 12px; border: 1px solid #eaecf0; height: 100%; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1); }
+    .sidebar-card { background: white; border-radius: 16px; border: 1px solid #eaecf0; height: 100%; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); }
     .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #eaecf0; }
     .sidebar-header h3 { font-size: 1rem; font-weight: 600; color: #101828; margin-bottom: 0.25rem; }
     .sidebar-header p { font-size: 0.8125rem; color: #667085; }
@@ -603,6 +630,35 @@ import { CountryService, CountryMobileCode } from '../../../../core/services/cou
     .modal-icon .material-icons { font-size: 1.25rem; }
     .modal-subtitle { font-size: 0.875rem; color: #475467; margin-bottom: 1.25rem; }
 
+    .filter-select {
+      border: 1px solid #eaecf0;
+      background: white !important;
+      color: #344054 !important;
+      font-weight: 500;
+      border-radius: 12px;
+      padding: 0.5rem 1rem !important;
+      font-size: 0.875rem;
+      outline: none;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-select:hover {
+      background: #f9fafb !important;
+      border-color: #d0d5dd;
+    }
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #101828;
+      letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+      font-size: 0.875rem;
+      color: #667085;
+      margin-top: 0.25rem;
+    }
+
     @media (max-width: 1200px) {
       .hierarchy-layout { grid-template-columns: 1fr; }
       .right-sidebar { display: none; }
@@ -646,7 +702,7 @@ export class HierarchyManagerComponent implements OnInit {
     totalLocations: 0
   };
   searchQuery = '';
-  locationFilter = 'All locations';
+  locationFilter = 'All Locations';
   expandedNodes: Set<number> = new Set();
   isLoading = false;
 
@@ -796,7 +852,7 @@ export class HierarchyManagerComponent implements OnInit {
       );
     }
 
-    if (this.locationFilter !== 'All locations') {
+    if (this.locationFilter !== 'All Locations') {
       allTopLevel = allTopLevel.filter(team => team.leader.branch?.name === this.locationFilter || team.leader.branch === this.locationFilter);
     }
 
@@ -856,6 +912,32 @@ export class HierarchyManagerComponent implements OnInit {
       this.expandedNodes.add(id);
     }
   }
+  getRoleBadgeClass(member: any, level?: string): string {
+    if (level === 'MANAGER') return 'badge-manager';
+    if (level === 'SENIOR') return 'badge-senior';
+
+    const role = this.getRoleName(member);
+    if (role.includes('MANAGER') || role === 'ADMIN' || role === 'BRANCH_PARTNER') return 'badge-manager';
+    if (role.includes('SENIOR')) return 'badge-senior';
+    if (role.includes('JUNIOR')) return 'badge-junior';
+    if (role.includes('REFERRAL')) return 'badge-referral';
+    if (role.includes('COMPANY')) return 'badge-company';
+
+    return 'badge-employee';
+  }
+
+  getRoleColorHex(member: any, level?: string): string {
+    const badgeClass = this.getRoleBadgeClass(member, level);
+    switch(badgeClass) {
+      case 'badge-manager': return '#3b82f6'; // Blue
+      case 'badge-senior': return '#22c55e'; // Green
+      case 'badge-junior': return '#f97316'; // Orange
+      case 'badge-employee': return '#a855f7'; // Purple
+      case 'badge-referral': return '#eab308'; // Yellow
+      case 'badge-company': return '#6b7280'; // Gray
+      default: return '#a855f7';
+    }
+  }
 
   getDisplayRole(member: any, level?: string): string {
     if (level === 'MANAGER') return 'Manager / Partner';
@@ -865,6 +947,8 @@ export class HierarchyManagerComponent implements OnInit {
     if (role.includes('MANAGER') || role === 'ADMIN' || role === 'BRANCH_PARTNER') return 'Manager / Partner';
     if (role.includes('SENIOR')) return 'Senior Counsellor';
     if (role.includes('JUNIOR')) return 'Junior Counsellor';
+    if (role.includes('REFERRAL')) return 'Referral Partner';
+    if (role.includes('COMPANY')) return 'Company';
 
     return this.formatRole(role) || 'Team Member';
   }

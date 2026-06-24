@@ -658,7 +658,7 @@ export class ManagerTaskListComponent implements OnInit {
 
     this.taskService.getTasks(branchFilter).subscribe({
       next: (tasks) => {
-        this.allTasks = tasks;
+        this.allTasks = tasks.tasks;
         this.categorizeTasks();
       },
       error: (error) => {

@@ -192,6 +192,14 @@ export class TaskService {
           currentPage = response.data.number || 0;
           pageSize = response.data.size || 20;
         } 
+        // Case 1b: Wrapped in 'tasks' and paginated (e.g. response.tasks.content)
+        else if (response && response.tasks && response.tasks.content && Array.isArray(response.tasks.content)) {
+          content = response.tasks.content;
+          totalElements = response.tasks.totalElements !== undefined ? response.tasks.totalElements : content.length;
+          totalPages = response.tasks.totalPages || 1;
+          currentPage = response.tasks.number || 0;
+          pageSize = response.tasks.size || 20;
+        }
         // Case 2: Directly paginated (not wrapped in 'data')
         else if (response && response.content && Array.isArray(response.content)) {
           content = response.content;
